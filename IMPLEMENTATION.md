@@ -30,8 +30,10 @@ El sistema gira alrededor de un concepto: **cajas**.
 
 Una caja es un campo de información que Vértice necesita conocer de cada institución. Hay dos tipos:
 
-- **Núcleo común (46 cajas):** TODAS las instituciones llenan estas, sin importar tipo
+- **Núcleo común (44 cajas):** TODAS las instituciones llenan estas, sin importar tipo
 - **Extensión por tipo (3 a 6 cajas):** específicas según si es banco, SOFOM, arrendadora, etc.
+
+> Total por institución = 5 identidad + 44 núcleo común + 3 a 6 extensión = **52 a 55 cajas**.
 
 La IA hace una entrevista 100% dinámica para llenar todas las cajas. No hay preguntas pre-escritas. La IA genera cada batch de preguntas en el momento, mirando qué cajas siguen vacías o ambiguas.
 
@@ -101,7 +103,7 @@ Regla operativa: **Sonnet hace ~95% de las llamadas, Opus las decisiones crític
 
 **IFPE está intencionalmente excluida** del enum. Una IFPE legalmente no puede dar crédito (Ley Fintech, art. 22). Si alguna se inscribe como aliada, hay que rechazarla en onboarding antes de la entrevista.
 
-### 5.2 Núcleo común — TODAS las instituciones llenan (46 cajas)
+### 5.2 Núcleo común — TODAS las instituciones llenan (44 cajas)
 
 #### 5.2.1 Producto y mercado (7 cajas)
 
@@ -168,23 +170,21 @@ Regla operativa: **Sonnet hace ~95% de las llamadas, Opus las decisiones crític
 | `pc_reglas_pricing` | Qué mueve la tasa hacia arriba/abajo | text | sí |
 | `pc_conversion_producto` | Reglas "si pide X con perfil Y, ofrecemos Z" | text | no |
 
-#### 5.2.6 Matrices Likert (5 cajas, 54 ítems totales)
+#### 5.2.6 Tolerancias estructuradas (5 cajas)
 
-Cada matriz es una caja, pero internamente tiene N ítems con score 1-5. La caja se considera llena cuando todos los ítems tienen score.
+Estas 5 cajas reemplazaron a las antiguas Matrices Likert (`mx_12a..e`). El cambio es deliberado: en vez de 54 ítems con score 1-5, cada caja captura **una descripción libre estructurada** de qué tolera la institución, en qué condiciones, y qué es deal-breaker. Sonnet llena estas cajas en Fase 1 escuchando la respuesta libre del entrevistado y mapeando contra las "señales a escuchar" que viven como scaffolding interno en el system prompt (ver §7.1).
 
-Escala: 1=rechazo automático, 2=comité con argumentación, 3=mitigable con garantía adicional, 4=comité sin observaciones, 5=sin problema.
-
-| Código | Caja | Ítems | Crítica |
+| Código | Caja | Tipo | Crítica |
 |---|---|---|---|
-| `mx_12a_historial` | Matriz 12.A · Historial crediticio | 11 ítems | sí |
-| `mx_12b_fiscal` | Matriz 12.B · Situación fiscal | 6 ítems | sí |
-| `mx_12c_numeros` | Matriz 12.C · Números del negocio | 14 ítems | sí |
-| `mx_12d_garantias` | Matriz 12.D · Garantías y colateral | 12 ítems | sí |
-| `mx_12e_documentacion` | Matriz 12.E · Documentación y gobierno | 11 ítems | sí |
+| `to_historial_credito` | Tolerancia a manchas/retrasos en buró, restructuras, días de mora aceptables | text | sí |
+| `to_situacion_fiscal` | Tolerancia a 32-D negativa, EFOS recientes, RESICO, irregularidades SAT | text | no |
+| `to_ratios_financieros` | Umbrales blandos en DSCR, deuda/EBITDA, capital de trabajo, márgenes | text | sí |
+| `to_colateral` | Flexibilidad en LTV, tipos de garantía aceptables, prendas, avales solidarios | text | no |
+| `to_gobierno_documentacion` | Tolerancia en gobierno corporativo, EEFF sin auditoría, acta sin protocolizar | text | no |
 
-**Los 54 ítems específicos están en `seeds/matrices.ts` (debe crearse).** Se extraen literalmente del archivo `vertice_cuestionario_completo (1).html` que está en project knowledge. No los reformules.
+**Cómo se llenan:** preguntas abiertas tipo "¿qué tipo de mancha en buró tolera tu comité y bajo qué condiciones?" Sonnet extrae texto libre estructurado, no scores. El usuario nunca responde una matriz Likert ni ve los ítems del scaffolding.
 
-**Importante para el motor:** las matrices se llenan conversacionalmente, NO con radio buttons. El agente hace preguntas abiertas como "cuéntame del más leve al más grave los tipos de mancha en Buró que tu comité tolera" y de ahí Sonnet extrae 3-5 ítems simultáneamente. El usuario nunca ve la matriz como tal.
+**Origen del scaffolding:** las "señales a escuchar" que cada caja `to_*` describe internamente provienen del cuestionario completo histórico (54 ítems agrupados en 5 dimensiones). No se codifican como datos del schema; viven sólo dentro del system prompt del agente Sonnet de Fase 1 como referencia descriptiva — ver §7 para el formato.
 
 #### 5.2.7 Situaciones especiales (5 cajas)
 
@@ -201,7 +201,9 @@ Escala: 1=rechazo automático, 2=comité con argumentación, 3=mitigable con gar
 | Código | Caja | Tipo | Crítica |
 |---|---|---|---|
 | `co_punto_contacto` | Punto único de contacto (nombre + puesto) | text | sí |
-| `co_email_telefono` | Correo + teléfono directos | text validado | sí |
+| `co_email_telefono` | Correo + teléfono directos | objeto `{email, telefono}` | sí |
+
+> `co_email_telefono` se modela como objeto Zod con dos campos validados independientemente: `email: z.string().email()` y `telefono: z.string().regex(/^\+?52?\s?\d{10}$/)`. Sigue siendo una sola caja lógica.
 
 ### 5.3 Extensión por tipo (cajas que solo aplican según tipo)
 
@@ -280,7 +282,7 @@ Escala: 1=rechazo automático, 2=comité con argumentación, 3=mitigable con gar
 | Edición manual del usuario | Marca la caja como llena automáticamente, lock del LLM |
 | "No aplica" explícito | Cuenta como llena |
 | Caja resiste 3 preguntas directas | Opus genera caso sintético para forzar revelación |
-| Caja sigue vacía después de 5 casos | Se marca `decline_to_answer` y se cierra |
+| Cap de casos sintéticos por sesión | **5 casos globales por sesión** (NO por caja). Cuando se alcanza, la sesión cierra y las cajas críticas vacías quedan como `decline_to_answer`. |
 
 ---
 
@@ -416,9 +418,8 @@ Configura `drizzle.config.ts` apuntando a Neon vía `DATABASE_URL`.
 
 Crea estos seeds en `db/seeds/`:
 
-- `matrices.ts` — los 54 ítems Likert exactos del cuestionario completo (extraídos del HTML en project knowledge)
 - `enums.ts` — listas cerradas de productos, sectores, zonas, tipos de garantía
-- `safe_rails_casos.ts` — librería de 8-10 casos curados del Guión de Casos como fallback (con metadata de qué cajas cubren)
+- `safe_rails_casos.ts` — librería de 8-10 casos curados del Guión de Casos como fallback (con metadata de qué cajas cubren, incluyendo `to_*` cuando aplique)
 
 ---
 
@@ -544,7 +545,7 @@ Historial de turnos: {historial}
 
 <tools>
 - extraer_cajas: recibe respuesta del usuario, devuelve lista de extracciones con caja_codigo, valor, confianza, evidencia_textual
-- generar_batch_preguntas: recibe estado actual, devuelve array de 2-4 preguntas
+- generar_batch_preguntas: tool use estructurado. Output: `Array<{id: string, texto_pregunta: string, cajas_objetivo: string[], tipo: 'directa' | 'caso_sintetico_solicitado'}>`. Permite trackear qué cajas pretendía cada pregunta vs cuáles cerró efectivamente (señal de calidad del prompt).
 - solicitar_caso_sintetico: cuando una caja resiste preguntas directas, llama a Opus
 </tools>
 
@@ -668,7 +669,20 @@ Componentes (shadcn):
 - Texto de Deepgram aparece en vivo en el textarea mientras se habla
 - Después de soltar el mic, el texto queda editable
 
-Lateral derecho (collapsible en móvil): un panel que muestra "Cajas llenas: X de Y" con barras de progreso por sección. **No mostrar las 51 cajas individuales**, solo las 5-6 secciones agregadas con porcentajes. No queremos que el aliado se sienta vigilado.
+Lateral derecho (collapsible en móvil): un panel que muestra "Cajas llenas: X de Y" con barras de progreso por sección. **No mostrar las cajas individuales**, solo las 6 secciones agregadas con porcentajes. No queremos que el aliado se sienta vigilado.
+
+**Las 6 secciones oficiales del panel UI (no son las mismas que las 8 subsecciones del schema):**
+
+| Grupo UI | Cajas que agrupa | Total |
+|---|---|---|
+| Identificación | `id_*` | 5 |
+| Productos y mercado | `nm_*` | 7 |
+| Números del negocio | `ru_*` + `gr_*` | 15 |
+| Operación | `op_*` | 6 |
+| Pricing y criterio | `pc_*` + `to_*` + `se_*` | 14 |
+| Contacto y específicos | `co_*` + extensión por tipo | variable |
+
+DB y motor trabajan con códigos individuales; solo la capa UI agrega.
 
 ### 8.3 Estados de la sesión
 
@@ -688,7 +702,7 @@ interface EntrevistaState {
 }
 ```
 
-Persistencia: cada respuesta y cada batch se guarda en Postgres al recibirla. Si el navegador crashea, el usuario abre el magic link y retoma desde el último batch.
+Persistencia: el texto de cada respuesta hace **autosave a Postgres con debounce de 1.5s** desde el último keystroke (evita pérdida si crashea el browser sin saturar la DB). El batch entero solo se "envía a procesar por LLM" cuando el usuario marca todas las preguntas como respondidas y aprieta enviar. Si crashea el navegador, el usuario abre el magic link y retoma desde el último batch con el texto persistido.
 
 ### 8.4 Integración Deepgram
 
@@ -870,13 +884,13 @@ ADMIN_EMAILS=founder@vertice.app,otro@vertice.app
 ### Fase 2 · Schema y migraciones (3 horas)
 - [ ] Implementar `db/schema.ts` completo con las 8 tablas de sección 6.1
 - [ ] Implementar enums Drizzle
-- [ ] Crear seeds (`db/seeds/matrices.ts`, `enums.ts`, `safe_rails_casos.ts`)
+- [ ] Crear seeds (`db/seeds/enums.ts`, `db/seeds/safe_rails_casos.ts`)
 - [ ] Generar y aplicar migración inicial
 - [ ] Activar pgvector extension en Neon
 - [ ] Verificar conexión y schema con `drizzle-kit studio`
 
 ### Fase 3 · Schemas Zod del credit box (3 horas)
-- [ ] `lib/schemas/cajas.ts` — un schema Zod por cada caja (las 51-57)
+- [ ] `lib/schemas/cajas.ts` — un schema Zod por cada caja (52 a 55 según tipo de institución: 5 identidad + 44 núcleo + 3-6 extensión)
 - [ ] `lib/schemas/caso_sintetico.ts`
 - [ ] `lib/schemas/perfil_decision_final.ts`
 - [ ] Tests básicos de los schemas con datos válidos e inválidos
