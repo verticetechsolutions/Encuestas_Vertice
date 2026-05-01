@@ -939,16 +939,43 @@ Approach: magic link de un solo uso (token plain en URL del email, hash SHA-256 
 - [ ] Dominio verificado en Resend para `EMAIL_FROM=hola@verticemexico.com`.
 - [ ] Cleanup post-Fase 4: las columnas `instituciones.magic_link_token` y `magic_link_expires_at` quedan dead-but-present (founder dijo "no toca tablas existentes"); cleanup en migración futura cuando convenga.
 
-### Fase 5 · Motor conversacional core (8 horas) — la pieza más crítica
-- [ ] System prompts en `lib/prompts/` (los 4 archivos de sección 7.4)
-- [ ] Función `computeMapaIncertidumbre` pura
-- [ ] Función `detectarFatiga` client-side
-- [ ] API route `/api/turn` que orquesta el loop
-- [ ] Tools de Sonnet con schemas Zod
-- [ ] Llamada a Opus para casos sintéticos cuando se requiere
-- [ ] Llamada a Opus para revisión de avance
-- [ ] Persistencia de turnos, extracciones, casos en DB
-- [ ] **Test E2E con respuestas mock antes de meter voz:** simula una entrevista completa con respuestas hardcodeadas y verifica que el motor cierra correctamente
+### Fase 5 · Motor conversacional core (8 horas) — 🟡 EN PROGRESO (paso 4 cerrado, pause hasta retomar)
+
+Estructura de la Fase 5 en pasos discretos para auditabilidad:
+
+- [x] **Paso 1 (commit `5088da2`):** `lib/prompts/sonnet_fase1.ts` con `SENALES_A_ESCUCHAR_XML` (54 ítems × 5 cajas to_*, verbatim del cuestionario legado 12.A–12.E). Wired en `<context>`. `SONNET_FASE1_PROMPT_READY=false`.
+- [x] **Paso 2 (commit `5c0424a`):** funciones puras del motor.
+  - `lib/motor/mapa.ts` → `computeMapaIncertidumbre(extracciones, cajasAplicables, topN)`. Status por caja (llena, parcial, vacia, no_aplica, contradictoria), agregados ponderados (críticas peso 2, blandas peso 1), top N a atacar. Constantes `CONFIANZA_MIN_CRITICA=0.80`, `CONFIANZA_MIN_BLANDA=0.65`. `no_aplica` solo con manual+null+threshold (founder D2). Smoke 20/20.
+  - `lib/motor/fatiga.ts` → `detectarFatiga(turnos)` con 4 reglas (silencio_pausa, keyword, brevedad, velocidad WPM). Lookahead `(?=\s|[.,!?]|$)` en regex con acento porque `\b` JS es ASCII-only. Smoke 8/8.
+- [x] **Paso 3 (commit `16d8d18`):** Tools de Sonnet con Zod en `lib/motor/tools.ts`. 3 tools:
+  - `registrar_extraccion` (array de extracciones, `valor: z.unknown()` resuelto en runtime).
+  - `generar_batch_preguntas` (longitud 2|3|4 con refine que iguala a `preguntas.length`).
+  - `solicitar_caso_sintetico` (urgencia alta|media, gateado por cap 5/sesión).
+  - `marcar_caja_llena` excluida deliberadamente (mal incentivo: dejaría a Sonnet sub-llenar sin extraer). Cada tool exporta `<NAME>InputSchema`, `<NAME>Input`, `<NAME>_TOOL` (definición Anthropic con `input_schema` vía `z.toJSONSchema()`). Smoke 31/31.
+- [x] **Paso 4 (commit `425ad03`):** body del system prompt de Sonnet Fase 1. 26.5K chars / ~6.6K tokens, typecheck limpio.
+  - Persona formal-cálida peer-to-peer (entrevistado experto 15-25 años en crédito).
+  - `<tools_disponibles>` con cuándo llamar cada tool (registrar PRIMERO, después generar_batch o solicitar_caso, nunca al revés).
+  - 11 instructions cubriendo: orden tool calls, calibración de confianza con anchors (0.90+ literal / 0.75-0.85 contexto fuerte / 0.60-0.75 inferencia / <0.60 no extraer), manejo de "no aplica" (null + ≥0.85), no inventar, no repetir fraseología, no anunciar transiciones, multi-extracción `se_*`+`to_*`, solo cajas en lista aplicable, pausa/meta-pregunta sin tools, evidencia_textual literal con "..." para fragments discontinuos.
+  - 3 few-shots curados con founder (2026-05-01):
+    - Ej1: pregunta abierta cosechando 5 cajas (códigos canonicalizados a `nm_sectores_aceptados`/`nm_sectores_excluidos`); siguiente_batch_esperado con 2 preguntas + cajas_objetivo declaradas.
+    - Ej2: reformulación tras evasión, escalando a `solicitar_caso_sintetico` cuando suma 2 turnos sin clausurar (canónico de regla 6: max 2 intentos directos antes de caso sintético).
+    - Ej3: tema sensible (SAT 32-D negativa) con multi-extracción dual: `se_sat_32d_negativa` (objeto estructurado, crítica, 0.92) + `to_situacion_fiscal` (texto narrativo, blanda, 0.88). Nota lateral explicando por qué EFOS y rechazos por compliance fiscal viven en `to_situacion_fiscal` (canon no tiene caja `*_rechazos_automaticos`).
+
+**🟥 Bloqueos pendientes para retomar Fase 5:**
+
+- [ ] **`<formato_valores_por_caja>`** — bloque XML con las 49 entradas de `CAJAS_CANON` listando `caja_codigo: tipo esperado` por línea. Lo genera el founder (no CC) porque inferir tipos automáticamente arriesga drift contra CAJAS_CANON. Sin este bloque, Sonnet puede mandar `valor` shapes que fallen en `valorSchemaFor(caja_codigo)`. `SONNET_FASE1_PROMPT_READY` queda en `false` hasta que entre.
+- [ ] **Decisión arquitectónica abierta — criterios de cierre de sección:**
+  - **(a)** Cierre por `grupo_ui` discreto: las 6 secciones del lateral (identificacion, productos_y_mercado, numeros_del_negocio, operacion, pricing_y_criterio, contacto_y_especificos). Disparos discretos cuando todas las cajas de un grupo llegan a confianza ≥ threshold; Opus revisa cada sección al cerrarse.
+  - **(b)** Cierre por bloque temático conversacional continuo: Sonnet decide internamente cuándo un tema está agotado y pide review independientemente del grupo_ui.
+  - **Voto preliminar founder:** (a) — alinea con la UI, da disparos auditables, `getCajasByGrupoUI` ya existe en `lib/schemas/cajas.ts`. Decisión final al retomar.
+
+**Próximo movimiento al volver:** definir el contrato Sonnet→Opus para handoff de review (shape del tool, qué snapshot pasa Sonnet, qué decide Opus, qué hace Sonnet con la respuesta de Opus). Esto bloquea el avance del resto de Fase 5.
+
+**Pasos restantes después del handoff Sonnet→Opus:**
+- [ ] System prompts de Opus: `lib/prompts/opus_generador_casos.ts`, `lib/prompts/opus_validador_casos.ts`, `lib/prompts/opus_revision_seccion.ts`, `lib/prompts/opus_sintesis_final.ts`.
+- [ ] API route `/api/turn` que orquesta el loop completo (recibir respuestas → validar tool_use → autoincrementar version + setear superseded_by → recompute mapa → decidir siguiente acción).
+- [ ] Persistencia de turnos, extracciones, casos en DB.
+- [ ] **Test E2E con ~15 respuestas mock** (no negociable per memoria `feedback_phase5_e2e_tests`): happy path, hit cap de 5 casos, fatiga, correcciones manuales que locken cajas. Hard gate antes de Fase 6.
 
 ### Fase 6 · Integración Deepgram (4 horas)
 - [ ] Proxy `/api/deepgram` server-side
