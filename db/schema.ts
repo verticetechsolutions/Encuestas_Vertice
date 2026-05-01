@@ -84,7 +84,24 @@ export const sesiones = pgTable('sesiones', {
   // Denominator for `completitud`. Pinned per session so v2 cajas don't change old denominators.
   cajas_aplicables: integer('cajas_aplicables').notNull(),
   fatiga_detectada: boolean('fatiga_detectada').notNull().default(false),
+  // LFPDPPP consent timestamp — set when user checks the privacy checkbox on bienvenida.
+  // Null until consented; the entrevista route is gated on this being non-null.
+  consentimiento_at: timestamp('consentimiento_at', { withTimezone: true }),
   metadata: jsonb('metadata'),
+});
+
+// Magic-link tokens issued by `scripts/invitar.ts`. Token plain only ever exists in
+// the email URL; DB stores SHA-256 hash. One-shot: `consumed_at` is set when verified
+// and the row is never reused (cookie sustains the session afterward).
+export const magic_tokens = pgTable('magic_tokens', {
+  id: uuid('id').primaryKey().defaultRandom(),
+  token_hash: text('token_hash').notNull().unique(),
+  institucion_id: uuid('institucion_id')
+    .references(() => instituciones.id)
+    .notNull(),
+  expires_at: timestamp('expires_at', { withTimezone: true }).notNull(),
+  consumed_at: timestamp('consumed_at', { withTimezone: true }),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
 export const turnos_conversacion = pgTable('turnos_conversacion', {

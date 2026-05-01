@@ -872,36 +872,72 @@ ADMIN_EMAILS=founder@vertice.app,otro@vertice.app
 
 **Tu trabajo es ejecutar estas fases en orden. Después de cada fase, corre el código y verifica.**
 
-### Fase 1 · Setup base (4 horas)
-- [ ] Inicializar Next.js 15 + TS estricto + Tailwind v4 + shadcn
-- [ ] Instalar todas las dependencias (lista al final del documento)
-- [ ] Crear estructura de carpetas según sección 8.1
-- [ ] `.env.example` y `README.md` básico
-- [ ] Configurar Drizzle apuntando a Neon
-- [ ] Configurar Sentry y Axiom (init mínimo)
-- [ ] `npm run dev` debe correr sin errores aunque no haga nada útil aún
+### Fase 1 · Setup base (4 horas) — ✅ CERRADA (pre-restart)
+- [x] Inicializar Next.js 15 + TS estricto + Tailwind v4 + shadcn
+- [x] Instalar todas las dependencias (lista al final del documento)
+- [x] Crear estructura de carpetas según sección 8.1
+- [x] `.env.example` y `README.md` básico
+- [x] Configurar Drizzle apuntando a Neon
+- [x] Configurar Sentry y Axiom (init mínimo)
+- [x] `npm run dev` debe correr sin errores aunque no haga nada útil aún
 
-### Fase 2 · Schema y migraciones (3 horas)
-- [ ] Implementar `db/schema.ts` completo con las 8 tablas de sección 6.1
-- [ ] Implementar enums Drizzle
-- [ ] Crear seeds (`db/seeds/enums.ts`, `db/seeds/safe_rails_casos.ts`)
-- [ ] Generar y aplicar migración inicial
-- [ ] Activar pgvector extension en Neon
-- [ ] Verificar conexión y schema con `drizzle-kit studio`
+### Fase 2 · Schema y migraciones (3 horas) — ✅ CERRADA (commits 5c3360c + 7d5f29f)
+- [x] Implementar `db/schema.ts` completo con las 8 tablas de sección 6.1
+- [x] Implementar enums Drizzle (5 pgEnums: tipo_institucion sin IFPE, sesion_status, rol_turno, fuente_turno, caso_estado)
+- [x] Crear seeds (`db/seeds/enums.ts`, `db/seeds/safe_rails_casos.ts` con 10 casos curados del Guión)
+- [x] Generar y aplicar migración inicial (vía MCP `run_sql_transaction` — drizzle-kit push requiere TTY no disponible desde CLI)
+- [x] Activar pgvector extension en Neon (vector 0.8.0, columna `perfil_decision_final.embedding vector(1536)`)
+- [x] Verificar conexión y schema con consultas `information_schema` + insert/select PoC (FK end-to-end OK)
 
-### Fase 3 · Schemas Zod del credit box (3 horas)
-- [ ] `lib/schemas/cajas.ts` — un schema Zod por cada caja (52 a 55 según tipo de institución: 5 identidad + 44 núcleo + 3-6 extensión)
-- [ ] `lib/schemas/caso_sintetico.ts`
-- [ ] `lib/schemas/perfil_decision_final.ts`
-- [ ] Tests básicos de los schemas con datos válidos e inválidos
+### Fase 3 · Schemas Zod del credit box (3 horas) — 🟡 EN PROGRESO (cierre pendiente: TODO permite_no_aplica + tests)
 
-### Fase 4 · Auth y onboarding (4 horas)
-- [ ] Server action de generación de magic link
-- [ ] Endpoint de validación de magic link
-- [ ] Crear sesión en DB al validar
-- [ ] Cookie de sesión segura
-- [ ] Pantalla de aviso de privacidad LFPDPPP
-- [ ] Integración Resend para envío de email
+Approach: **Zod como source of truth, types derivados con `z.infer`** (decisión founder 2026-04-30 — ver memoria `feedback_zod_source_of_truth`). NO escribir types paralelos a los schemas; si conviven, drift garantizado en 2 semanas.
+
+- [x] **#1** `lib/schemas/casos.ts` — `CasoSinteticoSchema` + sub-schemas + `TipoInstitucionSchema` derivado de `tipoInstitucionEnum.enumValues`. `CasoSintetico = z.infer<typeof ...>`.
+- [x] **#2** `lib/schemas/cajas.ts` — `CajaCanonSchema` + catálogo `CAJAS_CANON: CajaCanon[]` (49 entradas: 5 identidad + 44 núcleo). Helpers `getCajaCanon`, `isCajaCriticaCanon`, `getCajasByGrupoUI`. Sanity-check al cargar (throw si len ≠ 49).
+- [x] **D1-D4 founder signoff (2026-04-30)** sobre catálogo. Criticidad de los 5 id_* aprobada (id_* se autollenan en onboarding salvo `id_anios_operacion` — el LLM las trata como confirmación, no extracción; la criticidad sigue para completitud). Híbridos `int o rango/ratio` colapsan a `int` con `null` como sentinel "no aplica/sin requisito". Las 5 `se_*` quedan como `objeto` con shape `{respuesta, condiciones?}` validado por `.refine()`. Extensión por tipo se ejecuta DESPUÉS de #3+#4 — los contratos de salida primero.
+- [x] **#3** `lib/schemas/extracciones.ts` — `ExtraccionSchema` (envelope con `id`, `sesion_id`, `turno_id`, `caja_codigo`, `valor: z.unknown()`, `confianza 0-1`, `fuente: 'llm' | 'manual'`, `evidencia_textual`, `version` explícito (founder D-extra), `superseded_by` self-FK). Sub-schemas: `ToleranciaSchema` (to_* × 5), `SituacionEspecialSchema` con refine (se_* × 5), `EmailTelefonoSchema` (co_email_telefono), `EeffAuditadosSchema` con refine (op_eeff_auditados), `TasasPorProductoSchema` + `PlazosPorProductoSchema` (pc_* × 2). Resolver `valorSchemaFor(caja_codigo)` consulta CANON+EXTENSION vía `getCajaAny`; despacha por `tipo_dato` cuando no hay caso especial. `parseExtraccion(raw)` valida envelope + valor en un paso.
+- [x] **#4** `lib/schemas/perfil_decision_final.ts` — `PerfilDecisionFinalSchema` keyed por `caja_codigo` (cada entry: `valor, confianza, fuente, evidencia_textual, intentos`). `FuenteCajaFinalSchema` extiende a `'decline_to_answer' | 'no_aplica'` para cajas que cerraron por cap o por respuesta explícita. Métricas usan denominador pinned (`sesiones.cajas_aplicables`). `PerfilDecisionFinalConsistenteSchema` agrega refines cross-field (`completitud === cajas_llenas / cajas_aplicables`, `cajas_llenas ≤ cajas_aplicables`).
+- [x] **Catálogo extensión por tipo** — `CAJAS_EXTENSION_POR_TIPO: Record<TipoInstitucion, CajaCanon[]>` con 32 cajas distintas (cb_×5 compartido banco/sofom_er, cs_×5, csp_×3, cc_×3, ca_×6, cf_×6, cif_×4; `otro` = []). Todas marcadas `// !inferida` (criticidad y tipo_dato no especificados en §5.3 — pendientes de un sweep founder al cerrar Fase 3). Helpers nuevos: `getCajaExtension`, `getCajaAny`, `getCajasAplicables(tipo)`. Sanity-check al cargar (throw si distintas ≠ 32).
+- [ ] **TODO cierre Fase 3 (D2 follow-up):** agregar `permite_no_aplica: boolean` a `CajaCanonSchema`. Lo usa el form lateral (toggle "no aplica") y la lógica de completitud (cuenta `null` como llena solo si la bandera es `true`). Cajas afectadas: `ru_score_pm_min`, `ru_score_pf_min`, `ru_antiguedad_min`, `ru_facturacion_min`, `gr_dscr_min`, `gr_deuda_ebitda_max`. Founder dijo agregarlo al cerrar Fase, no mid-fase.
+- [ ] **TODO cierre Fase 3:** founder sweep sobre criticidad/tipo de las 32 extension cajas (todas `// !inferida` actualmente).
+- [ ] Tests básicos de los schemas con datos válidos e inválidos (smoke runtime ya pasa: 18/18; falta wiring a vitest/jest).
+
+### Fase 4 · Auth y onboarding (4 horas) — ✅ CERRADA (E2E HTTP 6/6 verde; Resend API key pendiente para envío real)
+
+Approach: magic link de un solo uso (token plain en URL del email, hash SHA-256 en DB). Cookie opaca `vertice_session = sesion_id` (httpOnly, secure en prod, sameSite=lax, 30d). Verificación en dos capas: middleware Next 15 hace gate por presencia de cookie sobre `/entrevista/*`; las páginas confirman cookie ↔ sesion_id ↔ consentimiento_at antes de renderizar. Onboarding admin = CLI `scripts/invitar.ts` (UI admin entra en Fase 9).
+
+- [x] Migración `0001_fase4_magic_tokens.sql` aplicada en Neon: tabla `magic_tokens` (id, token_hash unique, institucion_id FK, expires_at, consumed_at, created_at) + columna `sesiones.consentimiento_at timestamptz` para LFPDPPP.
+- [x] `lib/auth/tokens.ts` — `generateMagicToken()` via `crypto.randomBytes(24).toString('base64url')` (sin dep extra), `hashToken()` SHA-256 hex, `magicTokenExpiry()` = +7 días, `MAGIC_TOKEN_TTL_DAYS = 7`.
+- [x] `lib/auth/cookie.ts` — `setSessionCookie(sesionId)`, `readSessionCookie()`, `clearSessionCookie()`. Cookie name `vertice_session`. httpOnly, secure si NODE_ENV=production, sameSite=lax, maxAge 30d.
+- [x] `lib/auth/contracts.ts` — types/Zod schemas usados por las actions (Next 15 prohíbe non-async exports en `'use server'` files; ver memoria `feedback_use_server_only_async`).
+- [x] `lib/email/resend.ts` — cliente Resend lazy + `sendMagicLink({ to, url, razon_social, expiresAt })` con HTML+text en es-MX. Throws si `RESEND_API_KEY` no está configurada.
+- [x] `lib/db.ts` — Drizzle client singleton sobre `postgres-js` (Neon-friendly).
+- [x] **Server actions** en `app/actions/`:
+  - `instituciones.ts → crearInstitucion(input)` — valida con Zod, computa `cajas_aplicables` vía `countCajasAplicables(tipo)` (CANON 49 + EXTENSION[tipo].length).
+  - `sesiones.ts → crearOReanudarSesion(institucion_id)` — reanuda sesión `abierta` o crea nueva con denominador pinned. `registrarConsentimiento(sesion_id)` setea `consentimiento_at`.
+  - `auth.ts → emitirMagicLink(institucion_id, { dryRun? })` (token plain en URL, hash en DB; modo dry-run para test sin Resend) y `verificarMagicLink(plain)` puro DB-only que devuelve outcome discriminado (`ok` | `token_invalido` | `expirado` | `consumido` | `institucion_no_encontrada`). Wrapper `verificarMagicLinkYSetearCookie()` que añade el cookie set para uso desde la página.
+- [x] **Rutas:**
+  - `app/(auth)/acceso/[token]/route.ts` — **Route Handler** (no Server Component). Next 15 prohíbe escribir cookies durante render de SC; el handler hace verify + `NextResponse.redirect()` con `res.cookies.set()`, que sí está permitido. El redirect lleva el Set-Cookie correctamente porque ambos viven en la misma respuesta.
+  - `app/(auth)/acceso/expirado/page.tsx` — 5 mensajes en es-MX por razón (`token_invalido`, `expirado`, `consumido`, `institucion_no_encontrada`, `sin_sesion`).
+  - `app/entrevista/[sesion_id]/bienvenida/page.tsx` — aviso LFPDPPP + checkbox de consentimiento (client component `consentimiento-form.tsx` que llama `registrarConsentimiento`). Si la sesión ya tiene `consentimiento_at`, salta directo al placeholder.
+  - `app/entrevista/[sesion_id]/page.tsx` — placeholder de Fase 5 que valida cookie ↔ sesion_id ↔ consentimiento_at antes de renderizar.
+- [x] **Middleware** `middleware.ts` — gate sobre `/entrevista/:path*` por presencia del cookie `vertice_session`; sin cookie → 307 a `/acceso/expirado?razon=sin_sesion`.
+- [x] **CLI** `scripts/invitar.ts` — `--razon-social --tipo --email [--nombre-comercial] [--dry-run]`. Crea institución + emite primer link. Flag `--dry-run` imprime URL sin Resend (útil hasta que `RESEND_API_KEY` esté configurada).
+- [x] **Smoke E2E DB-only** `scripts/smoke_auth.ts` — valida los 4 outcomes de `verificarMagicLink`: token_invalido, ok, consumido, expirado (este último vía manipulación directa de `expires_at` en DB). Resultado: 4/4 ✓.
+- [x] **Build de prod** `next build` compila clean (45s). Pre-existing typecheck error en `lib/observability/axiom.ts:57` arreglado de paso (1 línea: spread del payload para satisfacer `Record<string, unknown>`).
+- [x] **Smoke E2E HTTP** (curl + dev server reiniciado): 6/6 verde.
+  - T1 happy path: GET `/acceso/{token}` → HTTP 307 a `/entrevista/{sesion_id}/bienvenida` + `Set-Cookie: vertice_session={sesion_id}; HttpOnly; SameSite=Lax; Path=/`
+  - T1.5 GET `/entrevista/{sesion_id}/bienvenida` con cookie → HTTP 200 + render con "Aviso de privacidad" + checkbox de consentimiento
+  - T2 re-GET mismo `/acceso/{token}` → HTTP 307 a `/acceso/expirado?razon=consumido`
+  - T3 GET `/acceso/garbage` → HTTP 307 a `/acceso/expirado?razon=token_invalido`
+  - T4 GET `/entrevista/{uuid}` SIN cookie → HTTP 307 (middleware) a `/acceso/expirado?razon=sin_sesion`
+  - T5 GET `/acceso/{token}` con `expires_at` en el pasado → HTTP 307 a `/acceso/expirado?razon=expirado`
+
+**Pendientes (no bloqueantes para Fase 5):**
+- [ ] `RESEND_API_KEY` en `.env.local` — vacía actualmente. Hasta que la pongas, `--dry-run` imprime el link a consola; abre el link a mano en navegador para validar el flujo HTML.
+- [ ] Dominio verificado en Resend para `EMAIL_FROM=hola@verticemexico.com`.
+- [ ] Cleanup post-Fase 4: las columnas `instituciones.magic_link_token` y `magic_link_expires_at` quedan dead-but-present (founder dijo "no toca tablas existentes"); cleanup en migración futura cuando convenga.
 
 ### Fase 5 · Motor conversacional core (8 horas) — la pieza más crítica
 - [ ] System prompts en `lib/prompts/` (los 4 archivos de sección 7.4)
