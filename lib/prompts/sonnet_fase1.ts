@@ -123,6 +123,11 @@ export const SENALES_A_ESCUCHAR_XML = `
 // NO duplica las 54 señales de <senales_a_escuchar> — esto es output (cómo escribir),
 // aquello es input (qué escuchar). Los 5 to_* aquí solo declaran shape; las señales
 // 12.A–12.E quedan donde están.
+// TODO(v2): Las cajas con tipo array<string> sin enum cerrado runtime (nm_productos_*,
+// nm_sectores_*, gr_tipos_garantia, nm_cobertura_geografica, id_regulacion, etc.)
+// dependen de slugs es-MX en snake_case sugeridos en formato_esperado, no validados.
+// Si los slugs cambian sin actualizar el prompt, Sonnet alucina valores no canónicos.
+// Migrar a z.enum() en lib/schemas/extracciones.ts cuando se cierre el catálogo.
 export const FORMATO_VALORES_POR_CAJA_XML = `
 <formato_valores_por_caja>
   <descripcion_general>
