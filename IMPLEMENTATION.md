@@ -939,7 +939,7 @@ Approach: magic link de un solo uso (token plain en URL del email, hash SHA-256 
 - [ ] Dominio verificado en Resend para `EMAIL_FROM=hola@verticemexico.com`.
 - [ ] Cleanup post-Fase 4: las columnas `instituciones.magic_link_token` y `magic_link_expires_at` quedan dead-but-present (founder dijo "no toca tablas existentes"); cleanup en migración futura cuando convenga.
 
-### Fase 5 · Motor conversacional core (8 horas) — 🟡 EN PROGRESO (paso 4 cerrado, pause hasta retomar)
+### Fase 5 · Motor conversacional core (8 horas) — 🟡 EN PROGRESO (step 5 sub-pasos i, ii, iii, v, vi cerrados; iv 🔒 placeholder)
 
 Estructura de la Fase 5 en pasos discretos para auditabilidad:
 
@@ -961,21 +961,23 @@ Estructura de la Fase 5 en pasos discretos para auditabilidad:
     - Ej2: reformulación tras evasión, escalando a `solicitar_caso_sintetico` cuando suma 2 turnos sin clausurar (canónico de regla 6: max 2 intentos directos antes de caso sintético).
     - Ej3: tema sensible (SAT 32-D negativa) con multi-extracción dual: `se_sat_32d_negativa` (objeto estructurado, crítica, 0.92) + `to_situacion_fiscal` (texto narrativo, blanda, 0.88). Nota lateral explicando por qué EFOS y rechazos por compliance fiscal viven en `to_situacion_fiscal` (canon no tiene caja `*_rechazos_automaticos`).
 
-**🟥 Bloqueos pendientes para retomar Fase 5:**
+- [x] **Paso 5 — Sonnet→Opus review handoff** (cierre por `grupo_ui` discreto, opción (a) cementada). Spec v2 firmada por founder con 6 puntos abiertos resueltos + 6 huecos cerrados (re-extracción/version, side-effect motor en round 2, cierre último grupo, p50/p95 latencia Opus, atomic merge SQL, evento `caso.consumido_por_grupo`). Sub-pasos:
+  - [x] **Sub-paso i (commit `8ffba22`):** Schemas Zod + tool. `lib/schemas/review_seccion.ts` con `SolicitarReviewSeccionInputSchema` (tool input), `RespuestaOpusSchema` discriminated union (avanzar | profundizar | caso_sintetico), razones canónicas (`RazonNoClausuraSchema` Sonnet→motor, `RazonDeclineSchema` motor→DB, `RazonEscalacionCasoSchema`), `CajaStatusSchema` mirror del type en mapa.ts. `lib/motor/tools.ts` ampliado a 4 tools con `SOLICITAR_REVIEW_SECCION_TOOL`. 44 tests verdes.
+  - [x] **Sub-paso ii (commit `7fd19ad`):** Migración Drizzle. Tablas nuevas `reviews_seccion` (15 cols, FKs a sesiones + casos_generados, unique index `(sesion_id, grupo_ui_codigo, round)`) y `cajas_declinadas` (FK a reviews_seccion, unique index `(sesion_id, caja_codigo)`). Columna `secciones_cerradas` jsonb default `'{}'::jsonb` en `sesiones`. SQL en `db/migrations/0002_phase5_step5_review_handoff.sql`. **NO aplicada** — founder aplica manualmente a Neon vertice-mvp/main (project_id `young-scene-62665535`) cuando merge a master.
+  - [x] **Sub-paso iii (commit `20b71c1`):** Orquestación. `lib/motor/review.ts` (~480 líneas) con `processSolicitarReview` entry point + helpers (atomic merge SQL `||` para `secciones_cerradas`, `transicionarSesionASintetizando` con guard race-safe, `declinarCaja` con `ON CONFLICT DO NOTHING`, `dispatchSesionListaParaSintesis` placeholder Inngest). Reglas del motor exportadas (`enforzarReglasMotor`, `siguienteGrupoCanonico`, `razonDeclineParaAvanzar`). `app/api/turn/route.ts` (POST) con stream Sonnet via Vercel AI SDK v6 — solicitar_review_seccion completamente wirada; otros 3 tools con execute stubs + TODO posterior. `lib/prompts/opus_director.ts` placeholder 🔒 con `OPUS_DIRECTOR_PROMPT_READY=false`. 64 tests verdes.
+  - [ ] **Sub-paso iv 🔒 PLACEHOLDER — system prompt de Opus director.** NO se redacta autónomamente. Founder dirige sesión conjunta tras cierre de sub-paso vi. Mientras: `productionOpusCall` arroja `OpusReviewPromptNotReady`; `app/api/turn` lo captura y devuelve mensaje al modelo. TODO comentado en `lib/prompts/opus_director.ts` lista los 4 ítems que el prompt real debe cubrir (persona, contrato I/O, calibración del threshold, few-shots curados).
+  - [x] **Sub-paso v (commit `38180f0`):** Axiom typed emitters + dashboard. `lib/observability/axiom.ts` extendido con 11 typed payload interfaces y namespaces `logger.review.*`, `logger.decline.*`, `logger.caso.*`, `logger.sesion.*`, `logger.extraccion.*`. `review.ts` refactorizado para usar typed emitters consistentemente (cero `logger.info/warn/error` ad-hoc). `docs/axiom_dashboard.md` con 13 eventos crudos + 6 métricas derivadas en APL (alarma >40% profundización, alarma >12s latencia p95) + 3 alertas operacionales documentadas + 3 eventos pendientes de wiring posterior.
+  - [x] **Sub-paso vi (commit `49a575e`):** E2E mock suite. `lib/motor/review.e2e.test.ts` con 16 tests cubriendo los 7 escenarios spec (round 1 avanzar limpio, profundizar→avanzar, profundizar→caso_sintetico, cap-casos forzando decline, cap-turnos override, cierre sesión + Inngest fan-out, race condition sobre secciones_cerradas) + helpers de side-effect. Estrategia: `vi.hoisted` + `chainableResolves` mock helper para Drizzle. **80/80 tests verdes** (64 previos + 16 nuevos). Ningún escenario reveló bug en (i)-(v).
 
-- [ ] **`<formato_valores_por_caja>`** — bloque XML con las 49 entradas de `CAJAS_CANON` listando `caja_codigo: tipo esperado` por línea. Lo genera el founder (no CC) porque inferir tipos automáticamente arriesga drift contra CAJAS_CANON. Sin este bloque, Sonnet puede mandar `valor` shapes que fallen en `valorSchemaFor(caja_codigo)`. `SONNET_FASE1_PROMPT_READY` queda en `false` hasta que entre.
-- [ ] **Decisión arquitectónica abierta — criterios de cierre de sección:**
-  - **(a)** Cierre por `grupo_ui` discreto: las 6 secciones del lateral (identificacion, productos_y_mercado, numeros_del_negocio, operacion, pricing_y_criterio, contacto_y_especificos). Disparos discretos cuando todas las cajas de un grupo llegan a confianza ≥ threshold; Opus revisa cada sección al cerrarse.
-  - **(b)** Cierre por bloque temático conversacional continuo: Sonnet decide internamente cuándo un tema está agotado y pide review independientemente del grupo_ui.
-  - **Voto preliminar founder:** (a) — alinea con la UI, da disparos auditables, `getCajasByGrupoUI` ya existe en `lib/schemas/cajas.ts`. Decisión final al retomar.
+**Bloqueos remanentes Fase 5:**
 
-**Próximo movimiento al volver:** definir el contrato Sonnet→Opus para handoff de review (shape del tool, qué snapshot pasa Sonnet, qué decide Opus, qué hace Sonnet con la respuesta de Opus). Esto bloquea el avance del resto de Fase 5.
-
-**Pasos restantes después del handoff Sonnet→Opus:**
-- [ ] System prompts de Opus: `lib/prompts/opus_generador_casos.ts`, `lib/prompts/opus_validador_casos.ts`, `lib/prompts/opus_revision_seccion.ts`, `lib/prompts/opus_sintesis_final.ts`.
-- [ ] API route `/api/turn` que orquesta el loop completo (recibir respuestas → validar tool_use → autoincrementar version + setear superseded_by → recompute mapa → decidir siguiente acción).
-- [ ] Persistencia de turnos, extracciones, casos en DB.
-- [ ] **Test E2E con ~15 respuestas mock** (no negociable per memoria `feedback_phase5_e2e_tests`): happy path, hit cap de 5 casos, fatiga, correcciones manuales que locken cajas. Hard gate antes de Fase 6.
+- [ ] **`<formato_valores_por_caja>`** — bloque XML con las 49 entradas de `CAJAS_CANON`. Founder lo genera en branch paralela `feat/sonnet-formato-valores-por-caja`. Sin este bloque, `SONNET_FASE1_PROMPT_READY=false` y `app/api/turn` devuelve 503.
+- [ ] **System prompt de Opus director (sub-paso iv 🔒).** Co-escritura founder + CC tras cierre de sub-paso vi.
+- [ ] **System prompts de Opus restantes:** `opus_generador_casos.ts`, `opus_validador_casos.ts`, `opus_sintesis_final.ts` (ya hay placeholder de `opus_director.ts` para review).
+- [ ] **Persistencia de extracciones con supersede chain** y persistencia de turnos en DB. `app/api/turn` tiene stubs TODO en los handlers de `registrar_extraccion` y `generar_batch_preguntas`.
+- [ ] **Aplicar migración 0002 a Neon `vertice-mvp/main`.** Founder aplica manual.
+- [ ] **Tests integración con DB real** (race condition concurrente sobre Postgres real, FK constraints, etc.) usando Neon branch dedicada — no incluidos en E2E mock.
+- [ ] **Inngest wiring real** (`app/api/inngest/route.ts` + cliente Inngest + handler `sesion/lista_para_sintesis`). Hoy es placeholder vía `logger.sesion.listaParaSintesis` con `pendiente_inngest: true` en payload — ver `lib/motor/review.ts:dispatchSesionListaParaSintesis`. Documentado en deuda técnica conocida (sección 16).
 
 ### Fase 6 · Integración Deepgram (4 horas)
 - [ ] Proxy `/api/deepgram` server-side
@@ -1110,6 +1112,197 @@ No avances a la siguiente fase sin que el founder valide lo anterior.
 - Privacidad: LFPDPPP. NDA bilateral. NO guardar audio crudo
 - Idioma: español MX en TODO lo visible al usuario
 - Costos: presupuesto no es restrictivo pero justifica decisiones costosas
+
+---
+
+## 18 · Setup multi-agent (git worktrees)
+
+Adoptado el 2026-05-02 tras incidente de race condition entre agentes paralelos
+compartiendo el working tree principal (Phase 5 step 5). Patrón estándar de
+aquí en adelante.
+
+**Regla:** cada sesión paralela trabaja en su propio git worktree, NUNCA en el
+working tree principal. El working tree principal queda en `master` (o en el
+último branch estable) y solo lo tocan operaciones one-shot (merges, releases).
+
+### Convención de ubicación
+
+```
+../vertice-<feature-slug>
+```
+
+Ejemplos en uso:
+- `../vertice-review-handoff` → `feat/phase5-step5-review-handoff`
+- `../vertice-deepgram-stt` → `feat/deepgram-stt-integration`
+- `../vertice-formato-valores-por-caja` (futuro) → `feat/sonnet-formato-valores-por-caja`
+
+### Crear worktree para una sesión nueva
+
+```bash
+# Desde el working tree principal:
+git checkout master   # liberar la branch si la tenías checked-out aquí
+git worktree add ../vertice-<slug> feat/<branch-name>
+cd ../vertice-<slug>
+
+# Si la branch es nueva, créala primero desde donde quieras ramificar:
+git checkout -b feat/<branch-name> <base-commit>
+git checkout master
+git worktree add ../vertice-<slug> feat/<branch-name>
+```
+
+### Cleanup post-merge
+
+Tras mergear la feature branch a master, el worktree queda huérfano. Limpiar:
+
+```bash
+# Desde el working tree principal:
+git worktree remove ../vertice-<slug>
+git branch -d feat/<branch-name>   # opcional: borrar la branch local también
+```
+
+Si el worktree tiene cambios sin commitear, `git worktree remove` falla — usar
+`--force` solo si tienes certeza de que esos cambios no valen.
+
+### node_modules
+
+Cada worktree tiene su propio `node_modules` por default (resultado de `npm
+install` desde dentro del worktree). Aceptable: el costo de espacio es
+despreciable y la independencia evita races en `npm install` cross-worktree.
+
+### Por qué importa
+
+El working tree principal y los worktrees comparten el mismo `.git/` database
+(stash, branches, refs). Pero **cada uno tiene su propio HEAD y working tree
+independiente**. Esto significa:
+- `git checkout` en un worktree no afecta el HEAD de otro.
+- `git stash` es global (todos los worktrees ven el mismo stash list).
+- `git branch -f` en un worktree puede romper el HEAD de otro si la branch
+  apunta a otro worktree — git lo bloquea con error claro, pero ojo.
+
+Antes de adoptar este patrón, los agentes paralelos hacían `git checkout` en
+el mismo working tree y se pisaban HEADs entre sí (incidente reproducible 3
+veces el 2026-05-02). Worktrees eliminan ese race por completo.
+
+---
+
+## 19 · Deuda técnica conocida
+
+Items conocidos pero deferred. Listar aquí evita que se pierdan.
+
+### ~~Inngest wiring para `sesion/lista_para_sintesis`~~ ✅ RESUELTO (commit 9, ver §20)
+
+### Eventos Axiom sin emission site (3)
+
+`docs/axiom_dashboard.md` lista 3 eventos cuyo wiring queda para steps
+posteriores: `review.profundizacion.caja_collateral`,
+`extraccion.contradice_sin_previa`, `caso.consumido_por_grupo`. Los typed
+helpers ya existen en `logger.*`; los call sites se agregarán cuando se
+implementen `registrar_extraccion` (handler real con supersede chain) y el
+pipeline de casos sintéticos.
+
+### `mapa_incertidumbre` no incorpora `cajas_declinadas`
+
+`computeMapaIncertidumbre` en `lib/motor/mapa.ts` aún no considera
+`cajas_declinadas` como `terminal` (similar a `no_aplica`). Spec v2 §7 documenta
+esto como follow-up. Mientras tanto: `sintesis_final.ts` consume
+`cajas_declinadas` directamente al armar el perfil; el `mapa_incertidumbre`
+expone una visión incompleta (cajas declinadas se ven como `parcial`/`vacia`).
+Aceptable para v1 mientras no se construya UI que dependa del estado declined
+en tiempo real.
+
+### Integration tests contra Neon branch efímero
+
+**Estado:** los suites en `lib/motor/review.test.ts` (24 tests) y
+`lib/motor/review.e2e.test.ts` (16 tests) corren contra `db` y
+`@/lib/inngest/client` mockeados con `vi.hoisted`. Verifican lógica del motor,
+shape del SQL emitido (vía serialización del objeto Drizzle) y orquestación
+de side-effects, pero **NO ejecutan SQL contra Postgres**.
+
+**Problema:** mocks no detectan diff entre el SQL que Drizzle genera y lo que
+Postgres real acepta bajo carga. Casos posibles que el mock NO captura:
+- Constraint violations en runtime (FK, unique index, NOT NULL).
+- Race conditions reales sobre `secciones_cerradas` jsonb con concurrencia
+  alta — el operador `||` es atómico per-statement pero conviene confirmar
+  contra Postgres real.
+- Comportamiento del trigger `RETURNING` en `transicionarSesionASintetizando`
+  bajo isolation level real.
+- Performance regressions: queries que pasan en mock pero hacen full scan en
+  prod sin índice apropiado.
+
+**Pendiente — antes de production deploy de Phase 5:**
+- Suite de integración que corre contra Neon branch creado on-demand por
+  test run (vía `mcp__Neon__create_branch` o equivalente CLI).
+- Aplicar migración 0002 al branch antes del run.
+- Cleanup: `mcp__Neon__delete_branch` al terminar (incluso si tests fallan).
+- Tests específicos:
+    1. `processSolicitarReview` end-to-end con DB real, opusCall mockeado.
+       Verificar persistencia en `reviews_seccion`, `cajas_declinadas`,
+       `sesiones.secciones_cerradas` jsonb.
+    2. `mergeSeccionCerrada` con N=10 calls concurrentes (Promise.all) sobre
+       una misma sesión con grupos distintos — todos los grupos deben
+       aparecer en `secciones_cerradas` post-ejecución.
+    3. `transicionarSesionASintetizando` con 2 calls simultáneas sobre la
+       misma sesión — exactamente uno retorna `true`, el otro `false`.
+    4. `declinarCaja` con duplicados (misma `sesion_id`, `caja_codigo`) →
+       solo una fila persistida (idempotencia vía `ON CONFLICT DO NOTHING`).
+
+**Bloqueante para:** production deploy de Phase 5.
+**No bloqueante para:** merge a master de step 5 (los mocks cubren la
+intención del código; la integración real es seguro pre-prod, no pre-merge).
+
+---
+
+## 20 · Deuda resuelta
+
+Registro auditable de items que estuvieron en §19 y se cerraron. Listar aquí
+(en vez de borrar) preserva el historial para postmortems y para entender por
+qué algo está como está al releer.
+
+### Inngest wiring para `sesion/lista_para_sintesis` — resuelto 2026-05-02
+
+**Origen:** §19 (versión previa de IMPLEMENTATION.md) listaba el wiring real
+como "Cuándo se desbloquea: Fase 8". Founder pidió cerrarlo pre-merge para
+evitar sesiones huérfanas sin handler que las consuma (commit 9 de Phase 5
+step 5, mensaje `fix(inngest): cablear dispatch real pre-merge` en branch
+`feat/phase5-step5-review-handoff`).
+
+**Cambios concretos:**
+- `lib/inngest/client.ts` nuevo — singleton `new Inngest({ id: 'vertice' })`.
+- `lib/inngest/functions/sintetizarSesion.ts` nuevo — `inngest.createFunction`
+  que escucha `sesion/lista_para_sintesis` con `retries: 4`. Handler corre
+  un único `step.run('placeholder-fase-8')` que solo logguea por ahora; en
+  Fase 8 se reemplaza por la cadena real `validar perfil → llamar Opus →
+  persistir → transición de status`. **Cero cambios al motor cuando llegue
+  Fase 8** — el reemplazo es local a este archivo.
+- `app/api/inngest/route.ts` nuevo — `serve` handler de `inngest/next`
+  exportando `GET/POST/PUT`.
+- `lib/motor/review.ts:dispatchSesionListaParaSintesis` reescrito: ahora
+  hace `await inngest.send({ name, data })` real. El `event_id` retornado
+  por Inngest se inyecta en el payload Axiom como `inngest_event_id` para
+  correlación audit. Si `inngest.send` arroja, motor emite
+  `logger.sesion.sintesisFailed` y propaga el error al caller (que decide
+  revertir transición o dejar en `'sintetizando'` pendiente).
+- `lib/observability/axiom.ts:SesionListaParaSintesisPayload` cambia el
+  campo opcional `pendiente_inngest?: boolean` por `inngest_event_id?: string`.
+- `lib/motor/review.test.ts` mockea `@/lib/inngest/client` con
+  `vi.hoisted` + 2 tests nuevos que verifican que `inngest.send` se llama
+  con shape correcto cuando `transicionExitosa=true`, y NO se llama cuando
+  la transición falla por race con otro proceso.
+- `lib/motor/review.e2e.test.ts` también mockea inngest defensivamente
+  (sin tests duplicados — los integración viven en `review.test.ts`).
+
+**Observaciones técnicas:**
+- API Inngest v4 (instalado): `createFunction(options, handler)` con trigger
+  dentro de `options.triggers`. v3 usaba 3 args; migrado.
+- `EventSchemas.fromRecord<>` no existe en v4 top-level. Tipado del payload
+  viene del lado del emisor (motor pasa `SesionListaParaSintesisPayload`).
+- `.env.example` ya tenía `INNGEST_EVENT_KEY=` y `INNGEST_SIGNING_KEY=` vacíos
+  desde Fase 1 — no requirió edición. Founder llena valores en `.env.local`.
+
+**Sigue pendiente para Fase 8** (no es deuda de step 5 sino de fase futura):
+substituir el `step.run('placeholder-fase-8')` por la implementación real
+de `lib/motor/sintesis_final.ts`. El handler ya recibe el evento; solo falta
+hacer el trabajo cuando le toque.
 
 ---
 
