@@ -1210,6 +1210,46 @@ expone una visión incompleta (cajas declinadas se ven como `parcial`/`vacia`).
 Aceptable para v1 mientras no se construya UI que dependa del estado declined
 en tiempo real.
 
+### Integration tests contra Neon branch efímero
+
+**Estado:** los suites en `lib/motor/review.test.ts` (24 tests) y
+`lib/motor/review.e2e.test.ts` (16 tests) corren contra `db` y
+`@/lib/inngest/client` mockeados con `vi.hoisted`. Verifican lógica del motor,
+shape del SQL emitido (vía serialización del objeto Drizzle) y orquestación
+de side-effects, pero **NO ejecutan SQL contra Postgres**.
+
+**Problema:** mocks no detectan diff entre el SQL que Drizzle genera y lo que
+Postgres real acepta bajo carga. Casos posibles que el mock NO captura:
+- Constraint violations en runtime (FK, unique index, NOT NULL).
+- Race conditions reales sobre `secciones_cerradas` jsonb con concurrencia
+  alta — el operador `||` es atómico per-statement pero conviene confirmar
+  contra Postgres real.
+- Comportamiento del trigger `RETURNING` en `transicionarSesionASintetizando`
+  bajo isolation level real.
+- Performance regressions: queries que pasan en mock pero hacen full scan en
+  prod sin índice apropiado.
+
+**Pendiente — antes de production deploy de Phase 5:**
+- Suite de integración que corre contra Neon branch creado on-demand por
+  test run (vía `mcp__Neon__create_branch` o equivalente CLI).
+- Aplicar migración 0002 al branch antes del run.
+- Cleanup: `mcp__Neon__delete_branch` al terminar (incluso si tests fallan).
+- Tests específicos:
+    1. `processSolicitarReview` end-to-end con DB real, opusCall mockeado.
+       Verificar persistencia en `reviews_seccion`, `cajas_declinadas`,
+       `sesiones.secciones_cerradas` jsonb.
+    2. `mergeSeccionCerrada` con N=10 calls concurrentes (Promise.all) sobre
+       una misma sesión con grupos distintos — todos los grupos deben
+       aparecer en `secciones_cerradas` post-ejecución.
+    3. `transicionarSesionASintetizando` con 2 calls simultáneas sobre la
+       misma sesión — exactamente uno retorna `true`, el otro `false`.
+    4. `declinarCaja` con duplicados (misma `sesion_id`, `caja_codigo`) →
+       solo una fila persistida (idempotencia vía `ON CONFLICT DO NOTHING`).
+
+**Bloqueante para:** production deploy de Phase 5.
+**No bloqueante para:** merge a master de step 5 (los mocks cubren la
+intención del código; la integración real es seguro pre-prod, no pre-merge).
+
 ---
 
 ## 20 · Deuda resuelta
