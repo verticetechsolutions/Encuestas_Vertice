@@ -15,15 +15,18 @@ import { DeepgramClient } from '@deepgram/sdk';
 // Nova-3 multilingual model with Spanish-LATAM (`es-419`) as the active language.
 // Re-exported as a frozen const so the browser hook sends the same params the
 // server expects to bill — no drift between client and server views.
+//
+// Deepgram's HTTP/WS API takes booleans as `"true"`/`"false"` query strings,
+// and the v5 SDK types reflect that — booleans here would fail typecheck.
 // ---------------------------------------------------------------------------
 export const STT_LIVE_CONFIG = Object.freeze({
   model: 'nova-3-general',
   language: 'es-419',
-  diarize: true,
-  smart_format: true,
-  interim_results: true,
-  punctuate: true,
-  vad_events: true,
+  diarize: 'true',
+  smart_format: 'true',
+  interim_results: 'true',
+  punctuate: 'true',
+  vad_events: 'true',
 } as const);
 export type SttLiveConfig = typeof STT_LIVE_CONFIG;
 
