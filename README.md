@@ -1,36 +1,72 @@
-This is a [Next.js](https://nextjs.org) project bootstrapped with [`create-next-app`](https://nextjs.org/docs/app/api-reference/cli/create-next-app).
+# Vértice
 
-## Getting Started
+Sistema de entrevista conversacional adaptativa para extraer el credit box de instituciones financieras mexicanas.
 
-First, run the development server:
+> **Contrato del proyecto:** [`IMPLEMENTATION.md`](./IMPLEMENTATION.md). Si hay duda, ese documento gana.
+
+## Stack
+
+- Next.js 16 (App Router) + React 19 + TypeScript estricto
+- Tailwind v4 + shadcn/ui (canary)
+- Vercel AI SDK + `@anthropic-ai/sdk` (Sonnet 4.6 + Opus 4.7)
+- Deepgram Nova-3 Multilingual `es-419` (streaming)
+- Drizzle ORM + Neon Postgres + pgvector
+- Inngest (síntesis final asíncrona)
+- Resend (magic links)
+- Sentry + Axiom (observabilidad)
+
+## Quickstart
 
 ```bash
+# 1. Instalar dependencias (ya hecho en bootstrap)
+npm install
+
+# 2. Configurar variables de entorno
+cp .env.example .env.local
+# editar .env.local con keys reales
+
+# 3. Correr dev server
 npm run dev
-# or
-yarn dev
-# or
-pnpm dev
-# or
-bun dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Abre [http://localhost:3000](http://localhost:3000).
 
-You can start editing the page by modifying `app/page.tsx`. The page auto-updates as you edit the file.
+## Scripts
 
-This project uses [`next/font`](https://nextjs.org/docs/app/building-your-application/optimizing/fonts) to automatically optimize and load [Geist](https://vercel.com/font), a new font family for Vercel.
+| Script | Qué hace |
+|---|---|
+| `npm run dev` | Dev server |
+| `npm run build` | Build de producción |
+| `npm run start` | Servir el build |
+| `npm run lint` | ESLint |
 
-## Learn More
+## Estructura
 
-To learn more about Next.js, take a look at the following resources:
+```
+app/
+├── (auth)/magic-link/[token]/    Validación magic link
+├── entrevista/[sesion_id]/       Entrevista en vivo
+├── admin/                         Vista interna Vértice
+└── api/                           turn, deepgram proxy, magic-link, inngest
 
-- [Next.js Documentation](https://nextjs.org/docs) - learn about Next.js features and API.
-- [Learn Next.js](https://nextjs.org/learn) - an interactive Next.js tutorial.
+db/
+├── schema.ts                     Drizzle schema (Fase 2)
+├── seeds/                        matrices, enums, safe rails
+└── migrations/                   Generadas por drizzle-kit
 
-You can check out [the Next.js GitHub repository](https://github.com/vercel/next.js) - your feedback and contributions are welcome!
+lib/
+├── prompts/                      System prompts (Sonnet, Opus)
+├── schemas/                      Zod schemas (cajas, casos, perfil)
+├── motor/                        Mapa de incertidumbre, fatiga, loop
+├── llm/                          Wrappers Anthropic
+└── observability/                Sentry, Axiom helpers
 
-## Deploy on Vercel
+inngest/functions/                Síntesis final, PDF
+components/                       UI (shadcn + custom)
+```
 
-The easiest way to deploy your Next.js app is to use the [Vercel Platform](https://vercel.com/new?utm_medium=default-template&filter=next.js&utm_source=create-next-app&utm_campaign=create-next-app-readme) from the creators of Next.js.
+## Idioma
 
-Check out our [Next.js deployment documentation](https://nextjs.org/docs/app/building-your-application/deploying) for more details.
+- UI visible al usuario: español MX
+- Comentarios y nombres de funciones en código: inglés
+- Mensajes de error visibles al usuario: español MX

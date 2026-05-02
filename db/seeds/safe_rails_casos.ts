@@ -22,7 +22,7 @@
 // Note on `facturacion_*` for PF: CASO-101 is asalariado — `facturacion` fields hold ingreso
 // neto (the semantic analog) since the type doesn't carry a separate ingreso slot.
 
-import type { CasoSintetico } from '@/lib/types/casos';
+import type { CasoSintetico } from '@/lib/schemas/casos';
 
 export const safeRailsCasos: CasoSintetico[] = [
   {
