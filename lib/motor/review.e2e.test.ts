@@ -470,8 +470,13 @@ describe('Escenario (vi) — cierre de sesión, transición status', () => {
 describe('Escenario (vii) — race condition concurrente sobre secciones_cerradas', () => {
   // Verifica que mergeSeccionCerrada usa el patrón atómico SQL `||` y NO
   // hace read-modify-write en JS. Concurrente: dos llamadas simultáneas a
-  // mergeSeccionCerrada con grupos distintos no deben perderse.
-  it('dos calls concurrentes a mergeSeccionCerrada → ambas ejecutan UPDATE atómico', async () => {
+  // mergeSeccionCerrada con grupos distintos persisten correctamente.
+  //
+  // SQL-shape asserts (UPDATE sesiones, ||, COALESCE, '{}'::jsonb) y la
+  // ausencia de db.select dentro del helper viven en review.test.ts bajo el
+  // describe "mergeSeccionCerrada SQL shape" (commit 10 los movió allí — son
+  // unit tests del shape del helper, no integración E2E).
+  it('dos calls concurrentes a mergeSeccionCerrada con grupos distintos → ambas persisten correctamente', async () => {
     const sesionId = 'sesion-race';
     await Promise.all([
       mergeSeccionCerrada(sesionId, 'identificacion', {
@@ -486,39 +491,8 @@ describe('Escenario (vii) — race condition concurrente sobre secciones_cerrada
       }),
     ]);
 
-    // Ambas llamadas deben haber emitido db.execute (no read-modify-write
-    // dentro de JS — el mock select NO debe haberse llamado dentro de
-    // mergeSeccionCerrada, lo verificamos abajo).
+    // Ambas llamadas emitieron su UPDATE — ninguna se perdió por race.
     expect(mockDb.execute).toHaveBeenCalledTimes(2);
-    expect(mockDb.select).toHaveBeenCalledTimes(0); // 0 lecturas — patrón atómico
-  });
-
-  it('mergeSeccionCerrada NO llama db.select — patrón atómico (no read-modify-write)', async () => {
-    await mergeSeccionCerrada('sesion-x', 'identificacion', {
-      cerrada_at: new Date().toISOString(),
-      review_id: 'r1',
-      declino_cajas: [],
-    });
-    expect(mockDb.select).not.toHaveBeenCalled();
-    expect(mockDb.execute).toHaveBeenCalledOnce();
-  });
-
-  it('mergeSeccionCerrada SQL contiene operador || jsonb y COALESCE', async () => {
-    await mergeSeccionCerrada('sesion-y', 'numeros_del_negocio', {
-      cerrada_at: new Date().toISOString(),
-      review_id: 'r3',
-      declino_cajas: [],
-    });
-    // db.execute fue llamado con un objeto SQL de Drizzle. Inspeccionamos su
-    // representación serializada para confirmar el patrón.
-    const sqlArg = mockDb.execute.mock.calls[0]?.[0];
-    // Drizzle's SQL object tiene `queryChunks` (texto + params). Convertimos
-    // a string usando JSON.stringify para revisar el patrón.
-    const serialized = JSON.stringify(sqlArg);
-    expect(serialized).toContain('UPDATE sesiones');
-    expect(serialized).toContain('||');
-    expect(serialized).toContain('COALESCE');
-    expect(serialized).toContain("'{}'::jsonb");
   });
 });
 

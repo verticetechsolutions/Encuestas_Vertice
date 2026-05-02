@@ -32,6 +32,7 @@ import {
   siguienteGrupoCanonico,
   razonDeclineParaAvanzar,
   processSolicitarReview,
+  mergeSeccionCerrada,
 } from './review';
 import type {
   RespuestaOpus,
@@ -437,8 +438,54 @@ describe('Inngest dispatch — sesion/lista_para_sintesis', () => {
 });
 
 // =============================================================================
-// Note: tests adicionales de integración con DB (mergeSeccionCerrada SQL shape,
-// declinarCaja idempotencia, escenarios E2E con opusCall variando) viven en
-// review.e2e.test.ts. Tests de DB real (race concurrente sobre Postgres,
-// FK constraints) requieren Neon branch dedicada y NO viven en este suite.
+// mergeSeccionCerrada SQL shape (commit 10 — reubicados desde review.e2e.test.ts)
+// =============================================================================
+// Estos asserts verifican el SHAPE del SQL que emite el helper, no la ejecución
+// concurrente. El test concurrente (que ambas calls emitan db.execute sin
+// perder ninguna) vive en review.e2e.test.ts. La división responde a
+// responsabilidad: aquí se protege el patrón atómico del helper individual;
+// allá se protege que múltiples invocaciones simultáneas ambas persisten.
+
+describe('mergeSeccionCerrada SQL shape', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockDb.execute.mockResolvedValue(undefined);
+  });
+
+  it('SQL serializado contiene UPDATE sesiones, ||, COALESCE, \'{}\'::jsonb (intención atómica)', async () => {
+    await mergeSeccionCerrada('sesion-y', 'numeros_del_negocio', {
+      cerrada_at: new Date().toISOString(),
+      review_id: 'r3',
+      declino_cajas: [],
+    });
+    // db.execute recibió un objeto SQL de Drizzle. Su representación
+    // serializada (queryChunks + params) debe contener los 4 marcadores del
+    // patrón atómico spec v2 §4.5.
+    const sqlArg = mockDb.execute.mock.calls[0]?.[0];
+    const serialized = JSON.stringify(sqlArg);
+    expect(serialized).toContain('UPDATE sesiones');
+    expect(serialized).toContain('||');
+    expect(serialized).toContain('COALESCE');
+    expect(serialized).toContain("'{}'::jsonb");
+  });
+
+  it('mergeSeccionCerrada NO llama db.select (ausencia de read-modify-write)', async () => {
+    await mergeSeccionCerrada('sesion-x', 'identificacion', {
+      cerrada_at: new Date().toISOString(),
+      review_id: 'r1',
+      declino_cajas: [],
+    });
+    // Único patrón aceptable: 1 db.execute, 0 db.select. Si alguien
+    // refactoriza el helper a "leer estado actual + mergear en JS + escribir",
+    // este test rompe.
+    expect(mockDb.select).not.toHaveBeenCalled();
+    expect(mockDb.execute).toHaveBeenCalledOnce();
+  });
+});
+
+// =============================================================================
+// Note: tests adicionales de integración (declinarCaja idempotencia,
+// escenarios E2E con opusCall variando, race concurrente sobre
+// mergeSeccionCerrada) viven en review.e2e.test.ts. Tests de DB real
+// requieren Neon branch dedicada y NO viven en este suite.
 // =============================================================================
