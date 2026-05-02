@@ -39,6 +39,7 @@ import {
 import type { GrupoUI } from '@/lib/schemas/cajas';
 import { logger } from '@/lib/observability/axiom';
 import { OPUS_DIRECTOR_PROMPT_READY } from '@/lib/prompts/opus_director';
+import { inngest } from '@/lib/inngest/client';
 
 // =============================================================================
 // Constantes spec v2
@@ -540,37 +541,59 @@ export async function transicionarSesionASintetizando(
 }
 
 // =============================================================================
-// Inngest dispatch — placeholder (TODO real wiring)
+// Inngest dispatch — sesion/lista_para_sintesis (Phase 5 step 5 commit 9)
 // =============================================================================
 
 /**
- * Despacha el evento `sesion/lista_para_sintesis` que arrancaría el job de
- * Inngest para `sintesis_final.ts`.
+ * Despacha el evento `sesion/lista_para_sintesis` al plano de Inngest. El
+ * handler en `lib/inngest/functions/sintetizarSesion.ts` lo recibe y orquesta
+ * la síntesis final (Fase 8).
  *
- * **Placeholder**: por ahora solo emite a Axiom. Cuando se wirée Inngest
- * (app/api/inngest/route.ts + cliente Inngest), reemplazar el `logger.info`
- * por:
- *   await inngest.send({ name: 'sesion/lista_para_sintesis', data: {...} });
+ * Por convención: emitimos a Axiom DESPUÉS de inngest.send con el `event_id`
+ * retornado en el payload — esto permite correlacionar el evento Axiom con la
+ * ejecución concreta de la función Inngest si necesitamos auditar fallas.
  *
- * Documentado como deuda técnica conocida en IMPLEMENTATION.md.
+ * Si `inngest.send` arroja (network/auth/etc.), Axiom recibe
+ * `sesion.sintesis_failed` y propagamos el error para que la transición de
+ * status al caller pueda revertirse o quedar en 'sintetizando' pendiente.
  */
 export async function dispatchSesionListaParaSintesis(
   sesion_id: string,
   ultimo_review_id: string
 ): Promise<void> {
-  // Métricas básicas para audit + dashboard. Cuando sintesis_final.ts esté
-  // listo recibirá este mismo shape como payload del evento Inngest.
+  // Métricas básicas para audit + dashboard. Mismo shape que recibe el handler
+  // de Inngest como event.data.
   const totales = await calcularTotalesSesion(sesion_id);
 
-  logger.sesion.listaParaSintesis({
+  const payload = {
     sesion_id,
     ultimo_review_id,
     total_reviews: totales.total_reviews,
     total_profundizaciones: totales.total_profundizaciones,
     total_casos: totales.total_casos,
     completitud_estimada: totales.completitud_estimada,
-    // TODO: reemplazar por inngest.send() cuando handler esté wirado.
-    pendiente_inngest: true,
+  };
+
+  let event_id: string | undefined;
+  try {
+    const result = await inngest.send({
+      name: 'sesion/lista_para_sintesis',
+      data: payload,
+    });
+    // Inngest devuelve { ids: string[] } — un id por evento enviado.
+    event_id = result.ids[0];
+  } catch (err) {
+    logger.sesion.sintesisFailed({
+      sesion_id,
+      error: err instanceof Error ? err.message : String(err),
+    });
+    throw err;
+  }
+
+  logger.sesion.listaParaSintesis({
+    ...payload,
+    // event_id correlaciona Axiom ↔ Inngest run para audit.
+    inngest_event_id: event_id,
   });
 }
 

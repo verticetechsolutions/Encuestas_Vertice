@@ -112,7 +112,9 @@ export interface SesionListaParaSintesisPayload {
   total_profundizaciones: number;
   total_casos: number;
   completitud_estimada: number | null;
-  pendiente_inngest?: boolean; // true mientras Inngest no esté wirado
+  // Event ID retornado por inngest.send() — correlaciona Axiom ↔ Inngest run
+  // para auditar fallas (commit 9 wiring real).
+  inngest_event_id?: string;
 }
 
 export interface SesionSintesisFailedPayload {

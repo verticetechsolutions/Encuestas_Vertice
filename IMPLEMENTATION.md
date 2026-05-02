@@ -1189,21 +1189,7 @@ veces el 2026-05-02). Worktrees eliminan ese race por completo.
 
 Items conocidos pero deferred. Listar aquí evita que se pierdan.
 
-### Inngest wiring para `sesion/lista_para_sintesis`
-
-**Estado:** placeholder vía `logger.sesion.listaParaSintesis` con
-`pendiente_inngest: true` en payload (ver `lib/motor/review.ts:dispatchSesionListaParaSintesis`).
-
-**Pendiente:**
-- Crear `app/api/inngest/route.ts` con handler de Inngest.
-- Crear `inngest/client.ts` exportando el cliente.
-- Definir función `sesion/lista_para_sintesis` que invoque `sintesis_final.ts`
-  (que tampoco existe todavía — Fase 8).
-- Reemplazar el `logger.sesion.listaParaSintesis(...)` actual por
-  `await inngest.send({ name: 'sesion/lista_para_sintesis', data: {...} })`.
-
-**Cuándo se desbloquea:** Fase 8 (síntesis final). Hasta entonces, sesiones
-finalizadas dejan rastro en Axiom pero no disparan job de síntesis real.
+### ~~Inngest wiring para `sesion/lista_para_sintesis`~~ ✅ RESUELTO (commit 9, ver §20)
 
 ### Eventos Axiom sin emission site (3)
 
@@ -1223,6 +1209,60 @@ esto como follow-up. Mientras tanto: `sintesis_final.ts` consume
 expone una visión incompleta (cajas declinadas se ven como `parcial`/`vacia`).
 Aceptable para v1 mientras no se construya UI que dependa del estado declined
 en tiempo real.
+
+---
+
+## 20 · Deuda resuelta
+
+Registro auditable de items que estuvieron en §19 y se cerraron. Listar aquí
+(en vez de borrar) preserva el historial para postmortems y para entender por
+qué algo está como está al releer.
+
+### Inngest wiring para `sesion/lista_para_sintesis` — resuelto 2026-05-02
+
+**Origen:** §19 (versión previa de IMPLEMENTATION.md) listaba el wiring real
+como "Cuándo se desbloquea: Fase 8". Founder pidió cerrarlo pre-merge para
+evitar sesiones huérfanas sin handler que las consuma (commit 9 de Phase 5
+step 5, mensaje `fix(inngest): cablear dispatch real pre-merge` en branch
+`feat/phase5-step5-review-handoff`).
+
+**Cambios concretos:**
+- `lib/inngest/client.ts` nuevo — singleton `new Inngest({ id: 'vertice' })`.
+- `lib/inngest/functions/sintetizarSesion.ts` nuevo — `inngest.createFunction`
+  que escucha `sesion/lista_para_sintesis` con `retries: 4`. Handler corre
+  un único `step.run('placeholder-fase-8')` que solo logguea por ahora; en
+  Fase 8 se reemplaza por la cadena real `validar perfil → llamar Opus →
+  persistir → transición de status`. **Cero cambios al motor cuando llegue
+  Fase 8** — el reemplazo es local a este archivo.
+- `app/api/inngest/route.ts` nuevo — `serve` handler de `inngest/next`
+  exportando `GET/POST/PUT`.
+- `lib/motor/review.ts:dispatchSesionListaParaSintesis` reescrito: ahora
+  hace `await inngest.send({ name, data })` real. El `event_id` retornado
+  por Inngest se inyecta en el payload Axiom como `inngest_event_id` para
+  correlación audit. Si `inngest.send` arroja, motor emite
+  `logger.sesion.sintesisFailed` y propaga el error al caller (que decide
+  revertir transición o dejar en `'sintetizando'` pendiente).
+- `lib/observability/axiom.ts:SesionListaParaSintesisPayload` cambia el
+  campo opcional `pendiente_inngest?: boolean` por `inngest_event_id?: string`.
+- `lib/motor/review.test.ts` mockea `@/lib/inngest/client` con
+  `vi.hoisted` + 2 tests nuevos que verifican que `inngest.send` se llama
+  con shape correcto cuando `transicionExitosa=true`, y NO se llama cuando
+  la transición falla por race con otro proceso.
+- `lib/motor/review.e2e.test.ts` también mockea inngest defensivamente
+  (sin tests duplicados — los integración viven en `review.test.ts`).
+
+**Observaciones técnicas:**
+- API Inngest v4 (instalado): `createFunction(options, handler)` con trigger
+  dentro de `options.triggers`. v3 usaba 3 args; migrado.
+- `EventSchemas.fromRecord<>` no existe en v4 top-level. Tipado del payload
+  viene del lado del emisor (motor pasa `SesionListaParaSintesisPayload`).
+- `.env.example` ya tenía `INNGEST_EVENT_KEY=` y `INNGEST_SIGNING_KEY=` vacíos
+  desde Fase 1 — no requirió edición. Founder llena valores en `.env.local`.
+
+**Sigue pendiente para Fase 8** (no es deuda de step 5 sino de fase futura):
+substituir el `step.run('placeholder-fase-8')` por la implementación real
+de `lib/motor/sintesis_final.ts`. El handler ya recibe el evento; solo falta
+hacer el trabajo cuando le toque.
 
 ---
 

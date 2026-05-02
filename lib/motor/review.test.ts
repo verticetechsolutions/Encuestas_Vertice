@@ -1,4 +1,28 @@
-import { describe, it, expect } from 'vitest';
+import { describe, it, expect, vi, beforeEach } from 'vitest';
+
+// =============================================================================
+// Mocks hoisted — necesarios para tests de Inngest dispatch que tocan
+// processSolicitarReview (commit 9: dispatchSesionListaParaSintesis llama
+// inngest.send real ahora).
+// =============================================================================
+
+const { mockDb, mockInngestSend } = vi.hoisted(() => {
+  return {
+    mockDb: {
+      insert: vi.fn(),
+      update: vi.fn(),
+      select: vi.fn(),
+      execute: vi.fn(),
+    },
+    mockInngestSend: vi.fn(),
+  };
+});
+
+vi.mock('@/lib/db', () => ({ db: mockDb }));
+vi.mock('@/lib/inngest/client', () => ({
+  inngest: { send: mockInngestSend },
+}));
+
 import {
   ORDEN_CANONICO_GRUPOS,
   CAP_CASOS_SINTETICOS,
@@ -7,8 +31,12 @@ import {
   enforzarReglasMotor,
   siguienteGrupoCanonico,
   razonDeclineParaAvanzar,
+  processSolicitarReview,
 } from './review';
-import type { RespuestaOpus } from '@/lib/schemas/review_seccion';
+import type {
+  RespuestaOpus,
+  SolicitarReviewSeccionInput,
+} from '@/lib/schemas/review_seccion';
 
 // =============================================================================
 // Constantes spec v2
@@ -280,9 +308,137 @@ describe('productionOpusCall', () => {
 });
 
 // =============================================================================
-// Note: tests de integración con DB (mergeSeccionCerrada race condition,
-// transicionarSesionASintetizando, declinarCaja idempotencia, processSolicitarReview
-// end-to-end con DB real) viven en step (vi) E2E mock con Neon branch dedicada.
-// Los unit tests de step (iii) cubren la lógica pura del motor (orden canónico,
-// reglas de coerción, razones de decline, error handling del placeholder Opus).
+// Inngest dispatch — wiring real verificado contra mocks (commit 9)
+// =============================================================================
+// Estos tests integran processSolicitarReview con db + inngest mockeados para
+// verificar la condición clave: dispatchSesionListaParaSintesis (y por ende
+// inngest.send) corre SOLO cuando la transición de status fue exitosa. Si dos
+// flujos cierran sesión casi simultáneos, la transición atómica
+// `WHERE status='abierta'` deja un solo ganador — el otro recibe RETURNING
+// vacío y NO debe duplicar el dispatch.
+
+function chainableResolves<T>(value: T) {
+  const methods = [
+    'values',
+    'set',
+    'where',
+    'limit',
+    'returning',
+    'from',
+    'orderBy',
+    'groupBy',
+    'leftJoin',
+    'innerJoin',
+  ];
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const obj: any = {};
+  for (const m of methods) {
+    obj[m] = vi.fn(() => obj);
+  }
+  obj.then = (
+    onFulfilled?: (v: T) => unknown,
+    onRejected?: (e: unknown) => unknown
+  ) => Promise.resolve(value).then(onFulfilled, onRejected);
+  return obj;
+}
+
+const baseInputCierreSesion: SolicitarReviewSeccionInput = {
+  grupo_ui_codigo: 'contacto_y_especificos',
+  extracciones_snapshot: [
+    {
+      caja_codigo: 'co_email_telefono',
+      valor: { email: 'demo@demo.mx', telefono: '+525555555555' },
+      confianza: 0.95,
+      evidencia_textual: 'mi correo es demo@demo.mx, mi celular es 55-5555-5555',
+      status: 'llena',
+      version: 1,
+    },
+  ],
+  cajas_no_clausuradas: [],
+  hipotesis_sonnet:
+    'Banco regional de tamaño medio enfocado en PyME del bajío con regulación CNBV',
+  turno_disparador: 12,
+};
+
+function setupCierreSesionMocks({ transicionExitosa }: { transicionExitosa: boolean }) {
+  // db.insert(reviews_seccion).values().returning() → [{ id: 'rid' }]
+  mockDb.insert.mockImplementation(() =>
+    chainableResolves([{ id: 'review-mock-id' }])
+  );
+  // db.select() encadenado:
+  //   0: determinarRound → []
+  //   1: contarCasosUsados → [{ n: 0 }]
+  //   2: calcularTotalesSesion #1 → [{ n: 1 }]
+  //   3: calcularTotalesSesion #2 → [{ n: 0 }]
+  //   4: calcularTotalesSesion #3 → [{ n: 0 }]
+  let n = 0;
+  mockDb.select.mockImplementation(() => {
+    const i = n++;
+    if (i === 0) return chainableResolves([]);
+    if (i === 1) return chainableResolves([{ n: 0 }]);
+    if (i === 2) return chainableResolves([{ n: 1 }]);
+    if (i === 3) return chainableResolves([{ n: 0 }]);
+    if (i === 4) return chainableResolves([{ n: 0 }]);
+    return chainableResolves([]);
+  });
+  mockDb.update.mockImplementation(() =>
+    chainableResolves(transicionExitosa ? [{ id: 'sesion-id' }] : [])
+  );
+  mockDb.execute.mockImplementation(() => Promise.resolve());
+}
+
+describe('Inngest dispatch — sesion/lista_para_sintesis', () => {
+  beforeEach(() => {
+    vi.clearAllMocks();
+    mockInngestSend.mockResolvedValue({ ids: ['mock-event-id'] });
+  });
+
+  it('inngest.send llamado con shape correcto cuando transicionExitosa=true', async () => {
+    setupCierreSesionMocks({ transicionExitosa: true });
+
+    const opusCall = vi.fn().mockResolvedValue({
+      decision: 'avanzar',
+      siguiente_grupo_ui: null, // último grupo cerrando
+    } satisfies RespuestaOpus);
+
+    await processSolicitarReview(baseInputCierreSesion, {
+      sesion_id: 'sesion-cierre-OK',
+      opusCall,
+    });
+
+    expect(mockInngestSend).toHaveBeenCalledOnce();
+    expect(mockInngestSend).toHaveBeenCalledWith({
+      name: 'sesion/lista_para_sintesis',
+      data: expect.objectContaining({
+        sesion_id: 'sesion-cierre-OK',
+        ultimo_review_id: 'review-mock-id',
+        total_reviews: expect.any(Number),
+        total_profundizaciones: expect.any(Number),
+        total_casos: expect.any(Number),
+      }),
+    });
+  });
+
+  it('inngest.send NO llamado cuando transicionExitosa=false (race con otro proceso)', async () => {
+    setupCierreSesionMocks({ transicionExitosa: false });
+
+    const opusCall = vi.fn().mockResolvedValue({
+      decision: 'avanzar',
+      siguiente_grupo_ui: null,
+    } satisfies RespuestaOpus);
+
+    await processSolicitarReview(baseInputCierreSesion, {
+      sesion_id: 'sesion-cierre-RACE',
+      opusCall,
+    });
+
+    expect(mockInngestSend).not.toHaveBeenCalled();
+  });
+});
+
+// =============================================================================
+// Note: tests adicionales de integración con DB (mergeSeccionCerrada SQL shape,
+// declinarCaja idempotencia, escenarios E2E con opusCall variando) viven en
+// review.e2e.test.ts. Tests de DB real (race concurrente sobre Postgres,
+// FK constraints) requieren Neon branch dedicada y NO viven en este suite.
 // =============================================================================

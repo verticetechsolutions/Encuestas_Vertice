@@ -63,7 +63,7 @@ function chainableResolves<T>(value: T) {
 // mockDb sin "Cannot access before initialization", declaramos mockDb dentro de
 // vi.hoisted (ese sí se hoistea con la mock).
 
-const { mockDb } = vi.hoisted(() => {
+const { mockDb, mockInngestSend } = vi.hoisted(() => {
   return {
     mockDb: {
       insert: vi.fn(),
@@ -71,11 +71,16 @@ const { mockDb } = vi.hoisted(() => {
       select: vi.fn(),
       execute: vi.fn(),
     },
+    mockInngestSend: vi.fn(),
   };
 });
 
 vi.mock('@/lib/db', () => ({
   db: mockDb,
+}));
+
+vi.mock('@/lib/inngest/client', () => ({
+  inngest: { send: mockInngestSend },
 }));
 
 // Imports DESPUÉS del mock — vi.mock es hoisted pero los imports tipan después.
@@ -164,6 +169,8 @@ const baseInput: SolicitarReviewSeccionInput = {
 beforeEach(() => {
   vi.clearAllMocks();
   defaultMockSetup();
+  // Default: inngest.send resuelve con un id ficticio (commit 9 wiring real).
+  mockInngestSend.mockResolvedValue({ ids: ['mock-event-id'] });
 });
 
 // =============================================================================
@@ -408,10 +415,13 @@ describe('Escenario (v) — cap-turnos override (§1.2.3)', () => {
 });
 
 // =============================================================================
-// Escenario (vi): cierre de sesión + Inngest fan-out (placeholder)
+// Escenario (vi): cierre de sesión + transición status (Inngest dispatch
+// asserts viven en review.test.ts donde el mock de inngest se valida
+// directamente contra dispatchSesionListaParaSintesis y el toggle
+// transicionExitosa)
 // =============================================================================
 
-describe('Escenario (vi) — cierre de sesión, transición status, Inngest placeholder', () => {
+describe('Escenario (vi) — cierre de sesión, transición status', () => {
   it('avanzar desde último grupo (siguiente=null) → estado=sesion_lista_para_sintesis', async () => {
     const inputUltimo: SolicitarReviewSeccionInput = {
       ...baseInput,
@@ -432,7 +442,7 @@ describe('Escenario (vi) — cierre de sesión, transición status, Inngest plac
     expect(mockDb.update).toHaveBeenCalled();
   });
 
-  it('avanzar desde último cuando status ya cambió (race) → no double-dispatch', async () => {
+  it('avanzar desde último cuando status ya cambió (race) → estado siempre sesion_lista_para_sintesis', async () => {
     defaultMockSetup({ transicionExitosa: false });
 
     const inputUltimo: SolicitarReviewSeccionInput = {
@@ -449,10 +459,6 @@ describe('Escenario (vi) — cierre de sesión, transición status, Inngest plac
       opusCall,
     });
 
-    // Estado sigue siendo lista_para_sintesis (siempre se devuelve cuando
-    // siguiente_grupo_ui===null), pero el dispatch no se duplica si la
-    // transición no fue exitosa (motor side-effect: dispatch solo si transición
-    // ocurrió). El comportamiento se observa indirectamente: no falla.
     expect(result.estado).toBe('sesion_lista_para_sintesis');
   });
 });
