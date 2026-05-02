@@ -1,11 +1,12 @@
 import { defineConfig } from 'vitest/config';
+import tsconfigPaths from 'vite-tsconfig-paths';
 
-// Vite 5+ resolves tsconfig "paths" natively when `resolve.tsconfigPaths`
-// is enabled, so we don't need the vite-tsconfig-paths plugin.
+// vite-tsconfig-paths plugin is required: el `resolve.tsconfigPaths: true`
+// nativo de Vite resuelve mal cadenas transitivas a través del alias @/
+// (verificado: tests fallan al cargar @/db/schema vía import chain). El plugin
+// sí lo hace bien.
 export default defineConfig({
-  resolve: {
-    tsconfigPaths: true,
-  },
+  plugins: [tsconfigPaths()],
   test: {
     environment: 'node',
     globals: false,

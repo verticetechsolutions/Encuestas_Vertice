@@ -1,9 +1,10 @@
 // Tool definitions que ve Sonnet 4.6 en Fase 1.
 //
-// Tres tools, ni una más. Founder excluyó deliberadamente `marcar_caja_llena` —
-// la caja se marca llena automáticamente cuando una extracción cruza el threshold
-// (lógica en `computeMapaIncertidumbre`). Tener `marcar_caja_llena` como tool del
-// modelo le daría una vía para sub-llenar el form sin extraer (mal incentivo).
+// Cuatro tools (Phase 5 step 5 agregó `solicitar_review_seccion`). Founder excluyó
+// deliberadamente `marcar_caja_llena` — la caja se marca llena automáticamente
+// cuando una extracción cruza el threshold (lógica en `computeMapaIncertidumbre`).
+// Tener `marcar_caja_llena` como tool del modelo le daría una vía para sub-llenar
+// el form sin extraer (mal incentivo).
 //
 // Cada tool exporta:
 //   - `<NAME>InputSchema`: Zod para validar input al recibirlo (capa motor).
@@ -25,6 +26,7 @@
 //     de calidad de prompt (compara intended vs cajas que efectivamente cerraron).
 
 import { z } from 'zod';
+import { SolicitarReviewSeccionInputSchema } from '@/lib/schemas/review_seccion';
 
 // ---------------------------------------------------------------------------
 // Tipo Anthropic tool — defino inline para no atar el archivo al SDK exact path.
@@ -162,15 +164,42 @@ export const SOLICITAR_CASO_SINTETICO_TOOL: AnthropicTool = {
 };
 
 // ===========================================================================
+// 4. solicitar_review_seccion (Phase 5 step 5)
+// ===========================================================================
+// Sonnet llama esta tool cuando todas las cajas críticas del grupo_ui activo
+// están en estado terminal o parcial_estable (spec v2 §1.2). El motor:
+//   1. Valida input contra SolicitarReviewSeccionInputSchema.
+//   2. Inserta row en `reviews_seccion` con decision_opus=NULL, round=1 o 2.
+//   3. Llama a Opus con el snapshot + mapa subset + casos_usados + round.
+//   4. Procesa la respuesta de Opus (avanzar | profundizar | caso_sintetico).
+// Schema input vive en lib/schemas/review_seccion.ts — re-exportado vía
+// composición con z.toJSONSchema para Anthropic.
+
+export const SOLICITAR_REVIEW_SECCION_TOOL: AnthropicTool = {
+  name: 'solicitar_review_seccion',
+  description: [
+    'Solicita review del director (Opus) sobre el grupo_ui actual.',
+    'Llámalo SOLO cuando todas las cajas críticas del grupo estén en estado terminal o parcial_estable, y declares en `cajas_no_clausuradas` cualquier caja que no haya cerrado con su razón.',
+    '`hipotesis_sonnet` es tu lectura de 1 línea sobre la postura de esta institución en este grupo (ej. "tolerancia conservadora a manchas en buró: solo restructuras concluidas hace ≥6 meses"). Mín 20 chars — no sirven hipótesis triviales.',
+    'NO mandes el historial conversacional — solo el snapshot destilado.',
+    'Cap: 1 review por grupo + máximo 1 round de profundización.',
+    '`extracciones_snapshot` debe traer una entrada por cada caja del grupo con su última versión no-superseded, su status, y su evidencia textual.',
+  ].join(' '),
+  input_schema: z.toJSONSchema(SolicitarReviewSeccionInputSchema) as Record<string, unknown>,
+};
+
+// ===========================================================================
 // Bundle
 // ===========================================================================
 export const SONNET_FASE1_TOOLS: readonly AnthropicTool[] = [
   REGISTRAR_EXTRACCION_TOOL,
   GENERAR_BATCH_PREGUNTAS_TOOL,
   SOLICITAR_CASO_SINTETICO_TOOL,
+  SOLICITAR_REVIEW_SECCION_TOOL,
 ] as const;
 
 export type SonnetToolName =
   | 'registrar_extraccion'
   | 'generar_batch_preguntas'
-  | 'solicitar_caso_sintetico';
+  | 'solicitar_caso_sintetico'
+  | 'solicitar_review_seccion';
