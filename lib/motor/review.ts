@@ -146,7 +146,7 @@ export async function processSolicitarReview(
   const casosUsados = await contarCasosUsados(sesion_id);
 
   // 4. Telemetría: review.disparado.
-  logger.info('review.disparado', {
+  logger.review.disparado({
     sesion_id,
     grupo_ui: input.grupo_ui_codigo,
     round,
@@ -164,7 +164,7 @@ export async function processSolicitarReview(
       casos_usados: casosUsados,
     });
   } catch (err) {
-    logger.error('review.opus_call_fallido', {
+    logger.review.opusCallFallido({
       sesion_id,
       grupo_ui: input.grupo_ui_codigo,
       round,
@@ -177,7 +177,7 @@ export async function processSolicitarReview(
   // 6. Validar shape (incluso si placeholder/test devuelve algo, validamos siempre).
   const opusValidacion = RespuestaOpusSchema.safeParse(opusRaw);
   if (!opusValidacion.success) {
-    logger.error('review.opus_response_invalida', {
+    logger.review.opusResponseInvalida({
       sesion_id,
       grupo_ui: input.grupo_ui_codigo,
       round,
@@ -197,7 +197,7 @@ export async function processSolicitarReview(
     grupo_ui: input.grupo_ui_codigo,
   });
 
-  logger.info('review.opus_decidio', {
+  logger.review.opusDecidio({
     sesion_id,
     grupo_ui: input.grupo_ui_codigo,
     round,
@@ -267,7 +267,7 @@ export function enforzarReglasMotor(
 ): RespuestaOpus {
   // Regla 1: profundizar solo en round 1.
   if (d.decision === 'profundizar' && ctx.round >= 2) {
-    logger.warn('review.profundizacion_rejected', {
+    logger.review.profundizacionRejected({
       sesion_id: ctx.sesion_id,
       grupo_ui: ctx.grupo_ui,
     });
@@ -286,7 +286,7 @@ export function enforzarReglasMotor(
     d.decision === 'caso_sintetico' &&
     ctx.casos_usados >= CAP_CASOS_SINTETICOS
   ) {
-    logger.warn('review.escalacion_caso_rejected_por_cap', {
+    logger.review.escalacionCasoRejectedPorCap({
       sesion_id: ctx.sesion_id,
       grupo_ui: ctx.grupo_ui,
     });
@@ -302,7 +302,7 @@ export function enforzarReglasMotor(
   if (d.decision === 'avanzar') {
     const esperado = siguienteGrupoCanonico(ctx.grupo_ui);
     if (d.siguiente_grupo_ui !== esperado) {
-      logger.warn('review.siguiente_grupo_corregido', {
+      logger.review.siguienteGrupoCorregido({
         sesion_id: ctx.sesion_id,
         grupo_ui: ctx.grupo_ui,
         opus_dijo: d.siguiente_grupo_ui,
@@ -476,7 +476,7 @@ export async function declinarCaja(args: DeclinarCajaArgs): Promise<void> {
     ON CONFLICT (sesion_id, caja_codigo) DO NOTHING
   `);
 
-  logger.info('decline_to_answer.registrado', {
+  logger.decline.registrado({
     sesion_id: args.sesion_id,
     caja_codigo: args.caja_codigo,
     razon: args.razon,
@@ -562,7 +562,7 @@ export async function dispatchSesionListaParaSintesis(
   // listo recibirá este mismo shape como payload del evento Inngest.
   const totales = await calcularTotalesSesion(sesion_id);
 
-  logger.info('sesion.lista_para_sintesis', {
+  logger.sesion.listaParaSintesis({
     sesion_id,
     ultimo_review_id,
     total_reviews: totales.total_reviews,
