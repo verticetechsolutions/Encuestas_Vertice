@@ -12,7 +12,13 @@ import { DeepgramClient } from '@deepgram/sdk';
 
 // ---------------------------------------------------------------------------
 // Cemented streaming config (founder + IMPLEMENTATION.md §4).
-// Nova-3 multilingual model with Spanish-LATAM (`es-419`) as the active language.
+//
+// `language: 'multi'` — Nova-3's true multilingual mode, code-switching ES↔EN
+// in real time. Required because Mexican subdirectores routinely drop English
+// finance jargon mid-sentence ("equity", "leverage", "covenant", "DSCR",
+// "stress test"). Pure `es-419` would degrade WER on those terms; the founder
+// ratified `multi` after seeing the trade-off.
+//
 // Re-exported as a frozen const so the browser hook sends the same params the
 // server expects to bill — no drift between client and server views.
 //
@@ -21,7 +27,7 @@ import { DeepgramClient } from '@deepgram/sdk';
 // ---------------------------------------------------------------------------
 export const STT_LIVE_CONFIG = Object.freeze({
   model: 'nova-3-general',
-  language: 'es-419',
+  language: 'multi',
   diarize: 'true',
   smart_format: 'true',
   interim_results: 'true',

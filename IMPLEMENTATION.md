@@ -1137,10 +1137,13 @@ Construido en paralelo a Fase 5 (motor) en una sesión aislada (worktree `vertic
 
 §8.4 también lista `endpointing=800`. La config cementada del prompt del founder no incluyó ese parámetro — `vad_events: true` cubre el caso del fin-de-utterance vía mensajes `SpeechStarted` / `UtteranceEnd`, que el motor podrá usar cuando se conecte. Si el founder quiere `endpointing` además, se agrega a `STT_LIVE_CONFIG` en una sola línea.
 
+**Decisión cementada: `language=multi`**
+
+§4 lista la fila STT como "Nova-3 Multilingual `es-419`". Después de revisar el trade-off, el founder ratificó `language=multi` (modo de code-switching real de Nova-3) por encima de `es-419` puro: los subdirectores hacen code-switch ES↔EN constantemente para jerga financiera ("equity", "leverage", "covenant", "DSCR", "stress test", "buyout"). `es-419` puro degrada WER en esos términos; `multi` los maneja nativamente sin penalizar el español. La config queda cementada en `STT_LIVE_CONFIG` y `.env.example` lo refleja.
+
 **Deuda técnica conocida**
 
 - Integración con `app/api/turn/*` (motor de entrevista) PENDIENTE. Hoy `/demo/stt` es la única forma de ejercer el stack. Wiring queda para una sesión posterior, después de que la rama `feat/phase5-step5-review-handoff` (Fase 5 step 5) merge a master, para no chocar con el contrato de turnos en vuelo.
-- Soporte multilingual literal: el prompt cementó "multilingual habilitado, language es-419". Deepgram normalmente expone code-switching multilingüe vía `language=multi`. La implementación pasa `language=es-419` literal — si el founder quiere code-switching ES↔EN para términos financieros (CETES, CKD, equity, leverage), cambiar a `language=multi`.
 - `endpointing` no está cableado (ver arriba).
 - Tests smoke siguen `describe.skip` hasta que vitest merge a master.
 
