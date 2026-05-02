@@ -1303,6 +1303,47 @@ step 5, mensaje `fix(inngest): cablear dispatch real pre-merge` en branch
 substituir el `step.run('placeholder-fase-8')` por la implementación real
 de `lib/motor/sintesis_final.ts`. El handler ya recibe el evento; solo falta
 hacer el trabajo cuando le toque.
+## 21 · STT — implementación inicial (sesión paralela Deepgram)
+
+Construido en paralelo a Fase 5 (motor) en una sesión aislada (worktree `vertice-deepgram-stt`, rama `feat/deepgram-stt-integration`). Es STT puro — no está conectado al motor todavía, eso queda como deuda técnica explícita para una sesión futura.
+
+**Variable de entorno requerida**
+
+- `DEEPGRAM_API_KEY` — server-side. El browser nunca la ve; el flujo de auth es vía JWT efímero.
+
+**Archivos**
+
+- `lib/stt/client.ts` — wrapper sobre `@deepgram/sdk` v5. Exporta `STT_LIVE_CONFIG` (frozen const con la config cementada Nova-3) y `grantEphemeralToken(ttlSeconds=60)`.
+- `app/api/stt/token/route.ts` — `POST` mintea JWT efímero (60s) si la cookie `vertice_session` apunta a una sesión `abierta` o `pausada`. 401 en cualquier otro caso.
+- `lib/stt/use-deepgram-stream.ts` — hook React. Lifecycle `idle → requesting_mic → connecting → streaming → idle/error`. Mic permission, websocket directo a Deepgram con el JWT, transcripts interim/final/history, pause detection >1.5s, reintento exponencial 3x con refresh de JWT, pausa al perder foco de tab, edición manual marcada con `corregida_manualmente: true`, diarización conservada por palabra.
+- `components/stt/MicButton.tsx` — botón circular con identidad Vértice (navy + gold).
+- `components/stt/TranscriptionPanel.tsx` — panel scrollable, segmentos editables con contentEditable.
+- `app/demo/stt/page.tsx` — ruta de QA manual (`/demo/stt`). Requiere sesión válida (cookie de magic link).
+- `lib/stt/use-deepgram-stream.test.ts` y `app/api/stt/token/route.test.ts` — tests smoke en `describe.skip` con `@ts-nocheck` (esperando merge de vitest desde la rama `feat/phase5-step5-review-handoff`).
+
+**Divergencia consciente con §8.4**
+
+§8.4 describe un proxy server-side que tunelea el WebSocket de Deepgram. La implementación actual usa **JWT efímero + browser conecta directo a Deepgram** porque el SDK v5 expone `auth.v1.tokens.grant()`. Es la ruta "preferida" del prompt del founder, con proxy como fallback si el SDK no lo expusiera. Resultado: menos latencia (un hop menos), API key nunca sale del server.
+
+§8.4 también lista `endpointing=800`. La config cementada del prompt del founder no incluyó ese parámetro — `vad_events: true` cubre el caso del fin-de-utterance vía mensajes `SpeechStarted` / `UtteranceEnd`, que el motor podrá usar cuando se conecte. Si el founder quiere `endpointing` además, se agrega a `STT_LIVE_CONFIG` en una sola línea.
+
+**Decisión cementada: `language=multi`**
+
+§4 lista la fila STT como "Nova-3 Multilingual `es-419`". Después de revisar el trade-off, el founder ratificó `language=multi` (modo de code-switching real de Nova-3) por encima de `es-419` puro: los subdirectores hacen code-switch ES↔EN constantemente para jerga financiera ("equity", "leverage", "covenant", "DSCR", "stress test", "buyout"). `es-419` puro degrada WER en esos términos; `multi` los maneja nativamente sin penalizar el español. La config queda cementada en `STT_LIVE_CONFIG` y `.env.example` lo refleja.
+
+**Deuda técnica conocida**
+
+- Integración con `app/api/turn/*` (motor de entrevista) PENDIENTE. Hoy `/demo/stt` es la única forma de ejercer el stack. Wiring queda para una sesión posterior, después de que la rama `feat/phase5-step5-review-handoff` (Fase 5 step 5) merge a master, para no chocar con el contrato de turnos en vuelo.
+- `endpointing` no está cableado (ver arriba).
+- Tests smoke siguen `describe.skip` hasta que vitest merge a master.
+
+**Cómo hacer QA manual**
+
+1. Login vía magic link (cualquier email registrado).
+2. Navegar a `/demo/stt`.
+3. Permitir mic. Hablar en español MX. Verificar que interim aparezca gris y final aparezca negro. Confirmar que "Pausa >1.5s" se vuelve "sí" cuando dejas de hablar.
+4. Editar un segmento haciendo clic. Verificar el punto dorado de "corregida_manualmente".
+5. Cambiar de pestaña. Verificar que la grabación se pausa y reanuda solo al volver.
 
 ---
 
