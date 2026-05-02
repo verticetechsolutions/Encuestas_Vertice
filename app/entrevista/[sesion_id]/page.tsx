@@ -1,15 +1,36 @@
 import { redirect } from 'next/navigation';
+import { eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { sesiones, instituciones } from '@/db/schema';
-import { eq } from 'drizzle-orm';
 import { readSessionCookie } from '@/lib/auth/cookie';
+import {
+  CAJAS_CANON,
+  CAJAS_EXTENSION_POR_TIPO,
+  GrupoUISchema,
+  type GrupoUI,
+} from '@/lib/schemas/cajas';
+import { EntrevistaShell } from './entrevista-shell';
 
 interface Props {
   params: Promise<{ sesion_id: string }>;
 }
 
-// Placeholder para el motor (Fase 5). Por ahora valida cookie + consentimiento y
-// renderiza un confirm visual de que el flujo de auth funciona end-to-end.
+// Totals per grupo_ui derived from CAJAS_CANON + extension[tipo]. The shell
+// uses these as the denominator for the right-hand progress panel.
+function computeTotalesPorGrupo(
+  tipo: typeof instituciones.$inferSelect.tipo
+): Record<GrupoUI, number> {
+  const out = {} as Record<GrupoUI, number>;
+  for (const g of GrupoUISchema.options) out[g] = 0;
+  for (const c of CAJAS_CANON) out[c.grupo_ui]++;
+  for (const c of CAJAS_EXTENSION_POR_TIPO[tipo] ?? []) out[c.grupo_ui]++;
+  return out;
+}
+
+// Server Component for the entrevista. Validates cookie ↔ sesion_id ↔
+// consentimiento_at, then hands off to the client shell with the data the
+// client needs (institution name + totales por grupo). The shell loads a
+// fixture mock at mount until /api/turn is wired with ANTHROPIC_API_KEY.
 export default async function EntrevistaPage({ params }: Props) {
   const { sesion_id } = await params;
   const cookie = await readSessionCookie();
@@ -18,9 +39,9 @@ export default async function EntrevistaPage({ params }: Props) {
   const [row] = await db
     .select({
       consentimiento_at: sesiones.consentimiento_at,
-      cajas_aplicables: sesiones.cajas_aplicables,
       status: sesiones.status,
       razon_social: instituciones.razon_social,
+      nombre_comercial: instituciones.nombre_comercial,
       tipo: instituciones.tipo,
     })
     .from(sesiones)
@@ -30,18 +51,14 @@ export default async function EntrevistaPage({ params }: Props) {
   if (!row) redirect('/acceso/expirado?razon=sin_sesion');
   if (!row.consentimiento_at) redirect(`/entrevista/${sesion_id}/bienvenida`);
 
+  const nombre_institucion = row.nombre_comercial ?? row.razon_social;
+  const totales_por_grupo = computeTotalesPorGrupo(row.tipo);
+
   return (
-    <main style={{ maxWidth: 720, margin: '48px auto', padding: '0 24px', fontFamily: 'system-ui, -apple-system, sans-serif' }}>
-      <h1 style={{ fontSize: 24, marginBottom: 8 }}>{row.razon_social}</h1>
-      <p style={{ color: '#666', marginBottom: 32 }}>
-        Sesión <code style={{ fontSize: 13 }}>{sesion_id}</code> · {row.cajas_aplicables} cajas aplicables · status: {row.status}
-      </p>
-      <section style={{ background: '#fefce8', border: '1px solid #fde047', padding: 24, borderRadius: 8 }}>
-        <p style={{ margin: 0, color: '#713f12' }}>
-          <strong>Placeholder Fase 4.</strong> El motor conversacional entra en Fase 5.
-          Auth + consentimiento + cookie funcionan correctamente — esto comprueba el end-to-end.
-        </p>
-      </section>
-    </main>
+    <EntrevistaShell
+      sesion_id={sesion_id}
+      nombre_institucion={nombre_institucion}
+      totales_por_grupo={totales_por_grupo}
+    />
   );
 }
