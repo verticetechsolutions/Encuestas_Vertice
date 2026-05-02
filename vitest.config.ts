@@ -12,5 +12,12 @@ export default defineConfig({
     globals: false,
     include: ['**/*.test.ts', '**/*.test.tsx'],
     exclude: ['node_modules/**', '.next/**', 'db/migrations/**'],
+    // DATABASE_URL stub: lib/db.ts arroja en module-load si está unset. Los unit
+    // tests no hacen queries reales (solo importan el módulo), así que basta con
+    // una URL parseable. Tests E2E (step vi) usan DATABASE_URL real de Neon
+    // branch via .env.local — esa override gana en runtime.
+    env: {
+      DATABASE_URL: 'postgresql://test:test@localhost:5432/test_vertice',
+    },
   },
 });
