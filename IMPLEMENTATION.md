@@ -889,7 +889,7 @@ ADMIN_EMAILS=founder@vertice.app,otro@vertice.app
 - [x] Activar pgvector extension en Neon (vector 0.8.0, columna `perfil_decision_final.embedding vector(1536)`)
 - [x] Verificar conexión y schema con consultas `information_schema` + insert/select PoC (FK end-to-end OK)
 
-### Fase 3 · Schemas Zod del credit box (3 horas) — 🟡 EN PROGRESO (cierre pendiente: TODO permite_no_aplica + tests)
+### Fase 3 · Schemas Zod del credit box (3 horas) — ✅ CERRADA (commit `f448e19`, 2026-05-04)
 
 Approach: **Zod como source of truth, types derivados con `z.infer`** (decisión founder 2026-04-30 — ver memoria `feedback_zod_source_of_truth`). NO escribir types paralelos a los schemas; si conviven, drift garantizado en 2 semanas.
 
@@ -939,7 +939,7 @@ Approach: magic link de un solo uso (token plain en URL del email, hash SHA-256 
 - [ ] Dominio verificado en Resend para `EMAIL_FROM=hola@verticemexico.com`.
 - [ ] Cleanup post-Fase 4: las columnas `instituciones.magic_link_token` y `magic_link_expires_at` quedan dead-but-present (founder dijo "no toca tablas existentes"); cleanup en migración futura cuando convenga.
 
-### Fase 5 · Motor conversacional core (8 horas) — 🟡 EN PROGRESO (step 5 sub-pasos i, ii, iii, v, vi cerrados; iv 🔒 placeholder)
+### Fase 5 · Motor conversacional core (8 horas) — 🟡 EN PROGRESO (todo cerrado salvo sub-paso 5.iv 🔒 prompts Opus + ANTHROPIC_API_KEY)
 
 Estructura de la Fase 5 en pasos discretos para auditabilidad:
 
@@ -979,21 +979,26 @@ Estructura de la Fase 5 en pasos discretos para auditabilidad:
 - [ ] **Tests integración con DB real** (race condition concurrente sobre Postgres real, FK constraints, etc.) usando Neon branch dedicada — no incluidos en E2E mock.
 - [ ] **Inngest wiring real** (`app/api/inngest/route.ts` + cliente Inngest + handler `sesion/lista_para_sintesis`). Hoy es placeholder vía `logger.sesion.listaParaSintesis` con `pendiente_inngest: true` en payload — ver `lib/motor/review.ts:dispatchSesionListaParaSintesis`. Documentado en deuda técnica conocida (sección 16).
 
-### Fase 6 · Integración Deepgram (4 horas)
-- [ ] Proxy `/api/deepgram` server-side
-- [ ] WebRTC client para capturar audio
-- [ ] Streaming de transcripción al textarea
-- [ ] Manejo de pausas (keep-alive 8s, UI cuando >30s)
-- [ ] Test con voz real en español MX
+### Fase 6 · Integración Deepgram (4 horas) — ✅ STT base + 🟡 cableado al motor pendiente
+- [x] Token efímero server-side (`/api/stt/token`) con cookie auth
+- [x] WebRTC client + `useDeepgramStream` hook
+- [x] `MicButton` + `TranscriptionPanel` componentes en `/demo/stt`
+- [x] Config Nova-3 cementada (`STT_LIVE_CONFIG` en `lib/stt/client.ts`)
+- [ ] **Cableado al shell de entrevista** — STT existe en `/demo/stt` pero el `MicButton` del `PreguntaCard` está disabled. Hay que conectar `useDeepgramStream` al `setRespuesta` del store. Founder agendó como deuda explícita §21.
+- [ ] Test con voz real en español MX (smoke STT validado en `/demo/stt`)
 
-### Fase 7 · UI de la entrevista (8 horas)
-- [ ] Layout split-screen
-- [ ] Componente `<PreguntaCard>` con textarea + mic + botón respondida
-- [ ] Animación de campos en verde al cerrar caja
-- [ ] Panel lateral de progreso por sección (no por caja)
-- [ ] Estado Zustand
-- [ ] Manejo de "guardar y retomar"
-- [ ] Indicador adaptativo "Sección X · Pregunta Y"
+### Fase 7 · UI de la entrevista (8 horas) — 🟡 EN PROGRESO (shell + autosave + /api/turn cableado; rediseño fintech en curso)
+- [x] **Shell split-screen** (commit `0fcff48`) — `app/entrevista/[sesion_id]/entrevista-shell.tsx` con grid `[minmax(0,1fr)_320px]`, móvil panel arriba colapsable.
+- [x] **`<PreguntaCard>`** — textarea + slot mic disabled (placeholder hasta wiring Fase 6) + botón "Marcar respondida" + autosave indicator (idle/pending/saving/saved/error).
+- [x] **Panel lateral** — `<PanelProgreso>` con 6 grupos UI agregados (sin exponer cajas individuales por privacidad).
+- [x] **Estado Zustand** — `lib/state/entrevista.ts` con autosave debounce 1.5s per-pregunta + persistencia a `sesiones.metadata.borrador_respuestas` jsonb (atomic merge `||`).
+- [x] **Manejo "guardar y retomar"** — autosave en cada cambio de textarea; al recargar la página el server component verifica cookie + consentimiento y rehidrata.
+- [x] **`/api/turn` cableado al shell (2026-05-05)** — POST con `{ sesion_id, mensaje_usuario }`, consume stream con `readUIMessageStream`, extrae tool-output de `generar_batch_preguntas` → batch nuevo, y `registrar_extraccion.mapa_summary.llenas_por_grupo` → panel live. Estados nuevos `procesando` y `error_turn`. Banner amber + botón "Reintentar envío" preservan respuestas si el stream falla.
+- [x] **Rediseño fintech minimalista (2026-05-05)** — paleta forest-green + lima + off-white-cream + canvas taupe en `app/globals.css` (oklch tokens). Hero bold para pregunta activa, stepper compacto de 6 grupos en pill (chips compactos en md, labels completos en lg+), CTA pill lime, microanimaciones (`vertice-fade-up`, `vertice-pulse-ring`, `vertice-shimmer` keyframes + utility `.text-display`).
+- [x] **Pregunta-as-hero (2026-05-05)** — refactor del shell para que UNA pregunta domine la pantalla. Componentes nuevos: `<HeroPregunta>` (text-display 28-44px + textarea generosa), `<BatchNav>` (dots numerados + arrows prev/next para moverse entre preguntas del batch sin stack visual), `<Stepper>` (top-of-card horizontal). Panel progreso colapsado a `<details>` para no robar foco.
+- [x] **Modo preview UI (2026-05-05)** — `app/preview/ui/page.tsx` (fuera de `/entrevista/*` así esquiva middleware). Renderiza `<EntrevistaShell preview>` con sesion_id fake. Flag `preview_mode` en el store apaga autosave + stub-ea `enviarBatch` (simula enviando→procesando→nuevo batch + bumpea panel). Badge lime "Preview UI" en header. 404 en producción. Razón: dev JIT compile lag (~70-90s acumulados primer hit) + token magic link single-use rompía el loop "edita CSS → recarga → ve cambios". Deuda paralela: `app/dev/preview/route.ts` que toma la última sesión real abierta y bypasea solo el token (útil para probar autosave real sin token).
+- [ ] **Animación de campos en verde al cerrar caja** — pendiente (necesita extracción real de Sonnet con ANTHROPIC_API_KEY).
+- [ ] **Indicador adaptativo "Sección X · Pregunta Y"** — el `<BatchNav>` ya cubre Pregunta Y (dot activo con label P0X); la sección viene del Stepper + eyebrow del hero.
 
 ### Fase 8 · Síntesis final con Inngest (4 horas)
 - [ ] Inngest function `sintetizar_perfil`

@@ -37,7 +37,7 @@
 import { sql, eq, and, isNull } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { turnos_conversacion, extracciones } from '@/db/schema';
-import { valorSchemaFor } from '@/lib/schemas/extracciones';
+import { valorSchemaFor, type Extraccion } from '@/lib/schemas/extracciones';
 
 // =============================================================================
 // Errores
@@ -83,6 +83,43 @@ export async function siguienteNumeroTurno(sesion_id: string): Promise<number> {
     WHERE sesion_id = ${sesion_id}
   `);
   return Number(row?.siguiente ?? 1);
+}
+
+/**
+ * Lista las extracciones ACTIVAS (no superseded) para una sesión, ordenadas por
+ * fecha. Las consume `computeMapaIncertidumbre` para producir el snapshot que
+ * alimenta el panel de progreso UI tras cada `registrar_extraccion`.
+ *
+ * Filtramos por `superseded_by IS NULL` y NO por `fuente`: el form lateral
+ * (founder edita "no aplica" manualmente) también participa del mapa.
+ */
+export async function listarExtraccionesActivas(
+  sesion_id: string
+): Promise<Extraccion[]> {
+  // NOTA: la tabla extracciones NO tiene columna `version` (decisión actual:
+  // versionado se infiere por cadena de supersede_by). El schema Zod sí la
+  // declara con default(1) para no romper tipos cuando el motor compone
+  // Extraccion in-memory; al hidratar desde DB inyectamos `version: 1` que
+  // es ignorado por computeMapaIncertidumbre (solo desempata por created_at).
+  const rows = await db
+    .select()
+    .from(extracciones)
+    .where(and(eq(extracciones.sesion_id, sesion_id), isNull(extracciones.superseded_by)))
+    .orderBy(extracciones.created_at);
+
+  return rows.map((r) => ({
+    id: r.id,
+    sesion_id: r.sesion_id,
+    turno_id: r.turno_id,
+    caja_codigo: r.caja_codigo,
+    valor: r.valor,
+    confianza: r.confianza,
+    fuente: r.fuente as Extraccion['fuente'],
+    evidencia_textual: r.evidencia_textual,
+    version: 1,
+    superseded_by: r.superseded_by ?? null,
+    created_at: r.created_at,
+  }));
 }
 
 // =============================================================================

@@ -31,7 +31,7 @@ import { z } from 'zod';
 import { eq } from 'drizzle-orm';
 
 import { db } from '@/lib/db';
-import { sesiones } from '@/db/schema';
+import { sesiones, instituciones } from '@/db/schema';
 import {
   RegistrarExtraccionInputSchema,
   GenerarBatchPreguntasInputSchema,
@@ -44,10 +44,18 @@ import {
   persistirTurnoAgente,
   actualizarContenidoTurnoAgente,
   persistirExtraccionesBatch,
+  listarExtraccionesActivas,
   ExtraccionInvalidaError,
   type ExtraccionInput,
 } from '@/lib/motor/persistence';
 import { valorSchemaFor } from '@/lib/schemas/extracciones';
+import {
+  GrupoUISchema,
+  getCajasAplicables,
+  getCajaAny,
+  type GrupoUI,
+} from '@/lib/schemas/cajas';
+import { computeMapaIncertidumbre } from '@/lib/motor/mapa';
 import {
   SONNET_FASE1_SYSTEM_PROMPT,
   SONNET_FASE1_PROMPT_READY,
@@ -62,6 +70,29 @@ const TurnRequestSchema = z.object({
   sesion_id: z.string().uuid(),
   mensaje_usuario: z.string().min(1),
 });
+
+// =============================================================================
+// Helpers
+// =============================================================================
+
+// Cuenta cajas con status terminal-llena ('llena' o 'no_aplica') por grupo_ui.
+// Usa CAJAS_CANON + EXTENSION[tipo] vía getCajaAny() para resolver el grupo.
+// Returns un Record con TODOS los 6 grupos (incluyendo 0 explícito) para que
+// el cliente pueda reemplazar el snapshot completo sin hacer merge parcial.
+function computeLlenasPorGrupo(
+  cajasState: ReturnType<typeof computeMapaIncertidumbre>['cajas']
+): Record<GrupoUI, number> {
+  const out = {} as Record<GrupoUI, number>;
+  for (const g of GrupoUISchema.options) out[g] = 0;
+  for (const codigo of Object.keys(cajasState)) {
+    const state = cajasState[codigo];
+    if (state.status !== 'llena' && state.status !== 'no_aplica') continue;
+    const canon = getCajaAny(codigo);
+    if (!canon) continue;
+    out[canon.grupo_ui] = (out[canon.grupo_ui] ?? 0) + 1;
+  }
+  return out;
+}
 
 // =============================================================================
 // POST handler
@@ -97,10 +128,17 @@ export async function POST(req: Request) {
   }
   const { sesion_id, mensaje_usuario } = parsed;
 
-  // 3. Validar que la sesión existe y está abierta.
+  // 3. Validar que la sesión existe y está abierta. JOIN con instituciones para
+  //    leer el `tipo` — lo necesitamos en `registrar_extraccion.execute` para
+  //    computar el mapa_incertidumbre con las cajas aplicables (CANON + EXTENSION[tipo]).
   const [sesion] = await db
-    .select({ status: sesiones.status, consentimiento_at: sesiones.consentimiento_at })
+    .select({
+      status: sesiones.status,
+      consentimiento_at: sesiones.consentimiento_at,
+      tipo: instituciones.tipo,
+    })
     .from(sesiones)
+    .innerJoin(instituciones, eq(sesiones.institucion_id, instituciones.id))
     .where(eq(sesiones.id, sesion_id))
     .limit(1);
   if (!sesion) {
@@ -118,6 +156,10 @@ export async function POST(req: Request) {
       { status: 403 }
     );
   }
+
+  // Snapshot de cajas aplicables a esta institución — se queda fijo durante todo
+  // el turn loop. Lo capturamos en el closure de `registrar_extraccion.execute`.
+  const cajasAplicables = getCajasAplicables(sesion.tipo);
 
   // 4. Persistir el turno usuario ANTES del stream. Las extracciones del
   //    siguiente turno agente lo necesitan para correlación pero se anclan al
@@ -223,11 +265,37 @@ export async function POST(req: Request) {
             const supersedidos = persistidas.filter(
               (p) => p.supersedido_id !== undefined
             ).length;
+
+            // Snapshot del mapa para alimentar el panel UI live. El cliente
+            // lee `mapa_summary.llenas_por_grupo` y reemplaza su contador por
+            // grupo. NO se usa para que Sonnet decida (eso lo hace el loop
+            // interno con el snapshot post-stream); solo es UI feedback.
+            let mapa_summary;
+            try {
+              const activas = await listarExtraccionesActivas(sesion_id);
+              const mapa = computeMapaIncertidumbre(activas, cajasAplicables);
+              const llenas_por_grupo = computeLlenasPorGrupo(mapa.cajas);
+              mapa_summary = {
+                llenas_por_grupo,
+                criticas_pct: mapa.cajas_criticas_pct,
+                blandas_pct: mapa.cajas_blandas_pct,
+                top_a_atacar: mapa.top_cajas_a_atacar,
+              };
+            } catch (snapErr) {
+              // No-fail: snapshot UI es best-effort. Si falla, devolvemos sin
+              // él y el cliente solo no actualizará el panel ese turno.
+              logger.warn('tool.registrar_extraccion.snapshot_fallido', {
+                sesion_id,
+                error: snapErr instanceof Error ? snapErr.message : String(snapErr),
+              });
+            }
+
             return {
               ok: true,
               persisted: persistidas.length,
               supersedidos,
               errores,
+              mapa_summary,
             };
           } catch (err) {
             // Defensa en profundidad: si llegáramos a tener una validación que
@@ -252,16 +320,24 @@ export async function POST(req: Request) {
         },
       }),
       generar_batch_preguntas: tool({
-        description: 'Genera el siguiente batch de 2-4 preguntas. TODO step posterior emite al stream UI.',
+        description: 'Genera el siguiente batch de 2-4 preguntas. El output se propaga al cliente vía el tool-result chunk del UI message stream.',
         inputSchema: GenerarBatchPreguntasInputSchema,
         execute: async (input) => {
           logger.info('tool.generar_batch_preguntas.recibido', {
             sesion_id,
             longitud_batch: input.longitud_batch,
+            cajas_objetivo_total: input.preguntas.flatMap((p) => p.cajas_objetivo),
           });
-          // TODO step posterior: emitir las preguntas al stream UI message para
-          // que el cliente las muestre. Por ahora ack.
-          return { ok: true, todo_step_posterior: true };
+          // El batch se devuelve tal cual en el output. El cliente lee el
+          // chunk `tool-output-available` con toolName='generar_batch_preguntas'
+          // y mapea a PreguntaBatch (ver lib/state/entrevista.ts:enviarBatch).
+          // batch_id se ancla al turno agente activo para correlación con DB.
+          return {
+            ok: true,
+            batch_id: `batch-${turnoAgente.turno_id}`,
+            preguntas: input.preguntas,
+            longitud_batch: input.longitud_batch,
+          };
         },
       }),
       solicitar_caso_sintetico: tool({
