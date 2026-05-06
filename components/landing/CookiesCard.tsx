@@ -5,6 +5,7 @@
 // continuo (galleta-blob) + crumbs que palpitan. No bloquea la página: es un
 // toast persistente, no un modal.
 
+import { useEffect, useRef, useState, type AnimationEvent } from 'react';
 import { X } from 'lucide-react';
 import Link from 'next/link';
 
@@ -75,11 +76,43 @@ export function CookiesCard({
   open: boolean;
   onClose: () => void;
 }) {
-  if (!open) return null;
+  // shouldRender retiene la card en el DOM mientras corre la animación de salida.
+  // leaving dispara la animación reversa via data-leaving="true" en globals.css.
+  // El unmount real lo hace onAnimationEnd cuando termina la salida — evita
+  // races contra el setTimeout y reinicios de animación bajo StrictMode.
+  const [shouldRender, setShouldRender] = useState(open);
+  const [leaving, setLeaving] = useState(false);
+  const prevOpen = useRef(open);
+
+  useEffect(() => {
+    if (open && !prevOpen.current) {
+      // false → true: monta la card y limpia leaving por si reabrió en mid-exit
+      setLeaving(false);
+      setShouldRender(true);
+    } else if (!open && prevOpen.current) {
+      // true → false: arranca la animación de salida; el unmount lo hace animationend
+      setLeaving(true);
+    }
+    prevOpen.current = open;
+  }, [open]);
+
+  const handleAnimationEnd = (e: AnimationEvent<HTMLDivElement>) => {
+    // Sólo el evento del wrapper outer cuenta — y sólo cuando termina la
+    // animación de salida (cookie-pop-out). Las del SVG (SMIL) no disparan
+    // animationend, pero filtramos por nombre por seguridad.
+    if (e.target !== e.currentTarget) return;
+    if (e.animationName !== 'cookie-pop-out') return;
+    setShouldRender(false);
+    setLeaving(false);
+  };
+
+  if (!shouldRender) return null;
   return (
     <div
       role="dialog"
       aria-label="Aviso de cookies"
+      data-leaving={leaving ? 'true' : undefined}
+      onAnimationEnd={handleAnimationEnd}
       className="cookie-card fixed bottom-6 right-6 z-40 w-[min(92vw,380px)]"
     >
       <div

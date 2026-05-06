@@ -610,8 +610,8 @@ Cada schema debe tener:
 
 ```
 app/
-├── (marketing)/
-│   └── page.tsx                    → landing pública (no necesario MVP, opcional)
+├── page.tsx                        → landing pública (default si entras a "/" sin link de encuesta)
+├── terminos/page.tsx               → Términos · Privacidad · Cookies (linked desde la landing)
 ├── (auth)/
 │   └── magic-link/[token]/page.tsx → validar magic link, crear sesión, redirigir
 ├── entrevista/
@@ -627,6 +627,8 @@ app/
     ├── magic-link/route.ts         → POST: genera y envía magic link
     └── inngest/route.ts            → handler de Inngest
 ```
+
+**Landing (`app/page.tsx`):** entry point público para visitantes sin magic link. Hero editorial con la marca Vértice, manifest de tres datos (formato/duración/entrega), modal de selección que ramifica en dos flujos: "Acceder a mi encuesta" (Google + reenviar magic link por correo) o "Solicitar acceso" (formulario con razón social, tipo de institución, correo). Stack visual: GSAP ScrollTrigger + Lenis smooth scroll, Motion springs en CTAs, Base UI Dialog. Componentes en `components/landing/` (HeaderCTA, HeroLine, VertexMark, CookiesCard, FooterLink, LenisProvider, SectionIndicator, SuccessMark).
 
 ### 8.2 UI de la entrevista — patrón "voice-augmented form"
 

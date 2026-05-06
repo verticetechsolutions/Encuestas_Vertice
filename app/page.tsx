@@ -4,7 +4,7 @@ import { useEffect, useRef, useState, type FormEvent, type ReactNode } from 'rea
 import Image from 'next/image';
 import Link from 'next/link';
 import { Dialog } from '@base-ui/react/dialog';
-import { ArrowUpRight, Building2, Mail, X } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight, Building2, Mail, X } from 'lucide-react';
 import {
   Select,
   SelectContent,
@@ -17,6 +17,11 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { VertexMark } from '@/components/landing/VertexMark';
 import { CookiesCard } from '@/components/landing/CookiesCard';
 import { SuccessMark } from '@/components/landing/SuccessMark';
+import { LenisProvider } from '@/components/landing/LenisProvider';
+import { FooterLink } from '@/components/landing/FooterLink';
+import { HeaderCTA } from '@/components/landing/HeaderCTA';
+import { HeroLine } from '@/components/landing/HeroLine';
+import { SectionIndicator } from '@/components/landing/SectionIndicator';
 import { cn } from '@/lib/utils';
 
 if (typeof window !== 'undefined') {
@@ -47,6 +52,46 @@ function useMagnetic<T extends HTMLElement>(strength = 0.16) {
       el.removeEventListener('pointerleave', onLeave);
     };
   }, [strength]);
+  return ref;
+}
+
+// 3D tilt sobre cursor — el elemento se inclina hacia el puntero. Setea
+// también CSS vars --mx/--my (0..100%) para gradients que sigan al cursor.
+function useTilt<T extends HTMLElement>(maxDeg = 10) {
+  const ref = useRef<T>(null);
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
+    let raf = 0;
+    let nextRX = 0;
+    let nextRY = 0;
+    const apply = () => {
+      el.style.transform = `perspective(900px) rotateX(${nextRX}deg) rotateY(${nextRY}deg)`;
+    };
+    const onMove = (e: PointerEvent) => {
+      const r = el.getBoundingClientRect();
+      const x = (e.clientX - r.left) / r.width;
+      const y = (e.clientY - r.top) / r.height;
+      el.style.setProperty('--mx', `${x * 100}%`);
+      el.style.setProperty('--my', `${y * 100}%`);
+      nextRX = (0.5 - y) * maxDeg;
+      nextRY = (x - 0.5) * maxDeg;
+      cancelAnimationFrame(raf);
+      raf = requestAnimationFrame(apply);
+    };
+    const onLeave = () => {
+      cancelAnimationFrame(raf);
+      el.style.transform = 'perspective(900px) rotateX(0deg) rotateY(0deg)';
+    };
+    el.addEventListener('pointermove', onMove);
+    el.addEventListener('pointerleave', onLeave);
+    return () => {
+      el.removeEventListener('pointermove', onMove);
+      el.removeEventListener('pointerleave', onLeave);
+      cancelAnimationFrame(raf);
+    };
+  }, [maxDeg]);
   return ref;
 }
 
@@ -171,14 +216,15 @@ const TIPOS_INSTITUCION = [
   { value: 'otro', label: 'Otro' },
 ] as const;
 
-type DialogMode = 'access' | 'request';
+type DialogMode = 'menu' | 'access' | 'request';
 
 // =============================================================================
 // Landing
 // =============================================================================
 export default function Landing() {
   const [open, setOpen] = useState(false);
-  const [mode, setMode] = useState<DialogMode>('access');
+  const [mode, setMode] = useState<DialogMode>('menu');
+  const [fromMenu, setFromMenu] = useState(false);
 
   useEffect(() => {
     const prevBody = document.body.style.backgroundColor;
@@ -191,23 +237,64 @@ export default function Landing() {
     };
   }, []);
 
-  // GSAP scroll triggers — manifiesto stagger reveal + footer wordmark parallax.
+  // GSAP scroll triggers
+  // ---------------------
+  // (A) Word-color scrub en el headline mientras el hero está pinned.
+  // (B) Pin del hero por 1 viewport extra → siguiente sección se "destapa".
+  // (F) Footer wordmark scaleX + opacity outro al entrar al viewport.
+  // + manifiesto stagger reveal + vertex departure rotation durante pin.
   useEffect(() => {
     if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return;
     const ctx = gsap.context(() => {
-      gsap.from('[data-anim="manifest-row"]', {
-        opacity: 0,
-        y: 36,
-        duration: 0.9,
-        ease: 'power3.out',
-        stagger: 0.14,
+      // ===== (B) Hero pin + (A) word-color scrub ============================
+      const heroTL = gsap.timeline({
         scrollTrigger: {
-          trigger: '[data-anim="manifest"]',
-          start: 'top 78%',
-          toggleActions: 'play none none reverse',
+          trigger: '[data-anim="hero"]',
+          start: 'top top',
+          end: '+=110%',
+          pin: true,
+          pinSpacing: true,
+          scrub: 0.8,
+          anticipatePin: 1,
         },
       });
 
+      // Spotlight simple: cambio de color + scale en la línea activa. Sin
+      // gradient, sin glow. Limpio inline styles residuales (textShadow/filter)
+      // por si quedaron de iteraciones anteriores.
+      const CLEAN = { textShadow: 'none', filter: 'none' };
+      const CREAM = 'rgba(244,241,234,0.95)';
+      const GOLD_MUTED = '#9C824A';
+      const GOLD_BRIGHT = '#F2D89C';
+
+      gsap.set('[data-line-wrap]', { transformOrigin: 'left center', scale: 1, ...CLEAN });
+      gsap.set('[data-line-wrap="1"]', { color: CREAM });
+      gsap.set('[data-line-wrap="2"]', { color: CREAM });
+      gsap.set('[data-line-wrap="3"]', { color: GOLD_MUTED });
+
+      heroTL
+        // ---- Beat 1: línea 1 ACTIVE -----------------------------------------
+        .to('[data-line-wrap="1"]', { color: GOLD_BRIGHT, scale: 1.05, duration: 1, ease: 'power2.out' }, 0)
+        // ---- Beat 2: línea 1 vuelve a REST, línea 2 ACTIVE ------------------
+        .to('[data-line-wrap="1"]', { color: CREAM, scale: 1, duration: 1, ease: 'power2.out' }, 1)
+        .to('[data-line-wrap="2"]', { color: GOLD_BRIGHT, scale: 1.05, duration: 1, ease: 'power2.out' }, 1)
+        // ---- Beat 3: línea 2 vuelve a REST, línea 3 ACTIVE_GOLD --------------
+        .to('[data-line-wrap="2"]', { color: CREAM, scale: 1, duration: 1, ease: 'power2.out' }, 2)
+        .to('[data-line-wrap="3"]', { color: GOLD_BRIGHT, scale: 1.07, duration: 1, ease: 'power2.out' }, 2)
+        // Vertex sigil — drift + scale sutil durante el pin
+        .to(
+          '[data-anim="vertex-sigil"]',
+          { rotation: -5, scale: 0.95, ease: 'none', duration: 3 },
+          0
+        )
+        // Sub-deck y CTAs se atenúan ligeramente (no demasiado)
+        .to(
+          '[data-anim="hero-deck"]',
+          { opacity: 0.55, y: -18, ease: 'none', duration: 3 },
+          0
+        );
+
+      // ===== (D) Manifest: cada fila tiene scrub propio + composición ========
       gsap.from('[data-anim="manifest-title"]', {
         opacity: 0,
         x: -40,
@@ -220,314 +307,353 @@ export default function Landing() {
         },
       });
 
-      gsap.to('[data-anim="footer-wordmark"]', {
-        yPercent: -25,
-        ease: 'none',
-        scrollTrigger: {
-          trigger: '[data-anim="footer-wordmark"]',
-          start: 'top bottom',
-          end: 'bottom top',
-          scrub: 0.6,
-        },
+      gsap.utils.toArray<HTMLElement>('[data-anim="manifest-row"]').forEach((row) => {
+        const num = row.querySelector('[data-row="num"]');
+        const label = row.querySelector('[data-row="label"]');
+        const value = row.querySelector('[data-row="value"]');
+
+        const tl = gsap.timeline({
+          scrollTrigger: {
+            trigger: row,
+            start: 'top 88%',
+            end: 'top 50%',
+            scrub: 0.6,
+          },
+        });
+        tl.from(num, {
+          opacity: 0,
+          scale: 0.5,
+          rotation: -25,
+          ease: 'power3.out',
+          duration: 1,
+        })
+          .from(
+            label,
+            { opacity: 0, x: -18, ease: 'power2.out', duration: 1 },
+            0.25
+          )
+          .from(
+            value,
+            {
+              opacity: 0,
+              clipPath: 'inset(0 100% 0 0)',
+              ease: 'power3.out',
+              duration: 1.2,
+            },
+            0.5
+          );
       });
 
-      // Vertex sigil — drift hacia arriba conforme se baja, paralax sutil
-      gsap.to('[data-anim="vertex-sigil"]', {
-        yPercent: -40,
-        ease: 'none',
-        scrollTrigger: {
-          trigger: '[data-anim="vertex-sigil"]',
-          start: 'top top+=80',
-          end: 'bottom top',
-          scrub: 0.8,
-        },
-      });
+      // ===== (F) Footer wordmark — opacity-only ramp ========================
+      // scaleX se quitó: forzaba repaint de un SVG de 7095px en cada frame de
+      // scroll y trababa Lenis cerca del fondo. Opacity es cheap (compositor).
+      gsap.fromTo(
+        '[data-anim="footer-wordmark"]',
+        { opacity: 0.06 },
+        {
+          opacity: 0.32,
+          ease: 'none',
+          scrollTrigger: {
+            trigger: '[data-anim="footer-wordmark"]',
+            start: 'top bottom',
+            end: 'bottom bottom-=60',
+            scrub: 0.8,
+          },
+        }
+      );
     });
     return () => ctx.revert();
   }, []);
 
   const openMode = (m: DialogMode) => {
     setMode(m);
+    setFromMenu(false);
     setOpen(true);
+  };
+  const pickFromMenu = (m: 'access' | 'request') => {
+    setMode(m);
+    setFromMenu(true);
   };
 
   const cta1 = useMagnetic<HTMLButtonElement>(0.12);
   const cta2 = useMagnetic<HTMLButtonElement>(0.14);
+  const vertexTiltRef = useTilt<HTMLDivElement>(11);
   const [cookiesOpen, setCookiesOpen] = useState(false);
 
   return (
-    <div
-      className="landing-root relative flex min-h-screen w-full flex-1 flex-col overflow-x-clip bg-[#0A0F1C] text-[#F4F1EA]"
-      style={{ fontFamily: "'Satoshi', ui-sans-serif, system-ui, sans-serif" }}
-    >
-      {/* Atmosphere */}
+    <LenisProvider>
       <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0"
-        style={{
-          backgroundImage:
-            'radial-gradient(1100px 700px at 88% -8%, rgba(200,168,100,0.06), transparent 60%)',
-        }}
-      />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 opacity-[0.018] mix-blend-overlay"
-        style={{
-          backgroundImage:
-            "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.7'/%3E%3C/svg%3E\")",
-        }}
-      />
+        className="landing-root relative flex min-h-screen w-full flex-1 flex-col overflow-x-clip bg-[#0A0F1C] text-[#F4F1EA]"
+        style={{ fontFamily: "'Satoshi', ui-sans-serif, system-ui, sans-serif" }}
+      >
+        {/* Atmosphere */}
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0"
+          style={{
+            backgroundImage:
+              'radial-gradient(1100px 700px at 88% -8%, rgba(200,168,100,0.06), transparent 60%)',
+          }}
+        />
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 opacity-[0.018] mix-blend-overlay"
+          style={{
+            backgroundImage:
+              "url(\"data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.7'/%3E%3C/svg%3E\")",
+          }}
+        />
 
-      <Dialog.Root open={open} onOpenChange={setOpen}>
-        {/* ====================================================== HEADER STATIC
+        <Dialog.Root open={open} onOpenChange={setOpen}>
+          {/* ====================================================== HEADER STATIC
             Una sola fila, todos los elementos centrados verticalmente. */}
-        <header className="pointer-events-none fixed inset-x-0 top-0 z-30">
-          <div className="mx-auto w-full max-w-[1480px] px-6 pt-6 sm:px-10 lg:px-14">
-            <div className="relative flex h-12 items-center justify-between gap-4">
-              <Link
-                href="/"
-                aria-label="Vértice — inicio"
-                className="pointer-events-auto inline-flex items-center"
-                style={{ animation: 'ln-fade-in 0.9s 0.05s both' }}
-              >
-                <Image
-                  src="/Logo_white.svg"
-                  alt="Vértice"
-                  width={7095}
-                  height={2369}
-                  priority
-                  className="h-11 w-auto"
-                />
-              </Link>
-
-              <div
-                className="pointer-events-auto absolute left-1/2 hidden -translate-x-1/2 md:flex md:items-center md:gap-3 md:rounded-full md:border md:border-[#F4F1EA]/10 md:bg-[#0A0F1C]/55 md:px-3.5 md:py-2 md:backdrop-blur-xl"
-                style={{ animation: 'ln-fade-in 0.9s 0.18s both' }}
-              >
-                <span className="size-1.5 rounded-full bg-[#C8A864] shadow-[0_0_10px_rgba(200,168,100,0.5)]" />
-                <span className="font-mono text-[10.5px] uppercase tracking-[0.28em] text-[#F4F1EA]/65">
-                  MX · 2026
-                </span>
-                <span className="size-1 rounded-full bg-[#F4F1EA]/15" />
-                <span className="font-mono text-[10.5px] uppercase tracking-[0.28em] text-[#F4F1EA]/65">
-                  Edición Vol.01
-                </span>
-              </div>
-
-              <button
-                type="button"
-                onClick={() => openMode('access')}
-                className="pointer-events-auto group/cta inline-flex h-10 items-center gap-2 rounded-full border border-[#F4F1EA]/15 bg-[#0A0F1C]/55 pl-3.5 pr-1.5 text-[12px] font-medium text-[#F4F1EA]/85 backdrop-blur-xl transition-colors hover:border-[#F4F1EA]/35 hover:text-[#F4F1EA]"
-                style={{ animation: 'ln-fade-in 0.9s 0.32s both' }}
-              >
-                <span className="hidden sm:inline">Acceder</span>
-                <span className="inline-flex size-7 items-center justify-center rounded-full bg-[#C8A864] text-[#0A0F1C] transition-transform group-hover/cta:rotate-45">
-                  <ArrowUpRight className="size-3.5" strokeWidth={2.5} />
-                </span>
-              </button>
-            </div>
-          </div>
-        </header>
-
-        <main className="relative z-10 mx-auto w-full max-w-[1480px] flex-1 px-6 sm:px-10 lg:px-14">
-          {/* ============================================================== HERO */}
-          <section className="relative grid grid-cols-12 items-end gap-x-6 gap-y-10 pb-16 pt-24 sm:gap-y-14 sm:pt-28 lg:gap-x-10 lg:pb-20 lg:pt-36">
-            <div className="col-span-12 lg:col-span-9">
-              <div
-                className="font-mono text-[10.5px] uppercase tracking-[0.32em] text-[#F4F1EA]/45"
-                style={{ animation: 'ln-fade-in 0.9s 0.05s both' }}
-              >
-                Para instituciones financieras
-              </div>
-
-              <h1
-                className="mt-7 font-display leading-[0.95] tracking-[-0.03em] text-[#F4F1EA]"
-                style={{
-                  fontWeight: 500,
-                  fontSize: 'clamp(46px, 7.4vw, 108px)',
-                }}
-              >
-                <RevealLine text="Tu política" baseDelay={120} className="block" />
-                <RevealLine text="de crédito," baseDelay={300} className="block" />
-                <span
-                  className="block italic"
-                  style={{ fontWeight: 400, color: '#C8A864' }}
-                >
-                  <RevealChars text="conversada." baseDelay={620} stagger={42} />
-                </span>
-              </h1>
-
-              <p
-                className="mt-9 max-w-[52ch] text-[15.5px] leading-relaxed text-[#F4F1EA]/72 sm:text-[17px]"
-                style={{ animation: 'ln-fade-in 0.9s 1.05s both' }}
-              >
-                Una entrevista adaptiva. Doce minutos de conversación que devuelven el perfil de
-                criterios de tu institución, listo para revisar y firmar.
-              </p>
-
-              {/* CTAs above the fold */}
-              <div
-                className="mt-10 flex flex-wrap items-center gap-3"
-                style={{ animation: 'ln-fade-in 0.9s 1.25s both' }}
-              >
-                <button
-                  ref={cta1}
-                  type="button"
-                  onClick={() => openMode('access')}
-                  className={cn(
-                    'group/cta relative inline-flex h-12 items-center gap-3 rounded-full bg-[#F4F1EA] pl-2 pr-6 text-[13.5px] font-medium text-[#0A0F1C]',
-                    'transition-colors duration-200 will-change-transform',
-                    'shadow-[0_0_0_1px_rgba(244,241,234,0.04),0_30px_70px_-20px_rgba(200,168,100,0.45)]',
-                    'hover:bg-white'
-                  )}
-                >
-                  <span className="inline-flex size-9 items-center justify-center rounded-full bg-white">
-                    <GoogleG className="size-4" />
-                  </span>
-                  Acceder con Google
-                </button>
-                <button
-                  ref={cta2}
-                  type="button"
-                  onClick={() => openMode('request')}
-                  className={cn(
-                    'group/ghost inline-flex h-12 items-center gap-2.5 rounded-full border border-[#F4F1EA]/20 px-5 text-[13.5px] font-medium text-[#F4F1EA]',
-                    'transition-[color,border-color] duration-200 will-change-transform',
-                    'hover:border-[#F4F1EA]/45'
-                  )}
-                >
-                  Solicitar acceso
-                  <ArrowUpRight
-                    className="size-4 text-[#C8A864] transition-transform group-hover/ghost:rotate-45"
-                    strokeWidth={2.25}
-                  />
-                </button>
-              </div>
-            </div>
-
-            {/* Vertex sigil + scroll cue */}
-            <div className="col-span-12 lg:col-span-3 lg:flex lg:flex-col lg:items-end" data-anim="vertex-sigil">
-              <div className="relative ml-auto aspect-[1380/1093] w-full max-w-[180px] lg:max-w-[200px]">
-                <VertexMark variant="inline" className="absolute inset-0 h-full w-full" />
-              </div>
-              <div className="ml-auto mt-3 flex max-w-[200px] items-center justify-end gap-2 font-mono text-[10px] uppercase tracking-[0.3em] text-[#F4F1EA]/35">
-                <span>fig.01</span>
-                <span className="text-[#F4F1EA]/15">/</span>
-                <span>signo</span>
-              </div>
-
-              <div className="hidden lg:mt-12 lg:flex lg:items-center lg:gap-2 lg:font-mono lg:text-[10.5px] lg:uppercase lg:tracking-[0.32em] lg:text-[#F4F1EA]/45">
-                <span className="ln-scroll-cue">↓</span>
-                <span>Scroll <span className="text-[#C8A864]">brief</span></span>
-              </div>
-            </div>
-          </section>
-
-          {/* ========================================================= MANIFEST */}
-          <section data-anim="manifest" className="border-t border-[#F4F1EA]/8 py-16 sm:py-24">
-            <div className="grid grid-cols-12 items-start gap-x-6 gap-y-10 lg:gap-x-10">
-              <div className="col-span-12 lg:col-span-3" data-anim="manifest-title">
-                <div className="font-mono text-[10.5px] uppercase tracking-[0.32em] text-[#F4F1EA]/45">
-                  M01 · Brief
+          <header className="pointer-events-none fixed inset-x-0 top-0 z-30">
+            <div className="mx-auto w-full max-w-[1480px] px-6 pt-6 sm:px-10 lg:px-14">
+              <div className="relative flex h-14 items-center justify-end gap-4 sm:h-16">
+                <div style={{ animation: 'ln-fade-in 0.9s 0.32s both' }}>
+                  <HeaderCTA onClick={() => openMode('menu')} />
                 </div>
-                <h2
-                  className="mt-5 font-display tracking-[-0.022em] leading-[1.02] text-[#F4F1EA]"
-                  style={{ fontWeight: 500, fontSize: 'clamp(28px, 3.6vw, 46px)' }}
-                >
-                  Tres datos.
-                  <br />
-                  <span className="italic font-light text-[#F4F1EA]/55">Sin más.</span>
-                </h2>
               </div>
-              <dl className="col-span-12 grid grid-cols-1 gap-y-6 lg:col-span-9">
-                <ManifestRow num="01" label="Formato" value="Conversación adaptiva — texto o voz." />
-                <ManifestRow num="02" label="Duración" value="Doce minutos en promedio." />
-                <ManifestRow
-                  num="03"
-                  label="Entrega"
-                  value="Perfil firmable. Cuarenta y cuatro cajas canónicas. Schema v1.0."
-                />
-              </dl>
             </div>
-          </section>
-        </main>
+          </header>
 
-        {/* ============================================================== FOOTER */}
-        <footer className="relative z-10 mt-10 border-t border-[#F4F1EA]/8">
-          {/* Wordmark gigante — signature flourish (firma editorial) */}
-          <div
-            aria-hidden
-            className="relative mx-auto w-full max-w-[1480px] overflow-hidden px-4 pt-12 sm:px-6 lg:px-8"
-          >
-            <Image
-              src="/Logo_white.svg"
-              alt=""
-              width={7095}
-              height={2369}
-              data-anim="footer-wordmark"
-              className="h-auto w-full select-none opacity-[0.10] will-change-transform"
-              style={{
-                maskImage:
-                  'linear-gradient(to bottom, #000 30%, rgba(0,0,0,0.6) 70%, transparent 100%)',
-              }}
-            />
-          </div>
-
-          <div className="mx-auto flex w-full max-w-[1480px] flex-col items-start justify-between gap-6 px-6 py-8 sm:flex-row sm:items-center sm:px-10 lg:px-14">
-            <div className="font-mono text-[10.5px] uppercase tracking-[0.3em] text-[#F4F1EA]/45">
-              Vértice © 2026 — Criterios crediticios
-            </div>
-            <nav className="flex flex-wrap items-center gap-6 font-mono text-[10.5px] uppercase tracking-[0.3em] text-[#F4F1EA]/55">
-              <Link href="/terminos" className="transition-colors hover:text-[#F4F1EA]">
-                Términos
-              </Link>
-              <Link href="/terminos#privacidad" className="transition-colors hover:text-[#F4F1EA]">
-                Privacidad
-              </Link>
-              <button
-                type="button"
-                onClick={() => setCookiesOpen(true)}
-                className="cursor-pointer uppercase tracking-[0.3em] text-[#F4F1EA]/55 transition-colors hover:text-[#F4F1EA]"
-              >
-                Cookies
-              </button>
-              <span className="text-[#F4F1EA]/25">/</span>
-              <span className="text-[#F4F1EA]/35">Confidencial · uso interno</span>
-            </nav>
-          </div>
-        </footer>
-
-        {/* ============================================================== DIALOG */}
-        <Dialog.Portal>
-          <Dialog.Backdrop
-            className={cn(
-              'fixed inset-0 z-50 bg-[#0A0F1C]/82 backdrop-blur-sm',
-              'data-[starting-style]:opacity-0 data-[ending-style]:opacity-0',
-              'transition-opacity duration-300'
-            )}
-          />
-          <Dialog.Popup
-            className={cn(
-              'fixed left-1/2 top-1/2 z-50 w-[min(94vw,480px)] -translate-x-1/2 -translate-y-1/2',
-              'overflow-hidden rounded-[24px] border border-[#F4F1EA]/8 bg-[#F4F1EA] text-[#0A0F1C] shadow-2xl shadow-black/50',
-              'data-[starting-style]:scale-95 data-[starting-style]:opacity-0',
-              'data-[ending-style]:scale-95 data-[ending-style]:opacity-0',
-              'transition-all duration-300'
-            )}
-            initialFocus={null}
-          >
-            <DialogShell
-              kicker={mode === 'access' ? 'Acceso · panel' : 'Solicitar acceso'}
-              onClose={() => setOpen(false)}
+          <main className="relative z-10 mx-auto w-full max-w-[1480px] flex-1 px-6 sm:px-10 lg:px-14">
+            {/* ============================================================== HERO */}
+            <section
+              id="hero"
+              data-anim="hero"
+              className="relative grid grid-cols-12 items-end gap-x-6 gap-y-10 pb-16 pt-24 sm:gap-y-14 sm:pt-28 lg:gap-x-10 lg:pb-20 lg:pt-36"
             >
-              {mode === 'access' ? <AccessFlow /> : <RequestFlow />}
-            </DialogShell>
-          </Dialog.Popup>
-        </Dialog.Portal>
-      </Dialog.Root>
+              <div className="col-span-12 lg:col-span-8">
+                <div
+                  className="font-mono text-[10.5px] uppercase tracking-[0.32em] text-[#F4F1EA]/45"
+                  style={{ animation: 'ln-fade-in 0.9s 0.05s both' }}
+                >
+                  Red de financieras aliadas · MX 2026
+                </div>
 
-      <CookiesCard open={cookiesOpen} onClose={() => setCookiesOpen(false)} />
-    </div>
+                <h1
+                  className="mt-7 font-display leading-[0.95] tracking-[-0.03em] text-[#F4F1EA]"
+                  style={{
+                    fontWeight: 500,
+                    fontSize: 'clamp(46px, 7.4vw, 108px)',
+                  }}
+                >
+                  <HeroLine n={1} text="Solicitantes" baseDelay={120} />
+                  <HeroLine n={2} text="que cumplen" baseDelay={300} />
+                  <HeroLine
+                    n={3}
+                    text="tu política."
+                    baseDelay={620}
+                    charStagger
+                    charStep={42}
+                    baseColor="#9C824A"
+                  />
+                </h1>
+
+                <div data-anim="hero-deck">
+                  <p
+                    className="mt-9 max-w-[52ch] text-[15.5px] leading-relaxed text-[#F4F1EA]/72 sm:text-[17px]"
+                    style={{ animation: 'ln-fade-in 0.9s 1.05s both' }}
+                  >
+                    Vértice estructura los criterios crediticios de tu institución en una entrevista
+                    de doce minutos. A partir de ahí, tu mesa recibe solicitudes preprocesadas que
+                    ya cumplen tu política. Reduces tiempo de screening y aumentas conversión.
+                  </p>
+
+                  {/* CTAs above the fold */}
+                  <div
+                    className="mt-10 flex flex-wrap items-center gap-3"
+                    style={{ animation: 'ln-fade-in 0.9s 1.25s both' }}
+                  >
+                    <button
+                      ref={cta1}
+                      type="button"
+                      onClick={() => openMode('request')}
+                      className={cn(
+                        'group/cta relative inline-flex h-12 items-center gap-3 rounded-full bg-[#F4F1EA] pl-6 pr-2 text-[13.5px] font-medium text-[#0A0F1C]',
+                        'transition-colors duration-200 will-change-transform',
+                        'shadow-[0_0_0_1px_rgba(244,241,234,0.04),0_30px_70px_-20px_rgba(200,168,100,0.45)]',
+                        'hover:bg-white'
+                      )}
+                    >
+                      Solicitar alianza
+                      <span className="inline-flex size-9 items-center justify-center rounded-full bg-[#0A0F1C] text-[#C8A864] transition-transform group-hover/cta:rotate-45">
+                        <ArrowUpRight className="size-4" strokeWidth={2.5} />
+                      </span>
+                    </button>
+                    <button
+                      ref={cta2}
+                      type="button"
+                      onClick={() => openMode('access')}
+                      className={cn(
+                        'group/ghost inline-flex h-12 items-center gap-2.5 rounded-full border border-[#F4F1EA]/20 px-5 text-[13.5px] font-medium text-[#F4F1EA]',
+                        'transition-[color,border-color] duration-200 will-change-transform',
+                        'hover:border-[#F4F1EA]/45'
+                      )}
+                    >
+                      <GoogleG className="size-4" />
+                      Ya tengo acceso
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              {/* Vertex sigil + scroll cue — protagónico, con glow gold */}
+              <div
+                className="col-span-12 lg:col-span-4 lg:flex lg:flex-col lg:items-end"
+                data-anim="vertex-sigil"
+              >
+                <div
+                  ref={vertexTiltRef}
+                  className="relative ml-auto aspect-[1380/1093] w-full max-w-[300px] lg:max-w-[380px] transition-transform duration-300 ease-out will-change-transform"
+                  style={{ transformStyle: 'preserve-3d' }}
+                >
+                  <VertexMark
+                    variant="inline"
+                    className="vx-glow absolute inset-0 h-full w-full"
+                  />
+                </div>
+                <div className="hidden lg:mt-14 lg:flex lg:items-center lg:gap-2 lg:font-mono lg:text-[10.5px] lg:uppercase lg:tracking-[0.32em] lg:text-[#F4F1EA]/45">
+                  <span className="ln-scroll-cue">↓</span>
+                  <span>
+                    Cómo <span className="text-[#C8A864]">funciona</span>
+                  </span>
+                </div>
+              </div>
+            </section>
+
+            {/* ========================================================= MANIFEST */}
+            <section
+              id="brief"
+              data-anim="manifest"
+              className={cn(
+                'relative my-10 overflow-hidden rounded-[28px] px-6 py-14 sm:my-14 sm:px-10 sm:py-20 lg:px-14',
+                // subtle card: cream wash + cream hairline + barely-visible gold seam at top
+                'bg-gradient-to-b from-[#F4F1EA]/[0.028] via-[#F4F1EA]/[0.014] to-[#F4F1EA]/[0.005]',
+                'shadow-[inset_0_0_0_1px_rgba(244,241,234,0.055),inset_0_1px_0_rgba(200,168,100,0.18)]'
+              )}
+            >
+              <div className="relative grid grid-cols-12 items-start gap-x-6 gap-y-10 lg:gap-x-10">
+                <div className="col-span-12 lg:col-span-3" data-anim="manifest-title">
+                  <div className="font-mono text-[10.5px] uppercase tracking-[0.32em] text-[#F4F1EA]/45">
+                    M01 · Cómo funciona
+                  </div>
+                  <h2
+                    className="mt-5 font-display tracking-[-0.022em] leading-[1.02] text-[#F4F1EA]"
+                    style={{ fontWeight: 500, fontSize: 'clamp(28px, 3.6vw, 46px)' }}
+                  >
+                    Tres pasos.
+                    <br />
+                    <span className="font-light text-[#F4F1EA]/55">Una alianza.</span>
+                  </h2>
+                </div>
+                <dl className="col-span-12 grid grid-cols-1 gap-y-6 lg:col-span-9">
+                  <ManifestRow
+                    num="01"
+                    label="Entrevista"
+                    value="Doce minutos. Texto o voz. Adaptiva al perfil de tu institución."
+                  />
+                  <ManifestRow
+                    num="02"
+                    label="Estructura"
+                    value="Cuarenta y cuatro cajas canónicas. Schema v1.0 firmable y versionado."
+                  />
+                  <ManifestRow
+                    num="03"
+                    label="Distribución"
+                    value="Solicitudes preprocesadas llegan a tu mesa. Cero coordinación operativa."
+                  />
+                </dl>
+              </div>
+            </section>
+          </main>
+
+          {/* ============================================================== FOOTER */}
+          <footer id="cierre" className="relative z-10 mt-10">
+            {/* Wordmark gigante — signature flourish (firma editorial) */}
+            <div
+              aria-hidden
+              className="relative mx-auto w-full max-w-[1480px] overflow-hidden px-4 pt-12 sm:px-6 lg:px-8"
+            >
+              <Image
+                src="/Logo_white.svg"
+                alt=""
+                width={7095}
+                height={2369}
+                data-anim="footer-wordmark"
+                className="h-auto w-full select-none opacity-[0.10]"
+                style={{
+                  maskImage:
+                    'linear-gradient(to bottom, #000 30%, rgba(0,0,0,0.6) 70%, transparent 100%)',
+                }}
+              />
+            </div>
+
+            <div className="mx-auto flex w-full max-w-[1480px] flex-col items-start justify-between gap-6 px-6 py-8 sm:flex-row sm:items-center sm:px-10 lg:px-14">
+              <div className="font-mono text-[10.5px] uppercase tracking-[0.3em] text-[#F4F1EA]/45">
+                Vértice © 2026 · Red de financieras aliadas
+              </div>
+              <nav className="flex flex-wrap items-center gap-6">
+                <FooterLink href="/terminos">Términos</FooterLink>
+                <FooterLink href="/terminos#privacidad">Privacidad</FooterLink>
+                <FooterLink onClick={() => setCookiesOpen(true)}>Cookies</FooterLink>
+                <span className="font-mono text-[10.5px] uppercase tracking-[0.3em] text-[#F4F1EA]/25">/</span>
+                <span className="font-mono text-[10.5px] uppercase tracking-[0.3em] text-[#F4F1EA]/35">
+                  Acceso por invitación
+                </span>
+              </nav>
+            </div>
+          </footer>
+
+          {/* ============================================================== DIALOG */}
+          <Dialog.Portal>
+            <Dialog.Backdrop
+              data-lenis-prevent
+              className={cn(
+                'fixed inset-0 z-50 bg-[#0A0F1C]/82 backdrop-blur-sm',
+                'data-[starting-style]:opacity-0 data-[ending-style]:opacity-0',
+                'transition-opacity duration-300'
+              )}
+            />
+            <Dialog.Popup
+              data-lenis-prevent
+              className={cn(
+                'fixed left-1/2 top-1/2 z-50 w-[min(94vw,480px)] -translate-x-1/2 -translate-y-1/2',
+                'overflow-hidden rounded-[24px] border border-[#F4F1EA]/8 bg-[#F4F1EA] text-[#0A0F1C] shadow-2xl shadow-black/50',
+                'data-[starting-style]:scale-95 data-[starting-style]:opacity-0',
+                'data-[ending-style]:scale-95 data-[ending-style]:opacity-0',
+                'transition-all duration-300'
+              )}
+              initialFocus={null}
+            >
+              <DialogShell
+                kicker={
+                  mode === 'menu'
+                    ? 'Bienvenido'
+                    : mode === 'access'
+                      ? 'Acceso · panel'
+                      : 'Solicitar acceso'
+                }
+                onClose={() => setOpen(false)}
+                onBack={fromMenu && mode !== 'menu' ? () => setMode('menu') : undefined}
+              >
+                {mode === 'menu' ? (
+                  <MenuFlow onPick={pickFromMenu} />
+                ) : mode === 'access' ? (
+                  <AccessFlow />
+                ) : (
+                  <RequestFlow />
+                )}
+              </DialogShell>
+            </Dialog.Popup>
+          </Dialog.Portal>
+        </Dialog.Root>
+
+        <SectionIndicator />
+        <CookiesCard open={cookiesOpen} onClose={() => setCookiesOpen(false)} />
+      </div>
+    </LenisProvider>
   );
 }
 
@@ -540,13 +666,22 @@ function ManifestRow({ num, label, value }: { num: string; label: string; value:
       data-anim="manifest-row"
       className="grid grid-cols-12 items-baseline gap-x-4 border-t border-[#F4F1EA]/6 pt-6 first:border-t-0 first:pt-0"
     >
-      <span className="col-span-2 font-mono text-[10.5px] uppercase tracking-[0.3em] text-[#C8A864] sm:col-span-1">
+      <span
+        data-row="num"
+        className="col-span-2 font-mono text-[10.5px] uppercase tracking-[0.3em] text-[#C8A864] sm:col-span-1"
+      >
         {num}
       </span>
-      <dt className="col-span-10 font-mono text-[10.5px] uppercase tracking-[0.32em] text-[#F4F1EA]/45 sm:col-span-3">
+      <dt
+        data-row="label"
+        className="col-span-10 font-mono text-[10.5px] uppercase tracking-[0.32em] text-[#F4F1EA]/45 sm:col-span-3"
+      >
         {label}
       </dt>
-      <dd className="col-span-12 mt-3 text-[16.5px] leading-relaxed text-[#F4F1EA]/85 sm:col-span-8 sm:mt-0 sm:text-[18px]">
+      <dd
+        data-row="value"
+        className="col-span-12 mt-3 text-[16.5px] leading-relaxed text-[#F4F1EA]/85 sm:col-span-8 sm:mt-0 sm:text-[18px]"
+      >
         {value}
       </dd>
     </div>
@@ -556,16 +691,28 @@ function ManifestRow({ num, label, value }: { num: string; label: string; value:
 function DialogShell({
   kicker,
   onClose,
+  onBack,
   children,
 }: {
   kicker: string;
   onClose: () => void;
+  onBack?: () => void;
   children: ReactNode;
 }) {
   return (
     <>
       <div className="flex items-center justify-between border-b border-[#0A0F1C]/8 px-6 py-3.5">
         <div className="flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-[0.3em] text-[#0A0F1C]/55">
+          {onBack && (
+            <button
+              type="button"
+              onClick={onBack}
+              className="-ml-1 inline-flex size-6 items-center justify-center rounded-full text-[#0A0F1C]/50 transition-colors hover:bg-[#0A0F1C]/5 hover:text-[#0A0F1C]"
+              aria-label="Volver"
+            >
+              <ArrowLeft className="size-3.5" strokeWidth={2.25} />
+            </button>
+          )}
           <span className="size-1.5 rounded-full bg-[#C8A864]" />
           {kicker}
         </div>
@@ -583,6 +730,54 @@ function DialogShell({
   );
 }
 
+// ---------- Menu flow -------------------------------------------------------
+function MenuFlow({ onPick }: { onPick: (m: 'access' | 'request') => void }) {
+  return (
+    <>
+      <Dialog.Title
+        className="font-display text-2xl tracking-[-0.02em]"
+        style={{ fontWeight: 500 }}
+      >
+        Acceso a la plataforma.
+      </Dialog.Title>
+      <Dialog.Description className="mt-2 text-[13.5px] leading-relaxed text-[#0A0F1C]/60">
+        Selecciona la opción que aplica a tu institución.
+      </Dialog.Description>
+
+      <div className="mt-7 space-y-3">
+        <button
+          type="button"
+          onClick={() => onPick('access')}
+          className="group/menu flex w-full items-center justify-between gap-4 rounded-xl border border-[#0A0F1C]/12 bg-white px-5 py-4 text-left transition-colors hover:border-[#0A0F1C]/30"
+        >
+          <div>
+            <div className="text-[14px] font-medium text-[#0A0F1C]">Reanudar entrevista</div>
+            <div className="mt-0.5 text-[12.5px] text-[#0A0F1C]/55">Mi institución ya está registrada</div>
+          </div>
+          <ArrowUpRight
+            className="size-4 text-[#0A0F1C]/40 transition-all group-hover/menu:translate-x-0.5 group-hover/menu:text-[#C8A864]"
+            strokeWidth={2.25}
+          />
+        </button>
+
+        <button
+          type="button"
+          onClick={() => onPick('request')}
+          className="group/menu flex w-full items-center justify-between gap-4 rounded-xl bg-[#0A0F1C] px-5 py-4 text-left transition-colors hover:bg-[#1a2236]"
+        >
+          <div>
+            <div className="text-[14px] font-medium text-[#F4F1EA]">Solicitar alianza</div>
+            <div className="mt-0.5 text-[12.5px] text-[#F4F1EA]/55">Registrar mi institución en la red</div>
+          </div>
+          <span className="inline-flex size-9 items-center justify-center rounded-lg bg-[#C8A864] text-[#0A0F1C] transition-transform group-hover/menu:rotate-45">
+            <ArrowUpRight className="size-4" strokeWidth={2.25} />
+          </span>
+        </button>
+      </div>
+    </>
+  );
+}
+
 // ---------- Access flow -----------------------------------------------------
 function AccessFlow() {
   const [stage, setStage] = useState<'choose' | 'email' | 'sent_email' | 'google'>('choose');
@@ -595,10 +790,11 @@ function AccessFlow() {
           className="font-display text-2xl tracking-[-0.02em]"
           style={{ fontWeight: 500 }}
         >
-          Acceder a mi encuesta.
+          Reanudar entrevista.
         </Dialog.Title>
         <Dialog.Description className="mt-2 text-[13.5px] leading-relaxed text-[#0A0F1C]/60">
-          Continúa con la dirección de Google con la que recibiste el correo de invitación.
+          Continúa con la cuenta de Google registrada por tu institución. La misma del correo de
+          invitación.
         </Dialog.Description>
 
         <button
@@ -737,15 +933,15 @@ function RequestFlow() {
           className="sx-text mt-6 font-display text-[26px] leading-[1.1] tracking-[-0.02em]"
           style={{ fontWeight: 500, animationDelay: '1.05s' }}
         >
-          Solicitud recibida.
+          Solicitud registrada.
         </Dialog.Title>
         <Dialog.Description
           className="sx-text mt-2 max-w-[36ch] text-[13.5px] leading-relaxed text-[#0A0F1C]/60"
           style={{ animationDelay: '1.18s' }}
         >
-          Recibimos tu solicitud para{' '}
-          <span className="font-medium text-[#0A0F1C]">{estado.razon}</span>. Te contactamos en las
-          próximas 24 horas hábiles.
+          La solicitud de alianza de{' '}
+          <span className="font-medium text-[#0A0F1C]">{estado.razon}</span> quedó registrada. Un
+          representante de Vértice agenda la entrevista en menos de 24 horas hábiles.
         </Dialog.Description>
         <div
           className="sx-text mt-6 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.32em] text-[#0A0F1C]/45"
@@ -764,10 +960,11 @@ function RequestFlow() {
         className="font-display text-2xl tracking-[-0.02em]"
         style={{ fontWeight: 500 }}
       >
-        Solicita una entrevista.
+        Solicitar alianza.
       </Dialog.Title>
       <Dialog.Description className="mt-2 text-[13.5px] leading-relaxed text-[#0A0F1C]/60">
-        Tres campos. Te contactamos para programar la sesión.
+        Tres datos básicos de tu institución. Te contactamos en menos de 24 horas hábiles para
+        agendar la entrevista.
       </Dialog.Description>
 
       <div className="mt-7 space-y-5">

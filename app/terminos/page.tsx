@@ -6,6 +6,8 @@ import Link from 'next/link';
 import { ArrowUpLeft } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
+import { LenisProvider } from '@/components/landing/LenisProvider';
+import { FooterLink } from '@/components/landing/FooterLink';
 
 if (typeof window !== 'undefined') {
   gsap.registerPlugin(ScrollTrigger);
@@ -239,6 +241,7 @@ export default function Terminos() {
   }, []);
 
   return (
+    <LenisProvider>
     <div
       className="landing-root relative flex min-h-screen w-full flex-1 flex-col overflow-x-clip bg-[#0A0F1C] text-[#F4F1EA]"
       style={{ fontFamily: "'Satoshi', ui-sans-serif, system-ui, sans-serif" }}
@@ -304,8 +307,8 @@ export default function Terminos() {
                 Términos de
               </span>
               <span
-                className="ln-line block italic"
-                style={{ animationDelay: '0.18s', fontWeight: 400, color: '#C8A864' }}
+                className="ln-line block"
+                style={{ animationDelay: '0.18s', fontWeight: 500, color: '#C8A864' }}
               >
                 uso & privacidad.
               </span>
@@ -418,14 +421,10 @@ export default function Terminos() {
           <div className="font-mono text-[10.5px] uppercase tracking-[0.3em] text-[#F4F1EA]/45">
             Vértice © 2026 — Criterios crediticios
           </div>
-          <Link
-            href="/"
-            className="font-mono text-[10.5px] uppercase tracking-[0.3em] text-[#F4F1EA]/55 transition-colors hover:text-[#F4F1EA]"
-          >
-            ← Volver al inicio
-          </Link>
+          <FooterLink href="/">Volver al inicio</FooterLink>
         </div>
       </footer>
     </div>
+    </LenisProvider>
   );
 }
