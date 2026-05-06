@@ -1,7 +1,6 @@
 'use client';
 
 import { useEffect, useState, type ReactNode } from 'react';
-import Image from 'next/image';
 import Link from 'next/link';
 import { ArrowUpLeft } from 'lucide-react';
 import gsap from 'gsap';
@@ -255,29 +254,18 @@ export default function Terminos() {
         }}
       />
 
-      {/* HEADER STATIC — todos los elementos alineados verticalmente */}
+      {/* HEADER STATIC — alineado con la landing (sin logo, h-14/16, chip dual) */}
       <header className="pointer-events-none fixed inset-x-0 top-0 z-30">
         <div className="mx-auto w-full max-w-[1480px] px-6 pt-6 sm:px-10 lg:px-14">
-          <div className="relative flex h-12 items-center justify-between gap-4">
-            <Link
-              href="/"
-              aria-label="Vértice — inicio"
-              className="pointer-events-auto inline-flex items-center"
-            >
-              <Image
-                src="/Logo_white.svg"
-                alt="Vértice"
-                width={7095}
-                height={2369}
-                priority
-                className="h-11 w-auto"
-              />
-            </Link>
-
+          <div className="relative flex h-14 items-center justify-end gap-4 sm:h-16">
             <div className="pointer-events-auto absolute left-1/2 hidden -translate-x-1/2 md:flex md:items-center md:gap-3 md:rounded-full md:border md:border-[#F4F1EA]/10 md:bg-[#0A0F1C]/55 md:px-3.5 md:py-2 md:backdrop-blur-xl">
               <span className="size-1.5 rounded-full bg-[#C8A864] shadow-[0_0_10px_rgba(200,168,100,0.5)]" />
               <span className="font-mono text-[10.5px] uppercase tracking-[0.28em] text-[#F4F1EA]/65">
                 Documento legal
+              </span>
+              <span className="size-1 rounded-full bg-[#F4F1EA]/15" />
+              <span className="font-mono text-[10.5px] uppercase tracking-[0.28em] text-[#F4F1EA]/65">
+                Vol. 01
               </span>
             </div>
 
@@ -285,7 +273,10 @@ export default function Terminos() {
               href="/"
               className="pointer-events-auto group inline-flex h-10 items-center gap-2 rounded-full border border-[#F4F1EA]/15 bg-[#0A0F1C]/55 px-3.5 text-[12px] font-medium text-[#F4F1EA]/85 backdrop-blur-xl transition-colors hover:border-[#F4F1EA]/35 hover:text-[#F4F1EA]"
             >
-              <ArrowUpLeft className="size-3.5 text-[#C8A864] transition-transform group-hover:-translate-x-0.5" strokeWidth={2.5} />
+              <ArrowUpLeft
+                className="size-3.5 text-[#C8A864] transition-transform group-hover:-translate-x-0.5"
+                strokeWidth={2.5}
+              />
               <span className="hidden sm:inline">Volver</span>
             </Link>
           </div>
