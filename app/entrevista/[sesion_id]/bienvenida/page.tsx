@@ -56,7 +56,7 @@ export default async function BienvenidaPage({ params }: Props) {
         </p>
         <p style={{ fontSize: 14, color: '#333', lineHeight: 1.6, marginBottom: 8 }}>
           No compartiremos los datos identificables con terceros sin tu autorización
-          previa. Puedes ejercer tus derechos ARCO escribiendo a privacidad@verticemexico.com.
+          previa. Puedes ejercer tus derechos ARCO escribiendo a contacto@verticemexico.com.
         </p>
         <p style={{ fontSize: 14, color: '#333', lineHeight: 1.6 }}>
           La transcripción y los datos extraídos se almacenan en una base de datos cifrada
