@@ -36,7 +36,7 @@
 
 import { sql, eq, and, isNull } from 'drizzle-orm';
 import { db } from '@/lib/db';
-import { turnos_conversacion, extracciones } from '@/db/schema';
+import { turnos_conversacion, extracciones, cajas_declinadas } from '@/db/schema';
 import { valorSchemaFor, type Extraccion } from '@/lib/schemas/extracciones';
 
 // =============================================================================
@@ -120,6 +120,24 @@ export async function listarExtraccionesActivas(
     superseded_by: r.superseded_by ?? null,
     created_at: r.created_at,
   }));
+}
+
+// =============================================================================
+// listarCajasDeclinadas
+// =============================================================================
+
+/**
+ * Devuelve los códigos de caja que el motor declinó para esta sesión (Phase 5
+ * step 5: review handoff Sonnet→Opus terminó la caja como decline_to_answer).
+ * El consumidor primario es `computeMapaIncertidumbre`, que las trata como
+ * terminales (cuentan en cajas_*_pct, excluidas de top_cajas_a_atacar).
+ */
+export async function listarCajasDeclinadas(sesion_id: string): Promise<string[]> {
+  const rows = await db
+    .select({ caja_codigo: cajas_declinadas.caja_codigo })
+    .from(cajas_declinadas)
+    .where(eq(cajas_declinadas.sesion_id, sesion_id));
+  return rows.map((r) => r.caja_codigo);
 }
 
 // =============================================================================

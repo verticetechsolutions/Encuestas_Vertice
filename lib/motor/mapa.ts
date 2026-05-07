@@ -11,11 +11,18 @@
 //   - "Llena" requiere confianza ≥ 0.80 (críticas) o 0.65 (blandas), per §5.4.
 //   - "No aplica" es llena para fines de completitud — extracción manual con
 //     valor=null y confianza ≥ threshold cuenta como cerrada (founder D2).
+//   - "Declinada" es terminal por decisión del motor (Phase 5 step 5: review
+//     handoff Sonnet→Opus). Cuenta como llena en cajas_*_pct (la sesión no
+//     pudo cerrarla, motor la acepta así). Excluida de top_cajas_a_atacar para
+//     que Sonnet no la repregunte. Se override sobre cualquier estado previo
+//     (incluso contradictoria) — la decisión vive server-side y manda.
 //   - "Contradictoria" se detecta cuando hay múltiples extracciones no-superseded
 //     con valores distintos sobre la misma caja. Surface bug para el operador,
 //     no resolución automática.
 //   - confianza_global pondera críticas 2x sobre blandas para que la métrica refleje
 //     prioridad de cierre (la institución no firma sin críticas resueltas).
+//     Declinadas conservan la confianza de su última extracción (0 si nunca
+//     se extrajo) — bajan el score honestamente sin inflar artificialmente.
 
 import type { CajaCanon, Criticidad } from '@/lib/schemas/cajas';
 import type { Extraccion } from '@/lib/schemas/extracciones';
@@ -28,6 +35,7 @@ export type CajaStatus =
   | 'parcial'
   | 'vacia'
   | 'no_aplica'
+  | 'declinada'
   | 'contradictoria';
 
 export interface CajaState {
@@ -41,22 +49,26 @@ export interface CajaState {
 
 export interface MapaIncertidumbre {
   cajas: Record<string, CajaState>;
-  // Ratio cajas críticas con status 'llena' o 'no_aplica' / total críticas aplicables.
+  // Ratio cajas críticas con status 'llena' | 'no_aplica' | 'declinada' / total
+  // críticas aplicables. Declinadas cuentan como cerradas (motor las terminó).
   cajas_criticas_pct: number;
   cajas_blandas_pct: number;
   // Confianza ponderada (críticas peso 2, blandas peso 1) sobre todas las cajas aplicables.
   confianza_global: number;
   // Códigos de las top N cajas a atacar próximas: críticas primero, dentro de cada
   // grupo las parciales antes que las vacías (más cerca de threshold = más rentable),
-  // contradictorias siempre arriba.
+  // contradictorias siempre arriba. Declinadas excluidas (no se repreguntan).
   top_cajas_a_atacar: string[];
 }
 
 export function computeMapaIncertidumbre(
   extracciones: readonly Extraccion[],
   cajasAplicables: readonly CajaCanon[],
+  cajasDeclinadas: readonly string[] = [],
   topN = 3
 ): MapaIncertidumbre {
+  const declinadasSet = new Set(cajasDeclinadas);
+
   const porCaja = new Map<string, Extraccion[]>();
   for (const e of extracciones) {
     if (e.superseded_by) continue; // ignora extracciones sustituidas
@@ -67,13 +79,18 @@ export function computeMapaIncertidumbre(
 
   const cajas: Record<string, CajaState> = {};
   for (const canon of cajasAplicables) {
-    cajas[canon.codigo] = collapseCaja(canon, porCaja.get(canon.codigo) ?? []);
+    cajas[canon.codigo] = collapseCaja(
+      canon,
+      porCaja.get(canon.codigo) ?? [],
+      declinadasSet.has(canon.codigo)
+    );
   }
 
   const criticas = cajasAplicables.filter((c) => c.criticidad === 'critica');
   const blandas = cajasAplicables.filter((c) => c.criticidad === 'blanda');
 
-  const isFilled = (s: CajaState) => s.status === 'llena' || s.status === 'no_aplica';
+  const isFilled = (s: CajaState) =>
+    s.status === 'llena' || s.status === 'no_aplica' || s.status === 'declinada';
 
   const cajas_criticas_pct =
     criticas.length === 0 ? 1 : criticas.filter((c) => isFilled(cajas[c.codigo])).length / criticas.length;
@@ -97,12 +114,13 @@ export function computeMapaIncertidumbre(
     vacia: 2,
     llena: 3, // excluidas abajo
     no_aplica: 4, // excluidas abajo
+    declinada: 5, // excluidas abajo (motor decidió terminal)
   };
 
   const candidatas = cajasAplicables
     .filter((c) => {
       const s = cajas[c.codigo];
-      return s.status !== 'llena' && s.status !== 'no_aplica';
+      return s.status !== 'llena' && s.status !== 'no_aplica' && s.status !== 'declinada';
     })
     .sort((a, b) => {
       const sa = cajas[a.codigo];
@@ -124,7 +142,45 @@ export function computeMapaIncertidumbre(
   };
 }
 
-function collapseCaja(canon: CajaCanon, extracciones: Extraccion[]): CajaState {
+function collapseCaja(
+  canon: CajaCanon,
+  extracciones: Extraccion[],
+  declinada: boolean
+): CajaState {
+  // Override `declinada` corre primero: motor terminó la caja por handoff Sonnet→Opus
+  // (cap_casos_alcanzado, cap_turnos_alcanzado, estancada_post_profundizar, etc.).
+  // Gana sobre cualquier estado de extracción para que top_cajas_a_atacar la excluya.
+  // Si hay extracciones previas, conserva confianza/evidencia de la última (no
+  // perdemos señal al sintetizar). Si no las hay, confianza=0 — bajamos el score
+  // honestamente sin inflar.
+  if (declinada) {
+    if (extracciones.length === 0) {
+      return {
+        codigo: canon.codigo,
+        criticidad: canon.criticidad,
+        status: 'declinada',
+        confianza: 0,
+        evidencias_count: 0,
+        ultima_extraccion_id: null,
+      };
+    }
+    const ordenadas = [...extracciones].sort((a, b) => {
+      if (a.version !== b.version) return b.version - a.version;
+      const ta = a.created_at?.getTime?.() ?? 0;
+      const tb = b.created_at?.getTime?.() ?? 0;
+      return tb - ta;
+    });
+    const latest = ordenadas[0];
+    return {
+      codigo: canon.codigo,
+      criticidad: canon.criticidad,
+      status: 'declinada',
+      confianza: latest.confianza,
+      evidencias_count: extracciones.length,
+      ultima_extraccion_id: latest.id ?? null,
+    };
+  }
+
   if (extracciones.length === 0) {
     return {
       codigo: canon.codigo,
