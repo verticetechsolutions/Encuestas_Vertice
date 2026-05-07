@@ -217,12 +217,24 @@ function collapseCaja(
   const threshold = canon.criticidad === 'critica' ? CONFIANZA_MIN_CRITICA : CONFIANZA_MIN_BLANDA;
   const cumple = latest.confianza >= threshold;
 
-  // no_aplica: extracción manual con valor null y confianza ≥ threshold. Solo manual
-  // porque el LLM puede escribir null como "sin requisito"/"no usa" para cajas numéricas
-  // ambiguas — la diferencia "no aplica" explícita la marca el usuario en el form.
-  const esNoAplica = cumple && latest.fuente === 'manual' && latest.valor === null;
+  // Validez del valor para cierre terminal (Phase 3 D2 follow-up):
+  // `null` solo es terminal cuando el canon declara `permite_no_aplica=true`.
+  // Si el valor es null en una caja que NO acepta no_aplica, cae a parcial
+  // aunque cumpla threshold — el aliado debe ingresar un valor real, ese
+  // null es data inválida que el form lateral no debería permitir.
+  const valorEsNull = latest.valor === null;
+  const aceptaNull = canon.permite_no_aplica === true;
+  const valorValidoParaCierre = !valorEsNull || aceptaNull;
+  const cumpleTerminal = cumple && valorValidoParaCierre;
 
-  const status: CajaStatus = esNoAplica ? 'no_aplica' : cumple ? 'llena' : 'parcial';
+  // no_aplica: extracción manual con valor null y confianza ≥ threshold, sobre una
+  // caja que declara `permite_no_aplica=true`. Solo `manual` porque el LLM puede
+  // escribir null como "sin requisito"/"no usa" para cajas numéricas ambiguas —
+  // la diferencia "no aplica" explícita la marca el usuario en el form lateral.
+  const esNoAplica =
+    cumpleTerminal && latest.fuente === 'manual' && valorEsNull && aceptaNull;
+
+  const status: CajaStatus = esNoAplica ? 'no_aplica' : cumpleTerminal ? 'llena' : 'parcial';
 
   return {
     codigo: canon.codigo,
