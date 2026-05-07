@@ -245,6 +245,7 @@ export function EntrevistaShell({
                 autosave={autosave[activePregunta.id] ?? 'idle'}
                 onChangeTexto={(t) => setRespuesta(activePregunta.id, t)}
                 onToggleMarcada={(m) => marcarRespondida(activePregunta.id, m)}
+                sttEnabled={!preview}
               />
             ) : enviando ? (
               <div className="flex items-center justify-center gap-3 rounded-3xl bg-cream py-20 ring-1 ring-foreground/5 shadow-sm">

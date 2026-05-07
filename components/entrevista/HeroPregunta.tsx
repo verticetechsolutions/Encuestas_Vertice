@@ -9,11 +9,21 @@
 //   - Textarea sin bordes visibles, min-h grande, focus ring lime
 //   - Footer ancho: autosave indicator izq + mic + Marcar respondida der
 //   - Microanimación: cambia con animate-fade-up (key={pregunta.id} en wrapper)
+//
+// STT (Fase 6): cuando `sttEnabled=true`, monta el flujo Deepgram (idle hasta
+// que el usuario pulsa el mic). Cada segmento finalizado se concatena al texto
+// vía onChangeTexto; el interim se muestra como preview gris debajo del
+// textarea. Cambio de pregunta (pregunta.id) detiene el stream y resetea el
+// tracker de append. En preview (`sttEnabled=false`) el botón se renderiza
+// disabled con tooltip — /api/stt/token requiere cookie real, no funciona en
+// /preview/ui.
 
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { Check, CircleDashed, Mic, Sparkles } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
+import { MicButton } from '@/components/stt/MicButton';
+import { useDeepgramStream } from '@/lib/stt/use-deepgram-stream';
 import type { Pregunta, AutosaveStatus } from '@/lib/state/entrevista';
 import { cn } from '@/lib/utils';
 
@@ -27,6 +37,8 @@ interface Props {
   autosave: AutosaveStatus;
   onChangeTexto: (texto: string) => void;
   onToggleMarcada: (marcada: boolean) => void;
+  /** STT live wiring. False en preview/dev (sin cookie de sesión). */
+  sttEnabled?: boolean;
 }
 
 interface AutosaveMeta {
@@ -61,9 +73,44 @@ export function HeroPregunta({
   autosave,
   onChangeTexto,
   onToggleMarcada,
+  sttEnabled = false,
 }: Props) {
   const [showMicTooltip, setShowMicTooltip] = useState(false);
   const meta = autosaveMeta(autosave);
+
+  const stt = useDeepgramStream();
+  const lastAppendedRef = useRef(0);
+  const textoRef = useRef(texto);
+  textoRef.current = texto;
+
+  // Cambio de pregunta: cierra el stream activo y resetea el tracker para que
+  // segmentos previos no se vuelvan a inyectar en el siguiente textarea.
+  useEffect(() => {
+    if (stt.status === 'streaming' || stt.status === 'connecting') {
+      stt.stop();
+    }
+    lastAppendedRef.current = stt.transcripts.history.length;
+    // Solo dependemos de pregunta.id — stop/reset solo se debe disparar al cambiar.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [pregunta.id]);
+
+  // Append de segmentos finalizados nuevos al texto. Usamos textoRef para leer
+  // el último valor sin re-disparar el effect a cada keystroke; eso lo
+  // colapsaría a "anexar siempre todo el historial".
+  useEffect(() => {
+    const len = stt.transcripts.history.length;
+    if (len === lastAppendedRef.current) return;
+    const nuevos = stt.transcripts.history.slice(lastAppendedRef.current);
+    const fragmento = nuevos
+      .map((s) => s.text.trim())
+      .filter(Boolean)
+      .join(' ');
+    lastAppendedRef.current = len;
+    if (!fragmento) return;
+    const previo = textoRef.current;
+    const sep = previo.length === 0 || /\s$/.test(previo) ? '' : ' ';
+    onChangeTexto(previo + sep + fragmento);
+  }, [stt.transcripts.history.length, onChangeTexto]);
 
   return (
     <article
@@ -143,6 +190,22 @@ export function HeroPregunta({
             )}
             aria-label={`Respuesta a la pregunta ${numero}`}
           />
+          {/* Interim STT — preview en gris claro mientras Deepgram aún no
+              finaliza el segmento. Al finalizar, el texto se anexa al textarea
+              y este preview se vacía. */}
+          {sttEnabled && stt.transcripts.interim && (
+            <p
+              className="mt-2 px-5 text-sm italic text-muted-foreground/70 animate-fade-up"
+              aria-live="polite"
+            >
+              {stt.transcripts.interim}…
+            </p>
+          )}
+          {sttEnabled && stt.error && stt.status === 'error' && (
+            <p className="mt-2 px-5 text-xs text-destructive" role="alert">
+              {stt.error}
+            </p>
+          )}
         </div>
 
         {/* Footer del card */}
@@ -178,31 +241,45 @@ export function HeroPregunta({
           </div>
 
           <div className="flex items-center gap-2">
-            {/* Mic placeholder */}
-            <div className="relative">
-              <button
-                type="button"
-                disabled
-                onMouseEnter={() => setShowMicTooltip(true)}
-                onMouseLeave={() => setShowMicTooltip(false)}
-                onFocus={() => setShowMicTooltip(true)}
-                onBlur={() => setShowMicTooltip(false)}
-                aria-describedby={`mic-tip-${pregunta.id}`}
-                className="inline-flex size-11 items-center justify-center rounded-full bg-muted/60 text-muted-foreground/70 ring-1 ring-foreground/10 transition-all cursor-not-allowed opacity-60"
-              >
-                <Mic className="size-4" />
-                <span className="sr-only">Activar micrófono</span>
-              </button>
-              {showMicTooltip && (
-                <div
-                  id={`mic-tip-${pregunta.id}`}
-                  role="tooltip"
-                  className="absolute right-0 bottom-full mb-2 w-56 rounded-xl bg-forest-deep px-3 py-2 text-xs text-primary-foreground shadow-lg animate-fade-up"
+            {sttEnabled ? (
+              // STT activo (sesión real). MicButton vive su propio lifecycle:
+              // el hook arriba lo alimenta vía start/stop y los transcripts
+              // se anexan al textarea por el useEffect.
+              <MicButton
+                status={stt.status}
+                error={stt.error}
+                onStart={stt.start}
+                onStop={stt.stop}
+                className="size-11 [&>svg]:size-4"
+              />
+            ) : (
+              // Preview / dev (sin cookie). /api/stt/token devolvería 401 —
+              // mejor mostrar disabled con tooltip claro.
+              <div className="relative">
+                <button
+                  type="button"
+                  disabled
+                  onMouseEnter={() => setShowMicTooltip(true)}
+                  onMouseLeave={() => setShowMicTooltip(false)}
+                  onFocus={() => setShowMicTooltip(true)}
+                  onBlur={() => setShowMicTooltip(false)}
+                  aria-describedby={`mic-tip-${pregunta.id}`}
+                  className="inline-flex size-11 items-center justify-center rounded-full bg-muted/60 text-muted-foreground/70 ring-1 ring-foreground/10 transition-all cursor-not-allowed opacity-60"
                 >
-                  Disponible al integrar voz (Fase 6).
-                </div>
-              )}
-            </div>
+                  <Mic className="size-4" />
+                  <span className="sr-only">Activar micrófono</span>
+                </button>
+                {showMicTooltip && (
+                  <div
+                    id={`mic-tip-${pregunta.id}`}
+                    role="tooltip"
+                    className="absolute right-0 bottom-full mb-2 w-56 rounded-xl bg-forest-deep px-3 py-2 text-xs text-primary-foreground shadow-lg animate-fade-up"
+                  >
+                    Disponible solo en sesión real (preview lo desactiva).
+                  </div>
+                )}
+              </div>
+            )}
 
             <Button
               type="button"
