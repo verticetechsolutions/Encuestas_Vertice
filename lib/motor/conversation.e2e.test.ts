@@ -240,7 +240,7 @@ function computeLlenasPorGrupo(
   for (const g of GrupoUISchema.options) out[g] = 0;
   for (const codigo of Object.keys(cajasState)) {
     const s = cajasState[codigo];
-    if (s.status !== 'llena' && s.status !== 'no_aplica') continue;
+    if (s.status !== 'llena' && s.status !== 'no_aplica' && s.status !== 'declinada') continue;
     const canon = getCajaAny(codigo);
     if (!canon) continue;
     out[canon.grupo_ui] = (out[canon.grupo_ui] ?? 0) + 1;

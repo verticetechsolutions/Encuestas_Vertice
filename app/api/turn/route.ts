@@ -45,6 +45,7 @@ import {
   actualizarContenidoTurnoAgente,
   persistirExtraccionesBatch,
   listarExtraccionesActivas,
+  listarCajasDeclinadas,
   ExtraccionInvalidaError,
   type ExtraccionInput,
 } from '@/lib/motor/persistence';
@@ -86,7 +87,15 @@ function computeLlenasPorGrupo(
   for (const g of GrupoUISchema.options) out[g] = 0;
   for (const codigo of Object.keys(cajasState)) {
     const state = cajasState[codigo];
-    if (state.status !== 'llena' && state.status !== 'no_aplica') continue;
+    // "llenas" para el panel UI = todo estado terminal: llena | no_aplica | declinada.
+    // Declinadas cuentan como cerradas para que el avance del panel refleje la
+    // realidad post-handoff Sonnet→Opus (Phase 5 step 5).
+    if (
+      state.status !== 'llena' &&
+      state.status !== 'no_aplica' &&
+      state.status !== 'declinada'
+    )
+      continue;
     const canon = getCajaAny(codigo);
     if (!canon) continue;
     out[canon.grupo_ui] = (out[canon.grupo_ui] ?? 0) + 1;
@@ -299,8 +308,11 @@ export async function POST(req: Request) {
             // interno con el snapshot post-stream); solo es UI feedback.
             let mapa_summary;
             try {
-              const activas = await listarExtraccionesActivas(sesion_id);
-              const mapa = computeMapaIncertidumbre(activas, cajasAplicables);
+              const [activas, declinadas] = await Promise.all([
+                listarExtraccionesActivas(sesion_id),
+                listarCajasDeclinadas(sesion_id),
+              ]);
+              const mapa = computeMapaIncertidumbre(activas, cajasAplicables, declinadas);
               const llenas_por_grupo = computeLlenasPorGrupo(mapa.cajas);
               mapa_summary = {
                 llenas_por_grupo,
