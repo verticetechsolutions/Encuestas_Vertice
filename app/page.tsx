@@ -643,7 +643,6 @@ export default function Landing() {
                 'data-[ending-style]:scale-95 data-[ending-style]:opacity-0',
                 'transition-all duration-300'
               )}
-              initialFocus={false}
             >
               <DialogShell
                 kicker={
@@ -1236,7 +1235,7 @@ function FormSelect({
         {label}
       </label>
       <div className="mt-2.5">
-        <Select value={value || undefined} onValueChange={onValueChange}>
+        <Select value={value} onValueChange={onValueChange}>
           <SelectTrigger>
             <SelectValue placeholder={placeholder} />
           </SelectTrigger>

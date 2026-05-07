@@ -31,8 +31,8 @@ const SECTIONS: Section[] = [
     body: (
       <>
         <p>
-          Al acceder a Vértice — sea por enlace de invitación, formulario público o vía panel
-          autenticado — quien lo hace declara contar con facultades suficientes para representar a
+          Al acceder a Vértice (sea por enlace de invitación, formulario público o vía panel
+          autenticado), quien lo hace declara contar con facultades suficientes para representar a
           la institución financiera que registra y aceptar estos términos en su nombre.
         </p>
         <p>
@@ -51,7 +51,7 @@ const SECTIONS: Section[] = [
       <>
         <p>
           Vértice es una plataforma de entrevistas adaptivas que extrae, en tiempo real,
-          criterios de política crediticia y los devuelve como un perfil estructurado —{' '}
+          criterios de política crediticia y los devuelve como un perfil estructurado:{' '}
           <em>cuarenta y cuatro cajas canónicas</em> versionadas bajo schema v1.0.
         </p>
         <p>
@@ -71,7 +71,7 @@ const SECTIONS: Section[] = [
         <p>
           Recolectamos sólo lo necesario para construir el perfil: razón social, tipo de
           institución, correo de contacto del representante, las respuestas literales del usuario
-          (texto y audio si optó por voz), y los metadatos de cada turno —{' '}
+          (texto y audio si optó por voz), y los metadatos de cada turno:{' '}
           <em>timestamp, duración, modelo LLM utilizado, tokens consumidos</em>.
         </p>
         <p>
@@ -89,8 +89,8 @@ const SECTIONS: Section[] = [
       <>
         <p>
           Tratamos los datos con estricto apego a la <em>Ley Federal de Protección de Datos
-          Personales en Posesión de los Particulares</em>. Aplican los derechos ARCO — acceso,
-          rectificación, cancelación, oposición — ejercibles vía{' '}
+          Personales en Posesión de los Particulares</em>. Aplican los derechos ARCO (acceso,
+          rectificación, cancelación, oposición), ejercibles vía{' '}
           <a
             href="mailto:contacto@verticemexico.com"
             className="border-b border-current/40 hover:border-current"
@@ -119,7 +119,7 @@ const SECTIONS: Section[] = [
           publicitarias ni analítica de terceros con fines de perfilamiento.
         </p>
         <p>
-          La medición agregada de uso del producto se hace con eventos anónimos vía Axiom — sin
+          La medición agregada de uso del producto se hace con eventos anónimos vía Axiom: sin
           IPs, sin device fingerprint.
         </p>
       </>
@@ -410,7 +410,7 @@ export default function Terminos() {
       <footer className="relative z-10 mt-12 border-t border-[#F4F1EA]/8">
         <div className="mx-auto flex w-full max-w-[1480px] flex-col items-start justify-between gap-4 px-6 py-8 sm:flex-row sm:items-center sm:px-10 lg:px-14">
           <div className="font-mono text-[10.5px] uppercase tracking-[0.3em] text-[#F4F1EA]/45">
-            Vértice © 2026 — Criterios crediticios
+            Vértice © 2026 · Criterios crediticios
           </div>
           <FooterLink href="/">Volver al inicio</FooterLink>
         </div>
