@@ -201,6 +201,11 @@ function GoogleG({ className }: { className?: string }) {
   );
 }
 
+// Validación email — RFC-lite: local@dominio.tld, sin espacios, con punto en
+// el dominio. Suficiente para frenar typos obvios sin ahogar correos legítimos.
+const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const isValidEmail = (v: string) => EMAIL_RE.test(v.trim());
+
 // =============================================================================
 // Constants
 // =============================================================================
@@ -821,6 +826,7 @@ function MenuFlow({ onPick }: { onPick: (m: 'access' | 'request') => void }) {
 function AccessFlow() {
   const [stage, setStage] = useState<'choose' | 'email' | 'sent_email' | 'google'>('choose');
   const [email, setEmail] = useState('');
+  const [emailTouched, setEmailTouched] = useState(false);
 
   if (stage === 'choose') {
     return (
@@ -893,10 +899,16 @@ function AccessFlow() {
   }
 
   if (stage === 'email') {
+    const emailValid = isValidEmail(email);
+    // Mostrar error solo cuando el usuario ya interactuó con el campo
+    // (blur o intento de submit) y el valor presente es inválido.
+    const showEmailError =
+      emailTouched && email.trim().length > 0 && !emailValid;
+
     const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
       e.preventDefault();
-      const trimmed = email.trim();
-      if (!trimmed) return;
+      setEmailTouched(true);
+      if (!emailValid) return;
       setStage('sent_email');
     };
     return (
@@ -920,12 +932,14 @@ function AccessFlow() {
             autoComplete="email"
             value={email}
             onChange={setEmail}
+            onBlur={() => setEmailTouched(true)}
             placeholder="contacto@institucion.com"
             icon={<Mail className="size-4" />}
+            error={showEmailError ? 'Correo inválido' : undefined}
           />
         </div>
 
-        <SubmitButton disabled={email.trim().length === 0}>Enviar enlace</SubmitButton>
+        <SubmitButton disabled={!emailValid}>Enviar enlace</SubmitButton>
       </form>
     );
   }
@@ -956,10 +970,17 @@ function RequestFlow({ onSent }: { onSent: (folio: string | null) => void }) {
   const [razon, setRazon] = useState('');
   const [tipo, setTipo] = useState<string>('');
   const [emailContacto, setEmailContacto] = useState('');
+  const [emailTouched, setEmailTouched] = useState(false);
+
+  const emailValid = isValidEmail(emailContacto);
+  const showEmailError =
+    emailTouched && emailContacto.trim().length > 0 && !emailValid;
+  const formValid = razon.trim().length > 0 && tipo.length > 0 && emailValid;
 
   const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
     e.preventDefault();
-    if (!razon.trim() || !tipo || !emailContacto.trim()) return;
+    setEmailTouched(true);
+    if (!formValid) return;
     const folio = Math.random().toString(36).slice(2, 8).toUpperCase();
     setEstado({ kind: 'sent', razon: razon.trim(), folio });
     onSent(folio);
@@ -1009,16 +1030,17 @@ function RequestFlow({ onSent }: { onSent: (folio: string | null) => void }) {
           label="Correo de contacto"
           type="email"
           inputMode="email"
+          autoComplete="email"
           value={emailContacto}
           onChange={setEmailContacto}
+          onBlur={() => setEmailTouched(true)}
           placeholder="contacto@institucion.com"
           icon={<Mail className="size-4" />}
+          error={showEmailError ? 'Correo inválido' : undefined}
         />
       </div>
 
-      <SubmitButton disabled={!razon.trim() || !tipo || !emailContacto.trim()}>
-        Enviar solicitud
-      </SubmitButton>
+      <SubmitButton disabled={!formValid}>Enviar solicitud</SubmitButton>
     </form>
   );
 }
@@ -1106,32 +1128,51 @@ function FormField({
   label,
   value,
   onChange,
+  onBlur,
   placeholder,
   type = 'text',
   inputMode,
   autoComplete,
   icon,
+  error,
 }: {
   id: string;
   label: string;
   value: string;
   onChange: (v: string) => void;
+  onBlur?: () => void;
   placeholder?: string;
   type?: string;
   inputMode?: 'text' | 'email' | 'numeric' | 'tel' | 'url';
   autoComplete?: string;
   icon?: ReactNode;
+  /** Cuando hay string, el field se pinta en rojo desaturado y muestra el
+   *  texto debajo. El parent decide cuándo (típicamente onBlur + post-submit). */
+  error?: string;
 }) {
+  const errorId = error ? `${id}-error` : undefined;
   return (
     <label htmlFor={id} className="group/field block">
-      <span className="font-mono text-[10px] uppercase tracking-[0.32em] text-[#0A0F1C]/45 transition-colors group-focus-within/field:text-[#C8A864]">
+      <span
+        className={cn(
+          'font-mono text-[10px] uppercase tracking-[0.32em] transition-colors',
+          error
+            ? 'text-[#8B3A3A]'
+            : 'text-[#0A0F1C]/45 group-focus-within/field:text-[#C8A864]'
+        )}
+      >
         {label}
       </span>
       <div className="relative mt-2.5">
         {icon && (
           <span
             aria-hidden
-            className="pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 text-[#0A0F1C]/35 transition-colors group-focus-within/field:text-[#C8A864]"
+            className={cn(
+              'pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 transition-colors',
+              error
+                ? 'text-[#8B3A3A]/70'
+                : 'text-[#0A0F1C]/35 group-focus-within/field:text-[#C8A864]'
+            )}
           >
             {icon}
           </span>
@@ -1142,18 +1183,36 @@ function FormField({
           inputMode={inputMode}
           autoComplete={autoComplete}
           required
+          aria-invalid={error ? true : undefined}
+          aria-describedby={errorId}
           value={value}
           onChange={(e) => onChange(e.target.value)}
+          onBlur={onBlur}
           placeholder={placeholder}
           className={cn(
             'h-14 w-full rounded-2xl border-0 bg-[#0A0F1C]/[0.04] pr-4 text-[16px] text-[#0A0F1C] placeholder:text-[#0A0F1C]/30 outline-none transition-all',
-            'shadow-[inset_0_0_0_1px_rgba(10,15,28,0.06)]',
-            'hover:bg-[#0A0F1C]/[0.055] hover:shadow-[inset_0_0_0_1px_rgba(10,15,28,0.10)]',
-            'focus:bg-[#0A0F1C]/[0.06] focus:shadow-[inset_0_0_0_1.5px_rgba(200,168,100,0.55),0_0_0_4px_rgba(200,168,100,0.10)]',
+            error
+              ? // Estado inválido: hairline + glow burgundy desaturado
+                'shadow-[inset_0_0_0_1.5px_rgba(139,58,58,0.55),0_0_0_4px_rgba(139,58,58,0.08)] focus:shadow-[inset_0_0_0_1.5px_rgba(139,58,58,0.75),0_0_0_4px_rgba(139,58,58,0.14)]'
+              : [
+                  'shadow-[inset_0_0_0_1px_rgba(10,15,28,0.06)]',
+                  'hover:bg-[#0A0F1C]/[0.055] hover:shadow-[inset_0_0_0_1px_rgba(10,15,28,0.10)]',
+                  'focus:bg-[#0A0F1C]/[0.06] focus:shadow-[inset_0_0_0_1.5px_rgba(200,168,100,0.55),0_0_0_4px_rgba(200,168,100,0.10)]',
+                ],
             icon ? 'pl-11' : 'pl-4'
           )}
         />
       </div>
+      {error && (
+        <span
+          id={errorId}
+          role="alert"
+          className="mt-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.28em] text-[#8B3A3A]"
+        >
+          <span aria-hidden className="size-1 rounded-full bg-[#8B3A3A]" />
+          {error}
+        </span>
+      )}
     </label>
   );
 }
