@@ -9,8 +9,10 @@ import {
   boolean,
   jsonb,
   vector,
+  uniqueIndex,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
+import { sql } from 'drizzle-orm';
 
 // =============================================================================
 // Enums
@@ -88,6 +90,11 @@ export const sesiones = pgTable('sesiones', {
   // Null until consented; the entrevista route is gated on this being non-null.
   consentimiento_at: timestamp('consentimiento_at', { withTimezone: true }),
   metadata: jsonb('metadata'),
+  // Phase 5 step 5 — secciones cerradas por grupo_ui (spec v2 §4.4 + §4.5).
+  // Shape: { [grupo_ui]: { cerrada_at: ISO, review_id: uuid, declino_cajas: string[] } | undefined }.
+  // Solo 6 keys posibles (los 6 valores de GrupoUISchema). Se actualiza vía SQL
+  // atómico `||` para evitar read-modify-write (spec v2 §4.5).
+  secciones_cerradas: jsonb('secciones_cerradas').notNull().default(sql`'{}'::jsonb`),
 });
 
 // Magic-link tokens issued by `scripts/invitar.ts`. Token plain only ever exists in
@@ -178,6 +185,88 @@ export const mapa_incertidumbre_snapshots = pgTable('mapa_incertidumbre_snapshot
   cajas_blandas_pct: real('cajas_blandas_pct'),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
+
+// =============================================================================
+// Phase 5 step 5 — Sonnet→Opus review handoff
+// =============================================================================
+// Spec v2 §4.4 + §7. `reviews_seccion` captura cada evento de handoff (input
+// destilado de Sonnet + decisión de Opus). `cajas_declinadas` es side-table que
+// el motor escribe cuando una caja queda sin clausurar tras una decisión avanzar
+// (spec v2 §6: aceptada_round_1 | estancada_post_profundizar | cap_casos_alcanzado
+// | cap_turnos_alcanzado).
+//
+// Decisión de diseño: NO se reusa `mapa_incertidumbre_snapshots` (granularidad
+// por turno, audit del estado completo). `reviews_seccion` es granularidad por
+// evento de handoff — mezclarlas obliga a discriminar por tipo en queries.
+//
+// `decision_opus`, `guidance_opus`, `cajas_a_reabordar`, `caso_sintetico_id`,
+// `siguiente_grupo_ui` y `decidio_at` arrancan NULL al insertar la fila (motor
+// inserta antes de llamar a Opus); el UPDATE viene tras la respuesta de Opus.
+
+export const reviews_seccion = pgTable(
+  'reviews_seccion',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    sesion_id: uuid('sesion_id')
+      .references(() => sesiones.id)
+      .notNull(),
+    // text en lugar de enum: GrupoUISchema vive en lib/schemas/cajas.ts (Zod).
+    // El motor valida runtime; la DB queda flexible para v2 grupos sin migración.
+    grupo_ui_codigo: text('grupo_ui_codigo').notNull(),
+    turno_disparador: integer('turno_disparador').notNull(),
+    round: integer('round').notNull().default(1), // 1 = primer review, 2 = post-profundización
+    // Input de Sonnet (spec §2)
+    hipotesis_sonnet: text('hipotesis_sonnet').notNull(),
+    extracciones_snapshot: jsonb('extracciones_snapshot').notNull(),
+    cajas_no_clausuradas: jsonb('cajas_no_clausuradas')
+      .notNull()
+      .default(sql`'[]'::jsonb`),
+    // Output de Opus (spec §3) — NULL hasta que el motor recibe respuesta
+    decision_opus: text('decision_opus'), // 'avanzar' | 'profundizar' | 'caso_sintetico'
+    guidance_opus: text('guidance_opus'), // sólo si decision_opus = 'profundizar'
+    cajas_a_reabordar: jsonb('cajas_a_reabordar'), // sólo si profundizar
+    caso_sintetico_id: uuid('caso_sintetico_id').references(() => casos_generados.id),
+    siguiente_grupo_ui: text('siguiente_grupo_ui'), // sólo si avanzar; null → cierre de sesión
+    decidio_at: timestamp('decidio_at', { withTimezone: true }),
+    created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    // Una sola fila por (sesion, grupo, round) — evita duplicar reviews por race.
+    sesion_grupo_round_unique: uniqueIndex('reviews_seccion_sesion_grupo_round_unique').on(
+      table.sesion_id,
+      table.grupo_ui_codigo,
+      table.round
+    ),
+  })
+);
+
+export const cajas_declinadas = pgTable(
+  'cajas_declinadas',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    sesion_id: uuid('sesion_id')
+      .references(() => sesiones.id)
+      .notNull(),
+    caja_codigo: text('caja_codigo').notNull(),
+    // Validado en runtime contra RazonDeclineSchema (lib/schemas/review_seccion.ts).
+    // Valores canónicos spec v2 §6: aceptada_round_1, estancada_post_profundizar,
+    // cap_casos_alcanzado, cap_turnos_alcanzado.
+    razon: text('razon').notNull(),
+    review_id_origen: uuid('review_id_origen')
+      .references(() => reviews_seccion.id)
+      .notNull(),
+    detalle: text('detalle'), // copia opcional del CajaNoClausurada.detalle si aplica
+    declinada_at: timestamp('declinada_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    // Una caja se declina una sola vez por sesión. Si Sonnet luego logra extraerla
+    // (ej. tras caso sintético posterior), ese flujo borra la declinación primero.
+    sesion_caja_unique: uniqueIndex('cajas_declinadas_sesion_caja_unique').on(
+      table.sesion_id,
+      table.caja_codigo
+    ),
+  })
+);
 
 export const perfil_decision_final = pgTable('perfil_decision_final', {
   id: uuid('id').primaryKey().defaultRandom(),

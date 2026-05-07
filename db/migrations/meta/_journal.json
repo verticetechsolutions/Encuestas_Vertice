@@ -15,6 +15,13 @@
       "when": 1777611103261,
       "tag": "0001_fase4_magic_tokens",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1777705739760,
+      "tag": "0002_phase5_step5_review_handoff",
+      "breakpoints": true
     }
   ]
 }
