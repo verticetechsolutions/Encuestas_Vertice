@@ -192,6 +192,42 @@
   }
 }
 
+/* Cierre de caja — celebración corta cuando llenas_por_grupo[g] incrementa.
+   Lime ring expand + scale sutil; out-expo per CLAUDE.md easing guidance. */
+@keyframes vertice-cierre-caja {
+  0% {
+    box-shadow: 0 0 0 0 oklch(0.92 0.16 125 / 0.55);
+    transform: translateZ(0) scale(1);
+  }
+  35% {
+    box-shadow: 0 0 0 10px oklch(0.92 0.16 125 / 0);
+    transform: scale(1.015);
+  }
+  100% {
+    box-shadow: 0 0 0 0 oklch(0.92 0.16 125 / 0);
+    transform: scale(1);
+  }
+}
+.animate-cierre-caja {
+  animation: vertice-cierre-caja 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Reduced-motion global safety net. Respeta a usuarios con motion sensitivity
+   o que tengan la preferencia activada en el OS. Las animaciones ya curadas
+   por componente (vx-mark, ln-*, sx-*) tienen sus propios overrides locales;
+   esta regla cubre las globales (vertice-*, animate-pulse, animate-spin, etc.)
+   y las transitions de Tailwind. */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
 /* =============================================================================
    Vertex mark animations — used by <VertexMark>. Slashes draw themselves on
    mount, then breathe in counter-phase. Base pulses subtly.

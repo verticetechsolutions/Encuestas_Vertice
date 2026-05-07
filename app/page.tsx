@@ -602,8 +602,10 @@ export default function Landing() {
                 data-anim="footer-wordmark"
                 className="h-auto w-full select-none opacity-[0.10]"
                 style={{
+                  // mask-image: el color es indiferente (sólo importa el alpha).
+                  // Evitamos #000 puro por convención del proyecto (CLAUDE.md).
                   maskImage:
-                    'linear-gradient(to bottom, #000 30%, rgba(0,0,0,0.6) 70%, transparent 100%)',
+                    'linear-gradient(to bottom, #0A0A0A 30%, rgba(10,10,10,0.6) 70%, transparent 100%)',
                 }}
               />
             </div>
