@@ -350,71 +350,151 @@
   animation: cookie-pop-out 0.32s cubic-bezier(0.36, 0, 0.66, -0.35) both;
 }
 
-/* Success mark — ring dibuja → fill aparece → check traza → ripple pulsa.
-   Cada layer tiene su propio delay; el conjunto crea un sello celebratorio. */
-@keyframes sx-ring {
-  from { stroke-dashoffset: 1; }
-  to   { stroke-dashoffset: 0; }
+/* Success mark — sello editorial. Onda one-shot → disco cae → hairline →
+   check se traza. Sin loops infinitos; una declaración y silencio. */
+@keyframes sx-pulse {
+  0%   { opacity: 0; transform: scale(0.6); }
+  25%  { opacity: 0.85; }
+  100% { opacity: 0; transform: scale(1.5); }
 }
-@keyframes sx-fill {
-  from { opacity: 0; transform: scale(0.55); }
-  to   { opacity: 1; transform: scale(1); }
+@keyframes sx-disk {
+  0%   { opacity: 0; transform: scale(0.4); }
+  60%  { opacity: 1; transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes sx-disk-stroke {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 @keyframes sx-check {
   from { stroke-dashoffset: 1; }
   to   { stroke-dashoffset: 0; }
 }
-@keyframes sx-ripple {
-  0%   { opacity: 0.55; transform: scale(0.92); }
-  70%  { opacity: 0; transform: scale(1.55); }
-  100% { opacity: 0; transform: scale(1.55); }
-}
-@keyframes sx-glow {
-  0%, 100% { filter: drop-shadow(0 0 0 rgba(200,168,100,0)); }
-  50%      { filter: drop-shadow(0 0 18px rgba(200,168,100,0.45)); }
-}
 @keyframes sx-text {
   from { opacity: 0; transform: translateY(6px); }
   to   { opacity: 1; transform: translateY(0); }
 }
+@keyframes sx-line-draw {
+  from { transform: scaleX(0); opacity: 0; }
+  to   { transform: scaleX(1); opacity: 1; }
+}
+@keyframes sx-status-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.5); opacity: 0.55; }
+}
+@keyframes sx-kicker-in {
+  from { opacity: 0; letter-spacing: 0.5em; }
+  to   { opacity: 1; letter-spacing: 0.3em; }
+}
 
-.sx-mark .sx-ring,
-.sx-mark .sx-check {
-  transform-box: fill-box;
+/* Brand success glyph — secuencia "transaction complete":
+   spark dorada → arco se dibuja → ring full → check traza. Drop-shadow
+   gold glow ambient da la sensación fintech. Total ~2.0s. */
+@keyframes bsg-disk {
+  0%   { opacity: 0; transform: scale(0.4); }
+  60%  { opacity: 1; transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
 }
-.sx-mark .sx-ring {
-  animation: sx-ring 0.85s cubic-bezier(0.65, 0, 0.35, 1) 0.05s both;
+@keyframes bsg-spark {
+  0%   { opacity: 0; transform: scale(0); }
+  25%  { opacity: 1; transform: scale(1.6); }
+  60%  { opacity: 0.95; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.6); }
 }
-.sx-mark .sx-fill {
+@keyframes bsg-arc-draw {
+  from { stroke-dashoffset: 1; }
+  to   { stroke-dashoffset: 0; }
+}
+@keyframes bsg-check-draw {
+  from { stroke-dashoffset: 1; }
+  to   { stroke-dashoffset: 0; }
+}
+/* Pulso de glow ambient post-trazado: dorado palpita sutil. */
+@keyframes bsg-glow-pulse {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(224, 190, 124, 0.55)); }
+  50%      { filter: drop-shadow(0 0 9px rgba(224, 190, 124, 0.9)); }
+}
+.bsg-mark .bsg-disk,
+.bsg-mark .bsg-spark {
   transform-box: fill-box;
   transform-origin: center;
+}
+.bsg-mark .bsg-disk {
+  animation: bsg-disk 0.6s cubic-bezier(0.34, 1.4, 0.64, 1) 0.18s both;
+}
+.bsg-mark .bsg-spark {
+  filter: drop-shadow(0 0 5px rgba(224, 190, 124, 0.85));
+  animation: bsg-spark 0.85s cubic-bezier(0.34, 1.4, 0.64, 1) 0.4s both;
+}
+.bsg-mark .bsg-arc {
+  /* Glow constante + pulse después del trazado */
   animation:
-    sx-fill 0.5s cubic-bezier(0.2, 0.85, 0.25, 1) 0.6s both,
-    sx-glow 2.4s ease-in-out 1.1s infinite;
+    bsg-arc-draw 0.6s cubic-bezier(0.65, 0, 0.35, 1) 0.95s both,
+    bsg-glow-pulse 2.4s ease-in-out 1.6s infinite;
 }
-.sx-mark .sx-check {
-  animation: sx-check 0.42s cubic-bezier(0.65, 0, 0.35, 1) 0.92s both;
+.bsg-mark .bsg-check {
+  filter: drop-shadow(0 0 3px rgba(244, 241, 234, 0.45));
+  animation: bsg-check-draw 0.42s cubic-bezier(0.65, 0, 0.35, 1) 1.55s both;
 }
-.sx-mark .sx-ripple {
+@media (prefers-reduced-motion: reduce) {
+  .bsg-mark .bsg-disk,
+  .bsg-mark .bsg-spark,
+  .bsg-mark .bsg-arc,
+  .bsg-mark .bsg-check {
+    animation: none;
+  }
+  .bsg-mark .bsg-disk { opacity: 1; transform: none; }
+  .bsg-mark .bsg-spark { opacity: 0; }
+  .bsg-mark .bsg-arc { stroke-dashoffset: 0; }
+  .bsg-mark .bsg-check { stroke-dashoffset: 0; }
+}
+
+.sx-mark .sx-pulse,
+.sx-mark .sx-disk {
   transform-box: fill-box;
   transform-origin: center;
-  animation: sx-ripple 1.6s ease-out 1.05s infinite;
+}
+.sx-mark .sx-pulse {
+  animation: sx-pulse 1.3s cubic-bezier(0.2, 0.7, 0.3, 1) 0.1s both;
+}
+.sx-mark .sx-disk {
+  animation: sx-disk 0.6s cubic-bezier(0.34, 1.4, 0.64, 1) 0.18s both;
+}
+.sx-mark .sx-disk-stroke {
+  animation: sx-disk-stroke 0.4s ease-out 0.62s both;
+}
+.sx-mark .sx-check {
+  animation: sx-check 0.5s cubic-bezier(0.65, 0, 0.35, 1) 0.7s both;
 }
 .sx-text {
   animation: sx-text 0.6s cubic-bezier(0.2, 0.85, 0.25, 1) both;
 }
+.sx-line {
+  transform-origin: left center;
+  animation: sx-line-draw 0.55s cubic-bezier(0.65, 0, 0.35, 1) 0.2s both;
+}
+.sx-status-dot {
+  animation: sx-status-pulse 2.4s ease-in-out 0.8s infinite;
+}
+.sx-kicker {
+  animation: sx-kicker-in 0.55s cubic-bezier(0.2, 0.85, 0.25, 1) both;
+}
 @media (prefers-reduced-motion: reduce) {
-  .sx-mark .sx-ring,
-  .sx-mark .sx-fill,
+  .sx-mark .sx-pulse { display: none; }
+  .sx-mark .sx-disk,
+  .sx-mark .sx-disk-stroke,
   .sx-mark .sx-check,
-  .sx-mark .sx-ripple,
-  .sx-text {
+  .sx-text,
+  .sx-line,
+  .sx-status-dot,
+  .sx-kicker {
     animation: none;
   }
-  .sx-mark .sx-ring,
   .sx-mark .sx-check { stroke-dashoffset: 0; }
-  .sx-mark .sx-fill { opacity: 1; transform: none; }
+  .sx-mark .sx-disk { opacity: 1; transform: none; }
+  .sx-mark .sx-disk-stroke { opacity: 1; }
   .sx-text { opacity: 1; transform: none; }
+  .sx-line { transform: none; opacity: 1; }
 }
 
 /* Header collapsed pill — orgánica, border-radius morphing perpetuo. */

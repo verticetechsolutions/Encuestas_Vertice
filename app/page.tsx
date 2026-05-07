@@ -16,7 +16,7 @@ import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { VertexMark } from '@/components/landing/VertexMark';
 import { CookiesCard } from '@/components/landing/CookiesCard';
-import { SuccessMark } from '@/components/landing/SuccessMark';
+import { BrandSuccessGlyph } from '@/components/landing/BrandSuccessGlyph';
 import { LenisProvider } from '@/components/landing/LenisProvider';
 import { FooterLink } from '@/components/landing/FooterLink';
 import { HeaderCTA } from '@/components/landing/HeaderCTA';
@@ -225,6 +225,10 @@ export default function Landing() {
   const [open, setOpen] = useState(false);
   const [mode, setMode] = useState<DialogMode>('menu');
   const [fromMenu, setFromMenu] = useState(false);
+  // Cuando RequestFlow registra la solicitud, sube el folio al parent. Lo
+  // usamos para mutar el kicker del shell ("Alianza · K9SCMA") y darle al
+  // diálogo una sensación de "constancia" — el chrome cambia con el estado.
+  const [requestFolio, setRequestFolio] = useState<string | null>(null);
 
   useEffect(() => {
     const prevBody = document.body.style.backgroundColor;
@@ -404,7 +408,16 @@ export default function Landing() {
           }}
         />
 
-        <Dialog.Root open={open} onOpenChange={setOpen}>
+        <Dialog.Root
+          open={open}
+          onOpenChange={(o) => {
+            setOpen(o);
+            if (!o) {
+              // Limpia el folio tras la animación de salida del Dialog (~300ms).
+              window.setTimeout(() => setRequestFolio(null), 360);
+            }
+          }}
+        >
           {/* ====================================================== HEADER STATIC
             Una sola fila, todos los elementos centrados verticalmente. */}
           <header className="pointer-events-none fixed inset-x-0 top-0 z-30">
@@ -625,7 +638,7 @@ export default function Landing() {
                 'data-[ending-style]:scale-95 data-[ending-style]:opacity-0',
                 'transition-all duration-300'
               )}
-              initialFocus={null}
+              initialFocus={false}
             >
               <DialogShell
                 kicker={
@@ -633,17 +646,24 @@ export default function Landing() {
                     ? 'Bienvenido'
                     : mode === 'access'
                       ? 'Acceso · panel'
-                      : 'Solicitar acceso'
+                      : requestFolio
+                        ? `Alianza · ${requestFolio}`
+                        : 'Solicitar acceso'
                 }
+                kickerVariant={requestFolio && mode === 'request' ? 'sealed' : 'default'}
                 onClose={() => setOpen(false)}
-                onBack={fromMenu && mode !== 'menu' ? () => setMode('menu') : undefined}
+                onBack={
+                  fromMenu && mode !== 'menu' && !requestFolio
+                    ? () => setMode('menu')
+                    : undefined
+                }
               >
                 {mode === 'menu' ? (
                   <MenuFlow onPick={pickFromMenu} />
                 ) : mode === 'access' ? (
                   <AccessFlow />
                 ) : (
-                  <RequestFlow />
+                  <RequestFlow onSent={setRequestFolio} />
                 )}
               </DialogShell>
             </Dialog.Popup>
@@ -690,19 +710,33 @@ function ManifestRow({ num, label, value }: { num: string; label: string; value:
 
 function DialogShell({
   kicker,
+  kickerVariant = 'default',
   onClose,
   onBack,
   children,
 }: {
   kicker: string;
+  kickerVariant?: 'default' | 'sealed';
   onClose: () => void;
   onBack?: () => void;
   children: ReactNode;
 }) {
+  const sealed = kickerVariant === 'sealed';
   return (
     <>
-      <div className="flex items-center justify-between border-b border-[#0A0F1C]/8 px-6 py-3.5">
-        <div className="flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-[0.3em] text-[#0A0F1C]/55">
+      <div
+        className={cn(
+          'flex items-center justify-between border-b px-6 py-3.5 transition-colors',
+          sealed ? 'border-[#C8A864]/35 bg-[#C8A864]/[0.06]' : 'border-[#0A0F1C]/8'
+        )}
+      >
+        <div
+          key={kicker}
+          className={cn(
+            'sx-kicker flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-[0.3em]',
+            sealed ? 'text-[#9C824A]' : 'text-[#0A0F1C]/55'
+          )}
+        >
           {onBack && (
             <button
               type="button"
@@ -713,7 +747,12 @@ function DialogShell({
               <ArrowLeft className="size-3.5" strokeWidth={2.25} />
             </button>
           )}
-          <span className="size-1.5 rounded-full bg-[#C8A864]" />
+          <span
+            className={cn(
+              'size-1.5 rounded-full bg-[#C8A864]',
+              sealed && 'sx-status-dot'
+            )}
+          />
           {kicker}
         </div>
         <button
@@ -911,7 +950,7 @@ function AccessFlow() {
 }
 
 // ---------- Request flow ----------------------------------------------------
-function RequestFlow() {
+function RequestFlow({ onSent }: { onSent: (folio: string | null) => void }) {
   type RequestState = { kind: 'idle' } | { kind: 'sent'; razon: string; folio: string };
   const [estado, setEstado] = useState<RequestState>({ kind: 'idle' });
   const [razon, setRazon] = useState('');
@@ -923,34 +962,14 @@ function RequestFlow() {
     if (!razon.trim() || !tipo || !emailContacto.trim()) return;
     const folio = Math.random().toString(36).slice(2, 8).toUpperCase();
     setEstado({ kind: 'sent', razon: razon.trim(), folio });
+    onSent(folio);
   };
 
   if (estado.kind === 'sent') {
+    const tipoLabel =
+      TIPOS_INSTITUCION.find((t) => t.value === tipo)?.label ?? '—';
     return (
-      <div className="flex flex-col items-center px-2 py-3 text-center">
-        <SuccessMark className="size-20" />
-        <Dialog.Title
-          className="sx-text mt-6 font-display text-[26px] leading-[1.1] tracking-[-0.02em]"
-          style={{ fontWeight: 500, animationDelay: '1.05s' }}
-        >
-          Solicitud registrada.
-        </Dialog.Title>
-        <Dialog.Description
-          className="sx-text mt-2 max-w-[36ch] text-[13.5px] leading-relaxed text-[#0A0F1C]/60"
-          style={{ animationDelay: '1.18s' }}
-        >
-          La solicitud de alianza de{' '}
-          <span className="font-medium text-[#0A0F1C]">{estado.razon}</span> quedó registrada. Un
-          representante de Vértice agenda la entrevista en menos de 24 horas hábiles.
-        </Dialog.Description>
-        <div
-          className="sx-text mt-6 flex items-center gap-2 font-mono text-[10px] uppercase tracking-[0.32em] text-[#0A0F1C]/45"
-          style={{ animationDelay: '1.32s' }}
-        >
-          <span className="size-1 rounded-full bg-[#C8A864]" />
-          <span>folio · {estado.folio}</span>
-        </div>
-      </div>
+      <ReceiptView razon={estado.razon} tipoLabel={tipoLabel} folio={estado.folio} />
     );
   }
 
@@ -1001,6 +1020,81 @@ function RequestFlow() {
         Enviar solicitud
       </SubmitButton>
     </form>
+  );
+}
+
+// ---------- Receipt view (post-submit) -------------------------------------
+// Constancia editorial: el folio es el ancla visual (mono caps grande), las
+// filas numeradas espejean el manifest "01/02/03" de la home, y el strip de
+// timeline cierra como protocolo (Ahora → 24H → Entrevista → Dossier).
+// =============================================================================
+function ReceiptView({
+  razon,
+  tipoLabel,
+  folio,
+}: {
+  razon: string;
+  tipoLabel: string;
+  folio: string;
+}) {
+  return (
+    <div className="relative -mx-1">
+      {/* Check protagonista — sello que abre la constancia */}
+      <BrandSuccessGlyph className="size-16" />
+
+      {/* Title — bilínea editorial, primer línea sólida, segunda en peso liviano */}
+      <Dialog.Title
+        className="sx-text mt-7 font-display text-[34px] leading-[0.96] tracking-[-0.025em] text-[#0A0F1C]"
+        style={{ fontWeight: 500, animationDelay: '0.05s' }}
+      >
+        Solicitud
+        <br />
+        <span className="font-light text-[#0A0F1C]/55">registrada.</span>
+      </Dialog.Title>
+
+      {/* Hairline dorada que se traza */}
+      <span
+        aria-hidden
+        className="sx-line mt-5 block h-px w-12 bg-[#C8A864]"
+      />
+
+      {/* Folio — anchor visual de la constancia */}
+      <div
+        className="sx-text mt-7"
+        style={{ animationDelay: '0.32s' }}
+      >
+        <span className="block font-mono text-[10px] uppercase tracking-[0.32em] text-[#C8A864]">
+          Folio
+        </span>
+        <span className="mt-2 block font-mono text-[34px] font-medium leading-none tracking-[0.16em] text-[#0A0F1C]">
+          {folio}
+        </span>
+      </div>
+
+      {/* Hairline divider editorial */}
+      <div
+        className="sx-text mt-8 h-px w-full bg-[#0A0F1C]/8"
+        style={{ animationDelay: '0.55s' }}
+      />
+
+      {/* Single-line institution context — razón social · tipo */}
+      <p
+        className="sx-text mt-5 text-[13.5px] leading-relaxed text-[#0A0F1C]/55"
+        style={{ animationDelay: '0.7s' }}
+      >
+        <span className="text-[#0A0F1C]">{razon}</span>
+        <span className="mx-2 text-[#0A0F1C]/30">·</span>
+        <span>{tipoLabel}</span>
+      </p>
+
+      {/* Próximo paso — copy condensado, sin label decorativo */}
+      <Dialog.Description
+        className="sx-text mt-3 text-[13.5px] leading-relaxed text-[#0A0F1C]/65"
+        style={{ animationDelay: '0.85s' }}
+      >
+        Te contactamos en menos de 24 horas hábiles para agendar la entrevista de doce minutos.
+      </Dialog.Description>
+    </div>
   );
 }
 

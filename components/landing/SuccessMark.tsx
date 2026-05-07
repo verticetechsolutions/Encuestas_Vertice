@@ -1,72 +1,56 @@
 'use client';
 
-// Sello de éxito animado. Capas:
-//  1) Ring dorado que se dibuja (stroke-dashoffset 1 → 0)
-//  2) Fill navy que aparece con scale-in al cerrar el ring
-//  3) Checkmark blanco que se traza dentro del fill
-//  4) Ripple dorado pulsante perpetuo (sutil, ambient)
-// Todas las capas son CSS-driven (keyframes en globals.css). Sin GSAP runtime.
+// Sello de éxito — pasada editorial.
+//  1) Onda dorada one-shot que se expande y desvanece (no es perpetua).
+//  2) Disco navy con scale-in y leve overshoot (sello que cae en posición).
+//  3) Hairline dorada interna que se materializa con el disco.
+//  4) Check cream que se traza dentro — alto contraste sobre navy.
+// Sin glow perpetuo, sin ripple infinito. Una sola declaración, luego quietud.
 
 import { cn } from '@/lib/utils';
 
 export function SuccessMark({ className }: { className?: string }) {
   return (
     <svg
-      viewBox="0 0 80 80"
+      viewBox="0 0 100 100"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden
+      overflow="visible"
       className={cn('sx-mark', className)}
     >
-      <defs>
-        <linearGradient id="sx-ring-grad" x1="0" y1="0" x2="1" y2="1">
-          <stop offset="0%" stopColor="#E0BE7C" />
-          <stop offset="60%" stopColor="#C8A864" />
-          <stop offset="100%" stopColor="#9C824A" />
-        </linearGradient>
-        <radialGradient id="sx-fill-grad" cx="0.5" cy="0.4" r="0.7">
-          <stop offset="0%" stopColor="#1a2236" />
-          <stop offset="100%" stopColor="#0A0F1C" />
-        </radialGradient>
-      </defs>
-
-      {/* Ripple ambient — escala y se desvanece infinito */}
+      {/* Onda dorada one-shot — flourish ambient, no infinita */}
       <circle
-        className="sx-ripple"
-        cx="40"
-        cy="40"
-        r="34"
+        className="sx-pulse"
+        cx="50"
+        cy="50"
+        r="32"
         fill="none"
         stroke="#C8A864"
-        strokeOpacity="0.5"
         strokeWidth="1"
       />
 
-      {/* Ring que se dibuja en el primer beat */}
+      {/* Disco navy — sello que cae con leve overshoot */}
+      <circle className="sx-disk" cx="50" cy="50" r="32" fill="#0A0F1C" />
+
+      {/* Hairline dorada interna — detalle editorial sutil */}
       <circle
-        className="sx-ring"
-        cx="40"
-        cy="40"
-        r="34"
+        className="sx-disk-stroke"
+        cx="50"
+        cy="50"
+        r="29.5"
         fill="none"
-        stroke="url(#sx-ring-grad)"
-        strokeWidth="2"
-        strokeLinecap="round"
-        pathLength={1}
-        strokeDasharray={1}
-        strokeDashoffset={1}
-        transform="rotate(-90 40 40)"
+        stroke="#C8A864"
+        strokeOpacity="0.28"
+        strokeWidth="0.75"
       />
 
-      {/* Fill navy que crece tras el ring */}
-      <circle className="sx-fill" cx="40" cy="40" r="28" fill="url(#sx-fill-grad)" />
-
-      {/* Checkmark dorado que se traza al final */}
+      {/* Check cream — contraste real sobre el navy */}
       <path
         className="sx-check"
-        d="M 26 41 L 36 51 L 55 32"
+        d="M 35 51 L 45 61 L 65 40"
         fill="none"
-        stroke="#E0BE7C"
-        strokeWidth="3"
+        stroke="#F4F1EA"
+        strokeWidth="3.25"
         strokeLinecap="round"
         strokeLinejoin="round"
         pathLength={1}
