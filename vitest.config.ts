@@ -1,10 +1,18 @@
 import { defineConfig } from 'vitest/config';
+import { loadEnv } from 'vite';
 import tsconfigPaths from 'vite-tsconfig-paths';
 
 // vite-tsconfig-paths plugin is required: el `resolve.tsconfigPaths: true`
 // nativo de Vite resuelve mal cadenas transitivas a través del alias @/
 // (verificado: tests fallan al cargar @/db/schema vía import chain). El plugin
 // sí lo hace bien.
+//
+// loadEnv carga .env.local en runtime de los tests para que integration tests
+// (lib/**/*.integration.test.ts) puedan leer DATABASE_URL_TEST sin que el
+// founder tenga que exportar variables a mano. El stub de DATABASE_URL sigue
+// siendo necesario para los unit tests que solo importan @/lib/db.
+const env = loadEnv('test', process.cwd(), '');
+
 export default defineConfig({
   plugins: [tsconfigPaths()],
   test: {
@@ -23,12 +31,18 @@ export default defineConfig({
       'lib/stt/use-deepgram-stream.test.ts',
       'app/api/stt/token/route.test.ts',
     ],
-    // DATABASE_URL stub: lib/db.ts arroja en module-load si está unset. Los unit
-    // tests no hacen queries reales (solo importan el módulo), así que basta con
-    // una URL parseable. Tests E2E (step vi) usan DATABASE_URL real de Neon
-    // branch via .env.local — esa override gana en runtime.
+    // Integration tests `*.integration.test.ts` se serializan: cada suite
+    // TRUNCATE las tablas que toca y los singletons de postgres-js no son
+    // re-entrantes seguros por suite. Ejecución secuencial es barata (suite
+    // dura segundos) y elimina la clase de bugs por concurrencia entre suites.
+    fileParallelism: true,
+    sequence: { concurrent: false },
     env: {
+      // Stub para unit tests que importan @/lib/db (no hacen queries reales).
+      // Si DATABASE_URL_TEST está presente, los integration tests crean su
+      // propio cliente vía lib/motor/test-db.ts (no dependen de @/lib/db).
       DATABASE_URL: 'postgresql://test:test@localhost:5432/test_vertice',
+      DATABASE_URL_TEST: env.DATABASE_URL_TEST ?? '',
     },
   },
 });

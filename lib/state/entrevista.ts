@@ -62,6 +62,11 @@ interface EntrevistaState {
   autosave_estado: Record<string, AutosaveStatus>;
   // Last turn error message (when status='error_turn'). Cleared on next attempt.
   ultimo_error_turn: string | null;
+  // Mensaje informativo NO-error sobre el estado del turn loop. Ejemplos:
+  // cierre limpio de sección, sesión lista para síntesis, profundización
+  // solicitada por Opus. Se renderiza como banner forest (verde), no amber.
+  // Distinto de ultimo_error_turn: no implica fallo, solo transición.
+  mensaje_estado: string | null;
   // Preview mode: skip server-side calls (autosave + /api/turn). UI-only sandbox
   // para iterar diseño sin tocar DB ni esperar Sonnet.
   preview_mode: boolean;
@@ -138,6 +143,41 @@ interface RegistrarExtraccionOutput {
   };
 }
 
+// Mirror del shape que devuelve `solicitar_review_seccion.execute` en
+// `app/api/turn/route.ts`. Dos variantes:
+//   - OK: ProcessReviewResult del motor (estado terminal del review).
+//   - Error: opus_director_prompt_not_ready hasta que step 5.iv firme.
+// Si cambia el shape allá, sincronizar acá.
+interface SolicitarReviewSeccionOutputOk {
+  estado:
+    | 'profundizar_pendiente'
+    | 'grupo_cerrado'
+    | 'sesion_lista_para_sintesis'
+    | 'caso_solicitado';
+  review_id: string;
+  guidance_para_sonnet?: string;
+  cajas_a_reabordar?: string[];
+  siguiente_grupo_ui?: GrupoUI;
+  cajas_objetivo_caso?: string[];
+  hipotesis_a_clausurar?: string;
+  urgencia_caso?: 'alta' | 'media';
+}
+
+interface SolicitarReviewSeccionOutputError {
+  error: string;
+  message: string;
+}
+
+type SolicitarReviewSeccionOutput =
+  | SolicitarReviewSeccionOutputOk
+  | SolicitarReviewSeccionOutputError;
+
+function isReviewOk(
+  out: SolicitarReviewSeccionOutput
+): out is SolicitarReviewSeccionOutputOk {
+  return 'estado' in out;
+}
+
 function getToolPart(
   part: UIMessage['parts'][number],
   toolName: string
@@ -184,6 +224,40 @@ function extractLlenasPorGrupoFromUIMessage(
   return last;
 }
 
+// Extrae el último tool-output de `solicitar_review_seccion`. Sonnet sólo
+// debería emitirlo una vez por turno (cierre de grupo), pero por simetría con
+// los otros extractores nos quedamos con el último.
+function extractReviewSeccionFromUIMessage(
+  message: UIMessage
+): SolicitarReviewSeccionOutput | null {
+  let last: SolicitarReviewSeccionOutput | null = null;
+  for (const part of message.parts) {
+    const p = getToolPart(part, 'solicitar_review_seccion');
+    if (!p || p.state !== 'output-available') continue;
+    const out = p.output as SolicitarReviewSeccionOutput | undefined;
+    if (!out) continue;
+    last = out;
+  }
+  return last;
+}
+
+// Render del review state como mensaje al usuario. Mensajes en es-MX, sin
+// cajas individuales (privacidad — el panel agrupa por sección).
+function describeReviewState(out: SolicitarReviewSeccionOutputOk): string {
+  switch (out.estado) {
+    case 'sesion_lista_para_sintesis':
+      return '¡Entrevista completada! Estamos generando la síntesis del perfil. Recibirás el resultado por correo cuando esté listo.';
+    case 'grupo_cerrado':
+      return out.siguiente_grupo_ui
+        ? `Sección cerrada. Continuamos con la siguiente sección en breve.`
+        : 'Sección cerrada. Esperando la siguiente.';
+    case 'profundizar_pendiente':
+      return 'El director pidió profundizar en algunos puntos antes de avanzar. La siguiente pregunta llegará en breve.';
+    case 'caso_solicitado':
+      return 'El director está generando un caso hipotético para destrabar una caja. Tomará unos segundos.';
+  }
+}
+
 // =============================================================================
 // Store
 // =============================================================================
@@ -197,6 +271,7 @@ export const useEntrevistaStore = create<EntrevistaState>((set, get) => ({
   cajas_llenas_por_grupo: emptyGrupoCounts(),
   autosave_estado: {},
   ultimo_error_turn: null,
+  mensaje_estado: null,
   preview_mode: false,
 
   init: (sesion_id, totalsPorGrupo, options) => {
@@ -279,7 +354,7 @@ export const useEntrevistaStore = create<EntrevistaState>((set, get) => ({
     // procesando 1200ms, luego llega un "batch nuevo" rotando el fixture y
     // bumpeamos el contador de un grupo random para que el panel se mueva.
     if (preview_mode) {
-      set({ status: 'enviando', ultimo_error_turn: null });
+      set({ status: 'enviando', ultimo_error_turn: null, mensaje_estado: null });
       await new Promise((r) => setTimeout(r, 500));
       set({ status: 'procesando' });
       await new Promise((r) => setTimeout(r, 800));
@@ -314,7 +389,7 @@ export const useEntrevistaStore = create<EntrevistaState>((set, get) => ({
 
     const mensaje_usuario = composeMensajeUsuario(batch_actual, respuestas_pendientes);
 
-    set({ status: 'enviando', ultimo_error_turn: null });
+    set({ status: 'enviando', ultimo_error_turn: null, mensaje_estado: null });
 
     try {
       const res = await fetch('/api/turn', {
@@ -345,11 +420,12 @@ export const useEntrevistaStore = create<EntrevistaState>((set, get) => ({
       // mostrar un indicador distinto al spinner inicial de 'enviando'.
       set({ status: 'procesando' });
 
-      // Consumir UI message stream y buscar el tool-output de
-      // generar_batch_preguntas. La iteración devuelve la MISMA UIMessage
-      // creciendo en parts; basta con revisar las partes en cada yield.
+      // Consumir UI message stream. Capturamos el último mensaje (la API
+      // devuelve la MISMA UIMessage creciendo en parts) para extraer
+      // tool-outputs después del cierre del stream.
       let nuevoBatch: PreguntaBatch | null = null;
       let streamError: string | null = null;
+      let lastMessage: UIMessage | null = null;
       try {
         for await (const message of readUIMessageStream({
           // The fetch body is a ReadableStream<Uint8Array>;
@@ -362,6 +438,7 @@ export const useEntrevistaStore = create<EntrevistaState>((set, get) => ({
           },
           terminateOnError: true,
         })) {
+          lastMessage = message;
           const candidato = extractBatchFromUIMessage(message);
           if (candidato) {
             nuevoBatch = candidato;
@@ -397,13 +474,42 @@ export const useEntrevistaStore = create<EntrevistaState>((set, get) => ({
           (streamErr instanceof Error ? streamErr.message : String(streamErr));
       }
 
+      // Extracción del review tool — puede coexistir con batch (Opus avanza y
+      // Sonnet emite batch del siguiente grupo en mismo turno) o aparecer solo
+      // (cierre limpio de sesión, profundización pendiente, caso solicitado).
+      const reviewOut = lastMessage
+        ? extractReviewSeccionFromUIMessage(lastMessage)
+        : null;
+
+      // Caso terminal: sesión lista para síntesis. Tiene prioridad sobre todo
+      // — incluso si llegó batch nuevo (improbable), el motor decidió cerrar.
+      if (reviewOut && isReviewOk(reviewOut) && reviewOut.estado === 'sesion_lista_para_sintesis') {
+        set({
+          status: 'cerrada',
+          batch_actual: null,
+          respuestas_pendientes: {},
+          marcadas_respondidas: {},
+          autosave_estado: {},
+          ultimo_error_turn: null,
+          mensaje_estado: describeReviewState(reviewOut),
+        });
+        return;
+      }
+
       if (nuevoBatch) {
+        // Batch normal. Si además llegó review (cierre de grupo + nueva
+        // sección abierta en mismo turno), surface el mensaje informativo.
+        const mensaje =
+          reviewOut && isReviewOk(reviewOut) && reviewOut.estado === 'grupo_cerrado'
+            ? describeReviewState(reviewOut)
+            : null;
         set({
           status: 'mostrando_batch',
           batch_actual: nuevoBatch,
           respuestas_pendientes: {},
           marcadas_respondidas: {},
           autosave_estado: {},
+          mensaje_estado: mensaje,
         });
       } else if (streamError) {
         // Stream falló mid-flight. NO limpiamos respuestas — founder puede
@@ -413,16 +519,30 @@ export const useEntrevistaStore = create<EntrevistaState>((set, get) => ({
           status: 'error_turn',
           ultimo_error_turn: `El motor falló al generar la siguiente pregunta: ${streamError}`,
         });
+      } else if (reviewOut && !isReviewOk(reviewOut)) {
+        // Opus director aún no habilitado — feature flag cerrada hasta sub-paso 5.iv.
+        set({
+          status: 'error_turn',
+          ultimo_error_turn:
+            'El director (Opus) todavía no está disponible. El equipo está cerrando el último prompt; reintenta en unos minutos.',
+        });
+      } else if (reviewOut && isReviewOk(reviewOut)) {
+        // Review fired sin batch — estado transicional. La continuación
+        // automática del turn loop es trabajo paralelo; por ahora surface el
+        // estado al usuario y mantenemos respuestas para reintento manual.
+        set({
+          status: 'error_turn',
+          ultimo_error_turn: describeReviewState(reviewOut),
+        });
       } else {
-        // Stream terminó limpio pero sin batch nuevo. Casos:
-        //   - Sonnet llamó solicitar_review_seccion (cierre de grupo) sin
-        //     emitir batch — pendiente de cablear esa transición.
+        // Stream terminó limpio sin batch ni review tool. Casos:
         //   - Sonnet sólo extrajo cajas y se detuvo (bug del prompt).
+        //   - Modelo rechazó la conversación. Investigar logs Axiom.
         // Tampoco limpiamos respuestas: founder decide qué hacer.
         set({
           status: 'error_turn',
           ultimo_error_turn:
-            'El motor terminó el turno sin generar un siguiente batch (puede que sea cierre de sección — feature pendiente).',
+            'El motor terminó el turno sin pedir review ni generar siguiente batch. Revisa logs y reintenta.',
         });
       }
     } catch (err) {

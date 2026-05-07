@@ -25,7 +25,7 @@
 // feedback_use_server_only_async).
 
 import { NextResponse } from 'next/server';
-import { streamText, tool } from 'ai';
+import { streamText, tool, APICallError } from 'ai';
 import { anthropic } from '@ai-sdk/anthropic';
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
@@ -92,6 +92,33 @@ function computeLlenasPorGrupo(
     out[canon.grupo_ui] = (out[canon.grupo_ui] ?? 0) + 1;
   }
   return out;
+}
+
+// Reformatea errores que llegan al cliente vía el UI message stream. El AI SDK
+// por default envía un mensaje opaco que rompe el parser cliente
+// ("Cannot read properties of undefined (reading 'startsWith')"). Aquí
+// extraemos statusCode + cause cuando el error viene de Anthropic, así el
+// cliente ve "401 Unauthorized — Invalid API key" en vez de un mensaje
+// críptico. Server-side ya logueamos el cause completo en el `onError` de
+// streamText (este helper sólo decide qué exponer al usuario).
+function formatStreamError(err: unknown): string {
+  if (APICallError.isInstance(err)) {
+    const { statusCode, message } = err;
+    if (statusCode === 401) {
+      return 'Anthropic rechazó la solicitud (401). El ANTHROPIC_API_KEY está vacío o es inválido.';
+    }
+    if (statusCode === 429) {
+      return 'Anthropic devolvió rate limit (429). Espera unos segundos y reintenta.';
+    }
+    if (statusCode && statusCode >= 500) {
+      return `Anthropic está caído (${statusCode}). ${message}`;
+    }
+    return `Anthropic falló${statusCode ? ` (${statusCode})` : ''}: ${message}`;
+  }
+  if (err instanceof Error) {
+    return err.message;
+  }
+  return String(err);
 }
 
 // =============================================================================
@@ -378,6 +405,26 @@ export async function POST(req: Request) {
       }),
     },
     toolChoice: 'auto',
+    onError: ({ error }) => {
+      // Loguea el error completo (con cause/statusCode/responseBody si es
+      // APICallError) a Axiom. El mensaje que ve el cliente lo decide
+      // toUIMessageStreamResponse({ onError: formatStreamError }) más abajo.
+      const isApiCall = APICallError.isInstance(error);
+      logger.error('turn.stream_error', {
+        sesion_id,
+        turno_agente_id: turnoAgente.turno_id,
+        is_api_call_error: isApiCall,
+        status_code: isApiCall ? error.statusCode : undefined,
+        response_body: isApiCall ? error.responseBody : undefined,
+        message: error instanceof Error ? error.message : String(error),
+        cause:
+          error instanceof Error && error.cause
+            ? error.cause instanceof Error
+              ? error.cause.message
+              : String(error.cause)
+            : undefined,
+      });
+    },
     onFinish: async (event) => {
       // Cierre del stream — actualizar el turno agente placeholder con el
       // texto acumulado y métricas de tokens. Si crashea aquí, el placeholder
@@ -417,5 +464,5 @@ export async function POST(req: Request) {
     },
   });
 
-  return result.toUIMessageStreamResponse();
+  return result.toUIMessageStreamResponse({ onError: formatStreamError });
 }

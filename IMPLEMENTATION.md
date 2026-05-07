@@ -977,8 +977,8 @@ Estructura de la Fase 5 en pasos discretos para auditabilidad:
 - [ ] **System prompt de Opus director (sub-paso iv 🔒).** Co-escritura founder + CC tras cierre de sub-paso vi.
 - [ ] **System prompts de Opus restantes:** `opus_generador_casos.ts`, `opus_validador_casos.ts`, `opus_sintesis_final.ts` (ya hay placeholder de `opus_director.ts` para review).
 - [ ] **Persistencia de extracciones con supersede chain** y persistencia de turnos en DB. `app/api/turn` tiene stubs TODO en los handlers de `registrar_extraccion` y `generar_batch_preguntas`.
-- [ ] **Aplicar migración 0002 a Neon `vertice-mvp/main`.** Founder aplica manual.
-- [ ] **Tests integración con DB real** (race condition concurrente sobre Postgres real, FK constraints, etc.) usando Neon branch dedicada — no incluidos en E2E mock.
+- [x] **Aplicar migración 0002 a Neon `vertice-mvp/main`.** Aplicada (verificada 2026-05-07: 15 cols `reviews_seccion`, 7 cols `cajas_declinadas`, FKs, índices, `sesiones.secciones_cerradas`).
+- [x] **Tests integración con DB real** — `lib/motor/review.integration.test.ts` (12 tests) contra branch `test-integration` (`br-noisy-credit-amkaj2or`). Cubre: `mergeSeccionCerrada` race + idempotencia, `transicionarSesionASintetizando` guard atómico + race, `declinarCaja` ON CONFLICT + FK 23503, unique index 23505. Skip-if-missing si `DATABASE_URL_TEST` no está set. Pattern vi.hoisted + vi.mock para redirigir `@/lib/db` al test branch.
 - [ ] **Inngest wiring real** (`app/api/inngest/route.ts` + cliente Inngest + handler `sesion/lista_para_sintesis`). Hoy es placeholder vía `logger.sesion.listaParaSintesis` con `pendiente_inngest: true` en payload — ver `lib/motor/review.ts:dispatchSesionListaParaSintesis`. Documentado en deuda técnica conocida (sección 16).
 
 ### Fase 6 · Integración Deepgram (4 horas) — ✅ STT base + 🟡 cableado al motor pendiente
@@ -1009,12 +1009,14 @@ Estructura de la Fase 5 en pasos discretos para auditabilidad:
 - [ ] Storage del PDF (Vercel Blob o link de descarga directo del JSON)
 - [ ] Notificación admin
 
-### Fase 9 · Vista admin (4 horas)
-- [ ] Lista de instituciones y sesiones (tabla simple)
-- [ ] Detalle de institución con JSON viewer
-- [ ] Detalle de sesión con transcripción + casos
-- [ ] Botón crear nueva institución (genera magic link)
-- [ ] Export CSV/JSON
+### Fase 9 · Vista admin (4 horas) — ✅ CERRADA (Track 3 sin keys, 2026-05-07)
+- [x] **Auth admin separada** — `lib/auth/admin.ts` con cookie `vertice_admin` + `ADMIN_PANEL_TOKEN` env (constant-time compare). Middleware extendido a `/admin/:path*` con bypass de `/admin/login`. Server Actions `loginAdmin` / `logoutAdmin` (`app/actions/adminAuth.ts`). Form en `/admin/login` con FormData (sin URL param para no leak en logs).
+- [x] **Dashboard** (`app/admin/page.tsx`) — StatCards (instituciones, sesiones, perfiles, abiertas) + panel exportar (CSV/JSON × 4 entidades) + tabla de 10 sesiones recientes con StatusPill por status.
+- [x] **Lista de instituciones** (`app/admin/instituciones/page.tsx`) — tabla con SQL crudo agregando # sesiones + # perfiles + último_turno por institución.
+- [x] **Detalle de institución** (`app/admin/instituciones/[id]/page.tsx`) — header con cajas-pill + sesiones de la institución + perfil_decision_final con métricas (schema, completitud, confianza, versión) + JSON viewer colapsable.
+- [x] **Detalle de sesión** (`app/admin/sesiones/[id]/page.tsx`) — 6 secciones colapsables: header (5 stats), turnos cronológicos con rol-badge agente vs usuario + fuente/modelo/tokens/latencia inline, extracciones (activas vs supersedidas con strikethrough), casos sintéticos con detalle expandible, reviews_seccion (decision_opus + siguiente_grupo), cajas_declinadas con razón canónica, metadata bruto (secciones_cerradas + jsonb metadata).
+- [x] **Crear institución + magic link copiable** (`app/admin/instituciones/nueva/`) — `useActionState` con Server Action `crearInstitucionConLink` que llama `crearInstitucion` + `emitirMagicLink({ dryRun: true })`. Maneja duplicado 23505 con mensaje accionable. Panel forest con magic_url en textarea readonly + botón copiar al portapapeles. Sin envío de email (espera RESEND_API_KEY).
+- [x] **Export CSV/JSON** (`app/admin/api/export/[entity]/route.ts`) — GET handler con isAdminAuthenticated guard. 4 entidades: instituciones, sesiones, extracciones, perfiles. CSV RFC-4180 con escape de quotes/commas/newlines, jsonb objects via JSON.stringify. Content-Disposition attachment.
 
 ### Fase 10 · Telemetría y deploy (3 horas)
 - [ ] Logs estructurados a Axiom en cada llamada LLM

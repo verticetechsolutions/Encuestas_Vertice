@@ -33,6 +33,7 @@ import {
   ArrowRight,
   Loader2,
   AlertCircle,
+  CheckCircle2,
   ChevronDown,
   Sparkles,
 } from 'lucide-react';
@@ -80,6 +81,7 @@ export function EntrevistaShell({
     (s) => s.cajas_llenas_por_grupo
   );
   const ultimo_error_turn = useEntrevistaStore((s) => s.ultimo_error_turn);
+  const mensaje_estado = useEntrevistaStore((s) => s.mensaje_estado);
   const setRespuesta = useEntrevistaStore((s) => s.setRespuesta);
   const marcarRespondida = useEntrevistaStore((s) => s.marcarRespondida);
   const enviarBatch = useEntrevistaStore((s) => s.enviarBatch);
@@ -104,6 +106,7 @@ export function EntrevistaShell({
     total > 0 && batch!.preguntas.every((p) => marcadas[p.id] === true);
   const enviando = status === 'enviando' || status === 'procesando';
   const enError = status === 'error_turn';
+  const sesionCerrada = status === 'cerrada';
 
   const activePregunta = batch?.preguntas[pregIndex] ?? null;
 
@@ -217,8 +220,21 @@ export function EntrevistaShell({
               )}
             </div>
 
-            {/* Hero pregunta o skeleton */}
-            {activePregunta ? (
+            {/* Hero pregunta, skeleton, o pantalla de cierre limpio */}
+            {sesionCerrada ? (
+              <div className="rounded-3xl bg-cream px-6 py-16 text-center ring-1 ring-forest/15 shadow-sm animate-fade-up md:px-10 md:py-20">
+                <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-forest/10">
+                  <CheckCircle2 className="size-7 text-forest" />
+                </div>
+                <h2 className="mt-5 text-xl font-semibold tracking-tight text-foreground md:text-2xl">
+                  Entrevista completada
+                </h2>
+                <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
+                  {mensaje_estado ??
+                    'Estamos generando la síntesis del perfil. Recibirás el resultado por correo cuando esté listo.'}
+                </p>
+              </div>
+            ) : activePregunta ? (
               <HeroPregunta
                 pregunta={activePregunta}
                 numero={pregIndex + 1}
@@ -245,6 +261,16 @@ export function EntrevistaShell({
               </div>
             )}
 
+            {/* Banner informativo (cierre de sección, transición, etc) — verde forest */}
+            {!sesionCerrada && mensaje_estado && (
+              <div className="mt-4 flex items-start gap-3 rounded-2xl bg-forest/8 p-4 ring-1 ring-forest/20 animate-fade-up">
+                <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-forest" />
+                <p className="text-sm leading-relaxed text-foreground/85">
+                  {mensaje_estado}
+                </p>
+              </div>
+            )}
+
             {/* Error banner */}
             {enError && (
               <div className="mt-4 flex items-start gap-3 rounded-2xl bg-amber-50 p-4 ring-1 ring-amber-200/70 animate-fade-up">
@@ -261,8 +287,8 @@ export function EntrevistaShell({
               </div>
             )}
 
-            {/* Send turno CTA — destaca cuando todas marcadas */}
-            {batch && (
+            {/* Send turno CTA — destaca cuando todas marcadas. Oculto al cerrar sesión. */}
+            {batch && !sesionCerrada && (
               <div
                 className={cn(
                   'mt-6 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between md:mt-8',
