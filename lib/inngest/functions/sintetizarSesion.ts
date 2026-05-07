@@ -1,37 +1,43 @@
 // Inngest function que escucha `sesion/lista_para_sintesis` y orquesta la
 // síntesis final via Opus 4.7 con extended thinking 8K (Fase 8).
 //
-// Estado al cierre de step 5: PLACEHOLDER. La función está cableada y recibe
-// eventos correctamente, pero el `step.run('sintetizar')` solo logguea — la
-// implementación real de `lib/motor/sintesis_final.ts` (LLM call + perfil
-// final + UPDATE sesiones.status='completa' o 'abandonada') es Fase 8.
-//
-// Por qué este placeholder y no diferir el wiring entero:
-//   1. Sin función registrada, `inngest.send()` desde el motor solo encola
-//      eventos huérfanos en el dev server / cloud — sin handler que los
-//      consuma queda como dead event.
-//   2. Tener el handler vivo confirma que el flujo end-to-end (motor → Inngest
-//      → handler) funciona, aunque no haga el trabajo final todavía.
-//   3. El reemplazo Fase 8 es local a este archivo: substituir el step.run
-//      "placeholder" por la cadena real (validar perfil, llamar Opus, persistir,
-//      transición de status, etc.). Cero cambios al motor.
+// Estado al cierre de Fase 8 scaffold: la cadena vive en
+// `lib/motor/sintesis_final.ts` (build → Opus → validar → persistir → marcar
+// completa). Esta function es el shell delgado que la invoca con retry
+// semantics + telemetry.
 //
 // API Inngest v4: `createFunction(options, handler)`. El trigger va dentro de
 // `options.triggers` (single-or-array). v3 usaba 3 args `(options, trigger,
 // handler)` — migrado.
+//
+// Manejo de errores tipados:
+//   - `OpusSintesisPromptNotReady` → re-throw via NonRetriableError. La sesión
+//     queda en `sintetizando` esperando que el founder firme el prompt;
+//     reintentar 4 veces no resuelve el problema (no hay key/firma).
+//   - `SesionNoEncontradaError` → NonRetriableError (data inconsistency, no
+//     resuelve con retry).
+//   - Cualquier otro error → propaga para que Inngest haga retry exponencial
+//     hasta `retries: 4`. Tras agotar, motor emite logger.sesion.sintesisFailed
+//     y la sesión queda en `sintetizando` (intervención manual para mover a
+//     `abandonada`).
 
+import { NonRetriableError } from 'inngest';
 import { inngest } from '@/lib/inngest/client';
 import { logger } from '@/lib/observability/axiom';
+import {
+  procesarSintesisFinal,
+  OpusSintesisPromptNotReady,
+  SesionNoEncontradaError,
+} from '@/lib/motor/sintesis_final';
 
 export const sintetizarSesion = inngest.createFunction(
   {
     id: 'sintetizar-sesion',
     triggers: [{ event: 'sesion/lista_para_sintesis' }],
     // Reintentos automáticos: 4 intentos con backoff exponencial. La síntesis
-    // real (Fase 8) hace LLM calls — una falla transitoria no debe abortar
-    // permanentemente. Si tras 4 reintentos sigue fallando, motor lo registrará
-    // como `sesion.sintesis_failed` y el sesion.status quedará 'sintetizando'
-    // (necesita intervención manual para mover a 'abandonada').
+    // hace LLM calls — una falla transitoria no debe abortar permanentemente.
+    // Si tras 4 reintentos sigue fallando, motor emite sesion.sintesis_failed y
+    // la sesion.status queda 'sintetizando' (necesita intervención manual).
     retries: 4,
   },
   async ({ event, step }) => {
@@ -45,22 +51,56 @@ export const sintetizarSesion = inngest.createFunction(
       completitud_estimada: number | null;
     };
 
-    await step.run('placeholder-fase-8', async () => {
-      // TODO Fase 8: invocar lib/motor/sintesis_final.ts con el shape:
-      //   const perfil = await sintetizarFinal({ sesion_id: data.sesion_id });
-      //   await marcarSesionCompleta(data.sesion_id, perfil);
-      // En caso de error: motor maneja la transición a 'abandonada' + emite
-      // logger.sesion.sintesisFailed.
-      logger.info('inngest.sintetizar_sesion.placeholder', {
-        event_id: event.id,
-        sesion_id: data.sesion_id,
-        ultimo_review_id: data.ultimo_review_id,
-        total_reviews: data.total_reviews,
-        total_profundizaciones: data.total_profundizaciones,
-        total_casos: data.total_casos,
-        nota: 'sintesis_final.ts no implementado todavía (Fase 8). Función registrada para evitar eventos huérfanos.',
-      });
-      return { received: true, sesion_id: data.sesion_id };
+    // step.run aísla la lógica para que Inngest la trate como atómica + cache
+    // de resultados parciales si el step falla y reintenta. La función es ya
+    // idempotente a nivel motor (marcarSesionCompleta tiene guard de status).
+    const result = await step.run('procesar-sintesis-final', async () => {
+      try {
+        const r = await procesarSintesisFinal(data.sesion_id);
+        logger.info('inngest.sintetizar_sesion.ok', {
+          event_id: event.id,
+          sesion_id: data.sesion_id,
+          perfil_id: r.perfil_id,
+          version: r.version,
+          status_transition: r.status_transition,
+          completitud: r.perfil.metricas.completitud,
+          confianza_global: r.perfil.metricas.confianza_global,
+        });
+        return {
+          perfil_id: r.perfil_id,
+          version: r.version,
+          status_transition: r.status_transition,
+        };
+      } catch (err) {
+        // Errores que no resuelven con retry — los marcamos NonRetriable para
+        // que Inngest no consuma intentos ni mande noise a Axiom.
+        if (err instanceof OpusSintesisPromptNotReady) {
+          logger.warn('inngest.sintetizar_sesion.prompt_no_listo', {
+            event_id: event.id,
+            sesion_id: data.sesion_id,
+            nota: 'OPUS_SINTESIS_FINAL_PROMPT_READY=false. Sesión queda en sintetizando.',
+          });
+          throw new NonRetriableError(
+            'OpusSintesisPromptNotReady — esperando firma del prompt en lib/prompts/opus_sintesis_final.ts'
+          );
+        }
+        if (err instanceof SesionNoEncontradaError) {
+          logger.error('inngest.sintetizar_sesion.sesion_no_encontrada', {
+            event_id: event.id,
+            sesion_id: data.sesion_id,
+          });
+          throw new NonRetriableError(`Sesión ${data.sesion_id} no encontrada`);
+        }
+        // Errores transitorios (DB timeout, Opus 5xx, validación Zod
+        // recuperable, etc.) → propagamos para que Inngest haga retry.
+        logger.sesion.sintesisFailed({
+          sesion_id: data.sesion_id,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        throw err;
+      }
     });
+
+    return result;
   }
 );
