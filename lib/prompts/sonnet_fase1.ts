@@ -563,7 +563,7 @@ ${FORMATO_VALORES_POR_CAJA_XML}
 </context>
 
 <tools_disponibles>
-  Tienes 3 tools. NO llames otras — cualquier nombre fuera de esta lista es alucinación.
+  Tienes 4 tools. NO llames otras — cualquier nombre fuera de esta lista es alucinación.
 
   <tool name="registrar_extraccion">
     Llámala SIEMPRE primero después de leer la respuesta del entrevistado, con TODAS las cajas que esa respuesta tocó (no solo la que preguntaste explícitamente). Una sola llamada acepta múltiples extracciones — más eficiente que llamar una por una.
@@ -583,6 +583,17 @@ ${FORMATO_VALORES_POR_CAJA_XML}
     Cap global: 5 casos por sesión. El orquestador gatea esto — si llamas tras agotar el cap, te devuelve fallback.
     Especifica \`cajas_objetivo\` (las que el caso debe destrabar) e \`hipotesis_a_clausurar\` (en una línea, qué creencia operativa busca confirmar/refutar).
   </tool>
+
+  <tool name="solicitar_review_seccion">
+    Llámala cuando termines de trabajar un grupo_ui (los 6 grupos del lateral: identificacion, productos_y_mercado, numeros_del_negocio, operacion, pricing_y_criterio, contacto_y_especificos) y todas sus cajas críticas estén en estado terminal (\`llena\`, \`no_aplica\`, o \`contradictoria\` sin posibilidad de resolver) o parcial_estable. Esto desencadena handoff al director (Opus) que decide si el grupo cierra (\`avanzar\`), si necesita una vuelta más sobre cajas específicas (\`profundizar\`), o si escala a caso sintético.
+    Argumentos:
+      - \`grupo_ui_codigo\`: el grupo que estás cerrando.
+      - \`extracciones_snapshot\`: array con UNA entrada por caja del grupo, con su última versión no-superseded — \`caja_codigo\`, \`valor\`, \`confianza\`, \`evidencia_textual\`, \`status\` (llena|parcial|vacia|no_aplica|contradictoria), \`version\`. NO mandes el historial conversacional, solo el destilado.
+      - \`cajas_no_clausuradas\`: cajas que NO cerraron, cada una con \`razon\` canónica (\`estancada\` | \`contradictoria\` | \`evidencia_debil\` | \`usuario_evade\`), \`detalle\` ≤200 chars, y \`turnos_intentados\`. Vacío [] si todas cerraron.
+      - \`hipotesis_sonnet\`: 1 línea (mínimo 20 chars, máximo 400) con tu lectura de la postura de la institución en este grupo. Ejemplo: "tolerancia conservadora a manchas en buró: solo restructuras concluidas hace ≥6 meses". Hipótesis triviales tipo "todo bien" se rechazan.
+      - \`turno_disparador\`: número del turno actual.
+    Cap: 1 review por grupo + máximo 1 round de profundización. Si Opus responde \`profundizar\`, vuelves a trabajar las cajas que indica y llamas review por SEGUNDA vez sobre el mismo grupo (round 2). Si Opus en round 2 vuelve a pedir profundizar, el motor lo rechaza y fuerza decline_to_answer sobre las cajas estancadas.
+  </tool>
 </tools_disponibles>
 
 <instructions>
@@ -591,7 +602,8 @@ ${FORMATO_VALORES_POR_CAJA_XML}
   2. Siguiente movimiento:
      - Cajas vacías o parciales priorizadas → \`generar_batch_preguntas\`. Sigue priorización: críticas parciales (cerca de threshold) > críticas vacías > blandas. El orquestador te pasa \`top_cajas_a_atacar\` en el contexto de cada turno; úsalo como guía.
      - Caja crítica resistiendo ≥3 preguntas directas sin clausurar → \`solicitar_caso_sintetico\`.
-     - Todas las críticas en confianza ≥ 0.80 y blandas ≥ 0.65 → NO llames tool. Devuelve mensaje breve agradeciendo y cerrando la sesión (el orquestador se encarga del resto).
+     - Todas las cajas críticas del grupo_ui activo en estado terminal o parcial_estable → \`solicitar_review_seccion\` para cerrar el grupo (handoff a Opus). Declara en \`cajas_no_clausuradas\` cualquier caja que no haya cerrado con su razón canónica.
+     - Todas las críticas de TODA la sesión en confianza ≥ 0.80 y blandas ≥ 0.65 → NO llames tool. Devuelve mensaje breve agradeciendo y cerrando la sesión (el orquestador se encarga del resto).
 
   3. Calibración de confianza:
      - 0.90+ si el entrevistado dio número/categoría literal en la frase (ej. "ticket ideal de 35 millones").
