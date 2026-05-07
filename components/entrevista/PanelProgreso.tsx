@@ -6,10 +6,18 @@
 //   - Lista de 6 grupos con barra mini, conteo y % alineados a la derecha
 //   - Highlight para el grupo activo (chip lime + ring sutil)
 //   - Microanimación: barras se animan con CSS transition cuando cambia llenas
+//   - Celebración de cierre: cuando llenas_por_grupo[g] incrementa, el chip
+//     del grupo dispara un pulse-ring lime de 900ms (animate-cierre-caja).
+//     Esto cierra el TODO de Fase 7 "animación de campos en verde al cerrar
+//     caja". Funciona contra el state real (Sonnet incrementa via tool result)
+//     y contra el state simulado en /preview/ui.
 
+import { useEffect, useRef, useState } from 'react';
 import { GrupoUISchema, type GrupoUI } from '@/lib/schemas/cajas';
 import type { CajasGrupoCount } from '@/lib/state/entrevista';
 import { cn } from '@/lib/utils';
+
+const CIERRE_ANIM_MS = 900;
 
 const GRUPO_LABELS: Record<GrupoUI, string> = {
   identificacion: 'Identificación',
@@ -37,6 +45,44 @@ export function PanelProgreso({ porGrupo, grupoActivo }: Props) {
   );
   const pctTotal =
     totales.total > 0 ? Math.round((totales.llenas / totales.total) * 100) : 0;
+
+  // Trigger de celebración por grupo: cuando llenas[g] incrementa, marcamos
+  // el grupo como "celebrando" durante CIERRE_ANIM_MS para que la animación
+  // CSS corra una vez. Usamos timestamps en lugar de bool para que disparos
+  // consecutivos (varios cierres seguidos) re-monten la animación.
+  const prevLlenasRef = useRef<Record<GrupoUI, number>>(
+    grupos.reduce((acc, g) => ({ ...acc, [g]: porGrupo[g].llenas }), {} as Record<GrupoUI, number>)
+  );
+  const [celebrandoTs, setCelebrandoTs] = useState<Partial<Record<GrupoUI, number>>>({});
+
+  useEffect(() => {
+    const incrementados: GrupoUI[] = [];
+    for (const g of grupos) {
+      const prev = prevLlenasRef.current[g];
+      const curr = porGrupo[g].llenas;
+      if (curr > prev) incrementados.push(g);
+      prevLlenasRef.current[g] = curr;
+    }
+    if (incrementados.length === 0) return;
+    const ts = Date.now();
+    setCelebrandoTs((prev) => {
+      const next = { ...prev };
+      for (const g of incrementados) next[g] = ts;
+      return next;
+    });
+    const timeout = setTimeout(() => {
+      setCelebrandoTs((prev) => {
+        const next = { ...prev };
+        for (const g of incrementados) {
+          if (next[g] === ts) delete next[g];
+        }
+        return next;
+      });
+    }, CIERRE_ANIM_MS + 50);
+    return () => clearTimeout(timeout);
+    // grupos viene de GrupoUISchema.options (frozen), no necesita estar en deps.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [porGrupo]);
 
   return (
     <aside className="overflow-hidden rounded-3xl bg-cream ring-1 ring-foreground/5 shadow-sm">
@@ -68,14 +114,18 @@ export function PanelProgreso({ porGrupo, grupoActivo }: Props) {
           const { llenas, total } = porGrupo[g];
           const pct = total > 0 ? Math.round((llenas / total) * 100) : 0;
           const esActivo = g === grupoActivo;
+          const celebrando = celebrandoTs[g];
           return (
             <div
-              key={g}
+              // key incluye timestamp del último cierre para forzar re-mount
+              // del nodo y re-disparar la animación CSS en cierres consecutivos.
+              key={celebrando ? `${g}-${celebrando}` : g}
               className={cn(
                 'rounded-2xl px-3 py-2.5 transition-all duration-300',
                 esActivo
                   ? 'bg-lime/35 ring-1 ring-lime/40'
-                  : 'hover:bg-muted/40'
+                  : 'hover:bg-muted/40',
+                celebrando && 'animate-cierre-caja'
               )}
             >
               <div className="mb-1.5 flex items-baseline justify-between gap-2">
