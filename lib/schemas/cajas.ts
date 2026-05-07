@@ -6,12 +6,10 @@
 // `extracciones.caja_codigo` in the DB is text (not enum) so v2 can extend without
 // migration; this module is the runtime canon the engine validates against.
 //
-// TODO (Fase 3 close-out): add `permite_no_aplica: boolean` to CajaCanonSchema. The
-// 6 numeric cajas with "X o no aplica" semantics need a per-caja flag to drive the
-// lateral form's "no aplica" toggle and to count `null` as filled in completitud.
-// Founder D2 follow-up (2026-04-30) — defer until closing Fase 3 to avoid mid-phase
-// schema churn. Cajas afectadas: ru_score_pm_min, ru_score_pf_min, ru_antiguedad_min,
-// ru_facturacion_min, gr_dscr_min, gr_deuda_ebitda_max.
+// `permite_no_aplica` (founder D2 follow-up 2026-04-30): the 6 numeric cajas with
+// "X o no aplica" / "X o sin requisito" semantics in §5.2 carry the flag so the
+// UI can render a "no aplica" toggle and so completitud counts `null` as filled
+// only when the flag is true. Default is false; per-caja overrides below.
 
 import { z } from 'zod';
 import { TipoInstitucionSchema, type TipoInstitucion } from './casos';
@@ -50,6 +48,12 @@ export const CajaCanonSchema = z.object({
   criticidad: CriticidadSchema,
   tipo_dato: TipoDatoSchema,
   grupo_ui: GrupoUISchema,
+  // True for cajas where `null` (no aplica / sin requisito) is a valid filled
+  // state. Drives the lateral form's "no aplica" toggle and the completitud
+  // counter. Optional in literals (treated as `false` when omitted); the 6
+  // §5.2 numeric cajas with explicit "o no aplica" / "o sin requisito"
+  // semantics set it to true. Use `permiteNoAplica(codigo)` helper.
+  permite_no_aplica: z.boolean().optional(),
 });
 export type CajaCanon = z.infer<typeof CajaCanonSchema>;
 
@@ -81,16 +85,16 @@ export const CAJAS_CANON: CajaCanon[] = [
   { codigo: 'ru_monto_max', descripcion: 'Monto máximo por operación (MXN)', criticidad: 'critica', tipo_dato: 'int', grupo_ui: 'numeros_del_negocio' },
   { codigo: 'ru_ticket_ideal', descripcion: 'Ticket ideal (int o rango)', criticidad: 'blanda', tipo_dato: 'int', grupo_ui: 'numeros_del_negocio' },
   { codigo: 'ru_moneda', descripcion: 'Moneda (mxn, usd, bimoneda)', criticidad: 'critica', tipo_dato: 'enum', grupo_ui: 'numeros_del_negocio' },
-  { codigo: 'ru_antiguedad_min', descripcion: 'Antigüedad mínima del cliente en años (int o "sin requisito")', criticidad: 'critica', tipo_dato: 'int', grupo_ui: 'numeros_del_negocio' },
-  { codigo: 'ru_facturacion_min', descripcion: 'Facturación mínima anual MXN (int o "sin requisito")', criticidad: 'critica', tipo_dato: 'int', grupo_ui: 'numeros_del_negocio' },
-  { codigo: 'ru_score_pm_min', descripcion: 'Score Buró PM mínimo (300-900 o "no aplica")', criticidad: 'critica', tipo_dato: 'int', grupo_ui: 'numeros_del_negocio' },
-  { codigo: 'ru_score_pf_min', descripcion: 'Score Buró PF mínimo del representante legal (300-900)', criticidad: 'critica', tipo_dato: 'int', grupo_ui: 'numeros_del_negocio' },
+  { codigo: 'ru_antiguedad_min', descripcion: 'Antigüedad mínima del cliente en años (int o "sin requisito")', criticidad: 'critica', tipo_dato: 'int', grupo_ui: 'numeros_del_negocio', permite_no_aplica: true },
+  { codigo: 'ru_facturacion_min', descripcion: 'Facturación mínima anual MXN (int o "sin requisito")', criticidad: 'critica', tipo_dato: 'int', grupo_ui: 'numeros_del_negocio', permite_no_aplica: true },
+  { codigo: 'ru_score_pm_min', descripcion: 'Score Buró PM mínimo (300-900 o "no aplica")', criticidad: 'critica', tipo_dato: 'int', grupo_ui: 'numeros_del_negocio', permite_no_aplica: true },
+  { codigo: 'ru_score_pf_min', descripcion: 'Score Buró PF mínimo del representante legal (300-900)', criticidad: 'critica', tipo_dato: 'int', grupo_ui: 'numeros_del_negocio', permite_no_aplica: true },
 
   // §5.2.3 Garantías y ratios financieros (7)
   { codigo: 'gr_tipos_garantia', descripcion: 'Tipos de garantía aceptados (8 tipos)', criticidad: 'critica', tipo_dato: 'enum_multi', grupo_ui: 'numeros_del_negocio' },
   { codigo: 'gr_cobertura_min', descripcion: 'Cobertura mínima de garantía (ratio)', criticidad: 'critica', tipo_dato: 'real', grupo_ui: 'numeros_del_negocio' },
-  { codigo: 'gr_dscr_min', descripcion: 'DSCR mínimo (float o "no usa")', criticidad: 'critica', tipo_dato: 'real', grupo_ui: 'numeros_del_negocio' },
-  { codigo: 'gr_deuda_ebitda_max', descripcion: 'Deuda/EBITDA máximo (float o "no usa")', criticidad: 'critica', tipo_dato: 'real', grupo_ui: 'numeros_del_negocio' },
+  { codigo: 'gr_dscr_min', descripcion: 'DSCR mínimo (float o "no usa")', criticidad: 'critica', tipo_dato: 'real', grupo_ui: 'numeros_del_negocio', permite_no_aplica: true },
+  { codigo: 'gr_deuda_ebitda_max', descripcion: 'Deuda/EBITDA máximo (float o "no usa")', criticidad: 'critica', tipo_dato: 'real', grupo_ui: 'numeros_del_negocio', permite_no_aplica: true },
   { codigo: 'gr_capital_contable_min', descripcion: 'Capital contable mínimo (int o ratio)', criticidad: 'blanda', tipo_dato: 'int', grupo_ui: 'numeros_del_negocio' },
   { codigo: 'gr_caida_facturacion_max', descripcion: 'Caída facturación YoY máxima tolerada (%)', criticidad: 'blanda', tipo_dato: 'real', grupo_ui: 'numeros_del_negocio' },
   { codigo: 'gr_ratios_definitorios', descripcion: 'Top 3 ratios definitorios para esta institución', criticidad: 'critica', tipo_dato: 'text', grupo_ui: 'numeros_del_negocio' },
@@ -249,6 +253,10 @@ export function getCajaAny(codigo: string): CajaCanon | undefined {
 
 export function isCajaCriticaCanon(codigo: string): boolean {
   return getCajaAny(codigo)?.criticidad === 'critica';
+}
+
+export function permiteNoAplica(codigo: string): boolean {
+  return getCajaAny(codigo)?.permite_no_aplica === true;
 }
 
 export function getCajasByGrupoUI(grupo: GrupoUI): CajaCanon[] {

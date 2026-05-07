@@ -1,0 +1,67 @@
+'use client';
+
+// Living vertex mark — the V breathes, drifts, and at boot animates the two
+// slashes drawing themselves toward the gold base. Used as backdrop + as the
+// morph element next to the headline. CSS-only (no Framer/Motion runtime).
+
+import { cn } from '@/lib/utils';
+
+interface Props {
+  className?: string;
+  variant?: 'backdrop' | 'inline';
+}
+
+export function VertexMark({ className, variant = 'backdrop' }: Props) {
+  const isInline = variant === 'inline';
+  return (
+    <svg
+      viewBox="0 0 1380 1093"
+      xmlns="http://www.w3.org/2000/svg"
+      aria-hidden
+      className={cn('vx-mark select-none', isInline && 'vx-inline', className)}
+    >
+      <defs>
+        <linearGradient id="vx-grad-l" x1="0" y1="0" x2="1" y2="1">
+          <stop offset="0%" stopColor="#F4F1EA" stopOpacity="0.85" />
+          <stop offset="100%" stopColor="#F4F1EA" stopOpacity="0.45" />
+        </linearGradient>
+        <linearGradient id="vx-grad-r" x1="1" y1="0" x2="0" y2="1">
+          <stop offset="0%" stopColor="#F4F1EA" stopOpacity="0.85" />
+          <stop offset="100%" stopColor="#F4F1EA" stopOpacity="0.45" />
+        </linearGradient>
+        <linearGradient id="vx-grad-base" x1="0.5" y1="0" x2="0.5" y2="1">
+          <stop offset="0%" stopColor="#E0BE7C" />
+          <stop offset="100%" stopColor="#9C824A" />
+        </linearGradient>
+      </defs>
+
+      {/* Left slash */}
+      <g className="vx-slash vx-slash-l">
+        <path
+          fillRule="evenodd"
+          clipRule="evenodd"
+          d="M2.94882 39.0833C-5.86923 21.5998 6.10248 0.735083 25.4133 0.355504C110.561 -1.31491 195.464 2.90083 280.123 13.0122C289.119 14.0863 296.904 19.8405 300.77 28.1738C405.931 254.74 514.151 483.782 625.42 706.423C628.923 713.431 629.254 721.656 626.259 728.897C592.796 809.847 554.958 885.157 512.749 960.103C502.408 978.463 476.291 977.656 466.796 958.825C311.897 651.652 157.281 345.072 2.94882 39.0833Z"
+          fill={isInline ? 'url(#vx-grad-l)' : '#F4F1EA'}
+        />
+      </g>
+
+      {/* Right slash */}
+      <g className="vx-slash vx-slash-r">
+        <path
+          fillRule="evenodd"
+          clipRule="evenodd"
+          d="M1089.72 15.7179C1094.03 7.01583 1102.63 1.35178 1112.2 1.01931C1193.89 -1.81138 1275.32 1.25487 1356.51 10.2032C1374.83 12.2223 1385.13 32.4328 1376.55 49.0333C1221.66 348.854 1066.91 657.41 912.337 956.725C902.585 975.61 876.242 975.906 866.352 957.102C827.591 883.38 789.932 804.14 753.383 731.051C749.613 723.513 749.522 714.616 753.16 707.004C863.879 475.495 976.071 245.063 1089.72 15.7179Z"
+          fill={isInline ? 'url(#vx-grad-r)' : '#F4F1EA'}
+        />
+      </g>
+
+      {/* Gold base — the vertex point */}
+      <g className="vx-base">
+        <path
+          d="M665.72 822.284C675.62 803.036 702.702 803.036 712.604 822.284L831.364 1053.25C840.581 1071.16 827.803 1092.65 807.922 1092.65H570.401C550.52 1092.65 537.742 1071.16 546.959 1053.25L665.72 822.284Z"
+          fill="url(#vx-grad-base)"
+        />
+      </g>
+    </svg>
+  );
+}

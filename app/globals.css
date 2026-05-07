@@ -7,9 +7,12 @@
 @theme inline {
   --color-background: var(--background);
   --color-foreground: var(--foreground);
-  --font-sans: var(--font-sans);
-  --font-mono: var(--font-geist-mono);
-  --font-heading: var(--font-sans);
+  --font-sans: 'Satoshi', ui-sans-serif, system-ui, sans-serif;
+  /* Mono var preservada para no romper utilidades, pero apunta a Satoshi —
+     sólo Satoshi y General Sans (Fontshare) en toda la marca. El "feel" mono
+     se mantiene vía uppercase + tracking-[0.32em] en los labels. */
+  --font-mono: 'Satoshi', ui-sans-serif, system-ui, sans-serif;
+  --font-heading: 'General Sans', 'Satoshi', ui-sans-serif, system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
@@ -39,6 +42,17 @@
   --color-popover: var(--popover);
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
+
+  /* Vértice fintech tokens — extiende el sistema shadcn sin pelearse con él. */
+  --color-canvas: var(--canvas);
+  --color-cream: var(--cream);
+  --color-forest: var(--forest);
+  --color-forest-deep: var(--forest-deep);
+  --color-forest-soft: var(--forest-soft);
+  --color-lime: var(--lime);
+  --color-lime-soft: var(--lime-soft);
+  --color-lime-foreground: var(--lime-foreground);
+
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -49,82 +63,512 @@
 }
 
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --radius: 0.625rem;
-  --sidebar: oklch(0.985 0 0);
-  --sidebar-foreground: oklch(0.145 0 0);
-  --sidebar-primary: oklch(0.205 0 0);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.97 0 0);
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-  --sidebar-border: oklch(0.922 0 0);
-  --sidebar-ring: oklch(0.708 0 0);
+  /* Page canvas — taupe cálido, evoca papel/folder de archivos. */
+  --canvas: oklch(0.62 0.025 75);
+
+  /* Card base — cream off-white. */
+  --cream: oklch(0.965 0.012 90);
+  --background: var(--cream);
+  --foreground: oklch(0.18 0.02 145);
+
+  /* Forest — verde profundo para hero panels. */
+  --forest: oklch(0.36 0.075 145);
+  --forest-deep: oklch(0.22 0.04 110);
+  --forest-soft: oklch(0.46 0.07 145);
+
+  /* Lime — accent fintech, CTA y stepper activo. */
+  --lime: oklch(0.92 0.16 125);
+  --lime-soft: oklch(0.95 0.08 125);
+  --lime-foreground: oklch(0.28 0.06 145);
+
+  /* Shadcn role mapping — usamos forest como primary, lime como accent. */
+  --card: var(--cream);
+  --card-foreground: oklch(0.20 0.02 145);
+  --popover: var(--cream);
+  --popover-foreground: oklch(0.20 0.02 145);
+  --primary: var(--forest);
+  --primary-foreground: oklch(0.97 0.012 90);
+  --secondary: oklch(0.94 0.01 90);
+  --secondary-foreground: oklch(0.30 0.04 145);
+  --muted: oklch(0.94 0.01 90);
+  --muted-foreground: oklch(0.45 0.02 110);
+  --accent: var(--lime);
+  --accent-foreground: var(--lime-foreground);
+  --destructive: oklch(0.55 0.18 27);
+  --border: oklch(0.88 0.012 90);
+  --input: oklch(0.92 0.012 90);
+  --ring: var(--forest);
+
+  --chart-1: var(--forest);
+  --chart-2: var(--lime);
+  --chart-3: oklch(0.55 0.07 145);
+  --chart-4: oklch(0.78 0.10 130);
+  --chart-5: oklch(0.40 0.05 110);
+
+  --radius: 0.875rem;
+
+  --sidebar: var(--forest);
+  --sidebar-foreground: oklch(0.97 0.012 90);
+  --sidebar-primary: var(--lime);
+  --sidebar-primary-foreground: var(--lime-foreground);
+  --sidebar-accent: oklch(0.40 0.075 145);
+  --sidebar-accent-foreground: oklch(0.97 0.012 90);
+  --sidebar-border: oklch(0.42 0.07 145);
+  --sidebar-ring: var(--lime);
+
+  /* Tipografía display — General Sans (Fontshare). */
+  --font-display: 'General Sans', 'Satoshi', ui-sans-serif, sans-serif;
 }
 
 .dark {
-  --background: oklch(0.145 0 0);
-  --foreground: oklch(0.985 0 0);
-  --card: oklch(0.205 0 0);
-  --card-foreground: oklch(0.985 0 0);
-  --popover: oklch(0.205 0 0);
-  --popover-foreground: oklch(0.985 0 0);
-  --primary: oklch(0.922 0 0);
-  --primary-foreground: oklch(0.205 0 0);
-  --secondary: oklch(0.269 0 0);
-  --secondary-foreground: oklch(0.985 0 0);
-  --muted: oklch(0.269 0 0);
-  --muted-foreground: oklch(0.708 0 0);
-  --accent: oklch(0.269 0 0);
-  --accent-foreground: oklch(0.985 0 0);
-  --destructive: oklch(0.704 0.191 22.216);
-  --border: oklch(1 0 0 / 10%);
-  --input: oklch(1 0 0 / 15%);
-  --ring: oklch(0.556 0 0);
-  --chart-1: oklch(0.87 0 0);
-  --chart-2: oklch(0.556 0 0);
-  --chart-3: oklch(0.439 0 0);
-  --chart-4: oklch(0.371 0 0);
-  --chart-5: oklch(0.269 0 0);
-  --sidebar: oklch(0.205 0 0);
-  --sidebar-foreground: oklch(0.985 0 0);
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-  --sidebar-accent: oklch(0.269 0 0);
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-  --sidebar-border: oklch(1 0 0 / 10%);
-  --sidebar-ring: oklch(0.556 0 0);
+  /* Modo oscuro: por ahora reusamos la paleta clara invertida. Founder no
+     ha pedido dark mode todavía, pero shadcn lo expone gratis. */
+  --canvas: oklch(0.18 0.02 145);
+  --cream: oklch(0.22 0.025 145);
+  --background: var(--cream);
+  --foreground: oklch(0.96 0.012 90);
+  --card: oklch(0.24 0.025 145);
+  --card-foreground: oklch(0.96 0.012 90);
+  --popover: oklch(0.24 0.025 145);
+  --popover-foreground: oklch(0.96 0.012 90);
+  --primary: var(--lime);
+  --primary-foreground: var(--lime-foreground);
+  --secondary: oklch(0.30 0.04 145);
+  --secondary-foreground: oklch(0.96 0.012 90);
+  --muted: oklch(0.30 0.04 145);
+  --muted-foreground: oklch(0.72 0.02 110);
+  --accent: var(--lime);
+  --accent-foreground: var(--lime-foreground);
+  --destructive: oklch(0.65 0.20 27);
+  --border: oklch(0.34 0.04 145);
+  --input: oklch(0.34 0.04 145);
+  --ring: var(--lime);
 }
 
 @layer base {
   * {
     @apply border-border outline-ring/50;
   }
-  body {
-    @apply bg-background text-foreground;
-  }
   html {
     @apply font-sans;
+  }
+  body {
+    background-color: var(--canvas);
+    color: var(--foreground);
+    font-feature-settings: "ss01", "cv11";
+  }
+}
+
+/* Microanimaciones reutilizables — keyframes + utilities. */
+@keyframes vertice-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(8px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes vertice-pulse-ring {
+  0% {
+    box-shadow: 0 0 0 0 oklch(0.92 0.16 125 / 0.5);
+  }
+  70% {
+    box-shadow: 0 0 0 8px oklch(0.92 0.16 125 / 0);
+  }
+  100% {
+    box-shadow: 0 0 0 0 oklch(0.92 0.16 125 / 0);
+  }
+}
+
+@keyframes vertice-shimmer {
+  from {
+    background-position: -200% 0;
+  }
+  to {
+    background-position: 200% 0;
+  }
+}
+
+/* =============================================================================
+   Vertex mark animations — used by <VertexMark>. Slashes draw themselves on
+   mount, then breathe in counter-phase. Base pulses subtly.
+   ========================================================================== */
+@keyframes vx-draw-l {
+  from { transform: translateX(-32px) rotate(-3deg) scale(0.92); opacity: 0; }
+  to   { transform: translateX(0) rotate(0) scale(1); opacity: 1; }
+}
+@keyframes vx-draw-r {
+  from { transform: translateX(32px) rotate(3deg) scale(0.92); opacity: 0; }
+  to   { transform: translateX(0) rotate(0) scale(1); opacity: 1; }
+}
+@keyframes vx-draw-base {
+  from { transform: translateY(28px) scale(0.7); opacity: 0; }
+  to   { transform: translateY(0) scale(1); opacity: 1; }
+}
+@keyframes vx-breathe-l {
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  50%      { transform: rotate(-1.2deg) translateY(-6px); }
+}
+@keyframes vx-breathe-r {
+  0%, 100% { transform: rotate(0deg) translateY(0); }
+  50%      { transform: rotate(1.2deg) translateY(-6px); }
+}
+@keyframes vx-base-pulse {
+  0%, 100% { transform: translateY(0) scale(1); filter: brightness(1); }
+  50%      { transform: translateY(-3px) scale(1.04); filter: brightness(1.15); }
+}
+
+.vx-mark .vx-slash,
+.vx-mark .vx-base {
+  transform-box: fill-box;
+  transform-origin: center bottom;
+}
+.vx-mark .vx-slash-l {
+  animation:
+    vx-draw-l 1.2s cubic-bezier(0.16, 1, 0.3, 1) both,
+    vx-breathe-l 9s ease-in-out 1.4s infinite;
+}
+.vx-mark .vx-slash-r {
+  animation:
+    vx-draw-r 1.2s cubic-bezier(0.16, 1, 0.3, 1) 0.08s both,
+    vx-breathe-r 9s ease-in-out 1.5s infinite;
+}
+.vx-mark .vx-base {
+  animation:
+    vx-draw-base 0.9s cubic-bezier(0.16, 1, 0.3, 1) 0.6s both,
+    vx-base-pulse 4.5s ease-in-out 2s infinite;
+}
+/* (vx-glow vive sin drop-shadow — el gradient interno de los slashes es suficiente) */
+@media (prefers-reduced-motion: reduce) {
+  .vx-mark .vx-slash-l,
+  .vx-mark .vx-slash-r,
+  .vx-mark .vx-base {
+    animation: none;
+  }
+}
+
+/* =============================================================================
+   Landing-only utilities — kinetic typography, marquee, hairlines, count-up.
+   Scoped under .landing-root so they don't leak into entrevista.
+   ========================================================================== */
+@keyframes ln-line-in {
+  from { clip-path: inset(0 100% 0 0); transform: translateY(8px); }
+  to   { clip-path: inset(0 0 0 0); transform: translateY(0); }
+}
+@keyframes ln-fade-in {
+  from { opacity: 0; transform: translateY(10px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes ln-marquee {
+  from { transform: translateX(0); }
+  to   { transform: translateX(-50%); }
+}
+@keyframes ln-caret {
+  0%, 49% { opacity: 1; }
+  50%, 100% { opacity: 0; }
+}
+
+.landing-root .ln-line {
+  display: inline-block;
+  animation: ln-line-in 0.9s cubic-bezier(0.2, 0.85, 0.25, 1) both;
+}
+
+/* Word-by-word reveal — clip mask + lift. Each word is its own clip. */
+@keyframes ln-word-rise {
+  from { transform: translateY(110%) skewY(2deg); opacity: 0.4; }
+  to   { transform: translateY(0) skewY(0); opacity: 1; }
+}
+.landing-root .ln-word-mask {
+  display: inline-block;
+  overflow: hidden;
+  vertical-align: top;
+  padding: 0.04em 0;
+  margin: -0.04em 0;
+}
+.landing-root .ln-word-mask > span {
+  display: inline-block;
+  animation: ln-word-rise 0.95s cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Char-by-char domino fall — for the signature gold word. */
+@keyframes ln-char-fall {
+  from { transform: translateY(-0.55em) rotate(-7deg); opacity: 0; filter: blur(6px); }
+  60%  { filter: blur(0); }
+  to   { transform: translateY(0) rotate(0); opacity: 1; filter: blur(0); }
+}
+.landing-root .ln-char {
+  display: inline-block;
+  animation: ln-char-fall 0.85s cubic-bezier(0.2, 0.85, 0.25, 1) both;
+}
+
+/* Subtle scroll-cue arrow — bobs vertically. */
+@keyframes ln-scroll-cue {
+  0%, 100% { transform: translateY(0); opacity: 0.6; }
+  50%      { transform: translateY(6px); opacity: 1; }
+}
+.landing-root .ln-scroll-cue {
+  animation: ln-scroll-cue 1.8s ease-in-out infinite;
+}
+
+/* Pill scroll progress fills with gold as user scrolls. */
+.landing-root .ln-progress-track {
+  --pct: 0%;
+  position: relative;
+  overflow: hidden;
+}
+.landing-root .ln-progress-track::before {
+  content: '';
+  position: absolute;
+  inset: 0 auto 0 0;
+  width: var(--pct);
+  background: linear-gradient(to right, rgba(200,168,100,0.18), rgba(200,168,100,0.08));
+  transition: width 0.18s linear;
+}
+
+/* Cookies card pop-in/pop-out — patrón simétrico mirror.
+   Enter: ease-out-back (overshoot al 60% → settle).
+   Exit:  ease-in-back  (wind-up al 25% → fly out). El curve es el espejo
+   matemático del enter: cubic-bezier(1-x2,1-y2,1-x1,1-y1). Exit dura 70%
+   del enter para que dismiss se sienta responsivo (Material/HIG). */
+@keyframes cookie-pop-in {
+  0%   { opacity: 0; transform: translate(8%, 24%) scale(0.85) rotate(2deg); }
+  60%  { opacity: 1; transform: translate(-1.5%, -3%) scale(1.03) rotate(-0.6deg); }
+  100% { opacity: 1; transform: translate(0, 0) scale(1) rotate(0); }
+}
+@keyframes cookie-pop-out {
+  0%   { opacity: 1; transform: translate(0, 0) scale(1) rotate(0); }
+  25%  { opacity: 0.96; transform: translate(-1.5%, -3%) scale(1.03) rotate(-0.6deg); }
+  100% { opacity: 0; transform: translate(8%, 24%) scale(0.85) rotate(2deg); }
+}
+.landing-root .cookie-card {
+  animation: cookie-pop-in 0.46s cubic-bezier(0.34, 1.35, 0.64, 1) both;
+}
+.landing-root .cookie-card[data-leaving="true"] {
+  animation: cookie-pop-out 0.32s cubic-bezier(0.36, 0, 0.66, -0.35) both;
+}
+
+/* Success mark — sello editorial. Onda one-shot → disco cae → hairline →
+   check se traza. Sin loops infinitos; una declaración y silencio. */
+@keyframes sx-pulse {
+  0%   { opacity: 0; transform: scale(0.6); }
+  25%  { opacity: 0.85; }
+  100% { opacity: 0; transform: scale(1.5); }
+}
+@keyframes sx-disk {
+  0%   { opacity: 0; transform: scale(0.4); }
+  60%  { opacity: 1; transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes sx-disk-stroke {
+  from { opacity: 0; }
+  to   { opacity: 1; }
+}
+@keyframes sx-check {
+  from { stroke-dashoffset: 1; }
+  to   { stroke-dashoffset: 0; }
+}
+@keyframes sx-text {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
+@keyframes sx-line-draw {
+  from { transform: scaleX(0); opacity: 0; }
+  to   { transform: scaleX(1); opacity: 1; }
+}
+@keyframes sx-status-pulse {
+  0%, 100% { transform: scale(1); opacity: 1; }
+  50%      { transform: scale(1.5); opacity: 0.55; }
+}
+@keyframes sx-kicker-in {
+  from { opacity: 0; letter-spacing: 0.5em; }
+  to   { opacity: 1; letter-spacing: 0.3em; }
+}
+
+/* Brand success glyph — secuencia "transaction complete":
+   spark dorada → arco se dibuja → ring full → check traza. Drop-shadow
+   gold glow ambient da la sensación fintech. Total ~2.0s. */
+@keyframes bsg-disk {
+  0%   { opacity: 0; transform: scale(0.4); }
+  60%  { opacity: 1; transform: scale(1.06); }
+  100% { opacity: 1; transform: scale(1); }
+}
+@keyframes bsg-spark {
+  0%   { opacity: 0; transform: scale(0); }
+  25%  { opacity: 1; transform: scale(1.6); }
+  60%  { opacity: 0.95; transform: scale(1); }
+  100% { opacity: 0; transform: scale(0.6); }
+}
+@keyframes bsg-arc-draw {
+  from { stroke-dashoffset: 1; }
+  to   { stroke-dashoffset: 0; }
+}
+@keyframes bsg-check-draw {
+  from { stroke-dashoffset: 1; }
+  to   { stroke-dashoffset: 0; }
+}
+/* Pulso de glow ambient post-trazado: dorado palpita sutil. */
+@keyframes bsg-glow-pulse {
+  0%, 100% { filter: drop-shadow(0 0 4px rgba(224, 190, 124, 0.55)); }
+  50%      { filter: drop-shadow(0 0 9px rgba(224, 190, 124, 0.9)); }
+}
+.bsg-mark .bsg-disk,
+.bsg-mark .bsg-spark {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.bsg-mark .bsg-disk {
+  animation: bsg-disk 0.6s cubic-bezier(0.34, 1.4, 0.64, 1) 0.18s both;
+}
+.bsg-mark .bsg-spark {
+  filter: drop-shadow(0 0 5px rgba(224, 190, 124, 0.85));
+  animation: bsg-spark 0.85s cubic-bezier(0.34, 1.4, 0.64, 1) 0.4s both;
+}
+.bsg-mark .bsg-arc {
+  /* Glow constante + pulse después del trazado */
+  animation:
+    bsg-arc-draw 0.6s cubic-bezier(0.65, 0, 0.35, 1) 0.95s both,
+    bsg-glow-pulse 2.4s ease-in-out 1.6s infinite;
+}
+.bsg-mark .bsg-check {
+  filter: drop-shadow(0 0 3px rgba(244, 241, 234, 0.45));
+  animation: bsg-check-draw 0.42s cubic-bezier(0.65, 0, 0.35, 1) 1.55s both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bsg-mark .bsg-disk,
+  .bsg-mark .bsg-spark,
+  .bsg-mark .bsg-arc,
+  .bsg-mark .bsg-check {
+    animation: none;
+  }
+  .bsg-mark .bsg-disk { opacity: 1; transform: none; }
+  .bsg-mark .bsg-spark { opacity: 0; }
+  .bsg-mark .bsg-arc { stroke-dashoffset: 0; }
+  .bsg-mark .bsg-check { stroke-dashoffset: 0; }
+}
+
+.sx-mark .sx-pulse,
+.sx-mark .sx-disk {
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.sx-mark .sx-pulse {
+  animation: sx-pulse 1.3s cubic-bezier(0.2, 0.7, 0.3, 1) 0.1s both;
+}
+.sx-mark .sx-disk {
+  animation: sx-disk 0.6s cubic-bezier(0.34, 1.4, 0.64, 1) 0.18s both;
+}
+.sx-mark .sx-disk-stroke {
+  animation: sx-disk-stroke 0.4s ease-out 0.62s both;
+}
+.sx-mark .sx-check {
+  animation: sx-check 0.5s cubic-bezier(0.65, 0, 0.35, 1) 0.7s both;
+}
+.sx-text {
+  animation: sx-text 0.6s cubic-bezier(0.2, 0.85, 0.25, 1) both;
+}
+.sx-line {
+  transform-origin: left center;
+  animation: sx-line-draw 0.55s cubic-bezier(0.65, 0, 0.35, 1) 0.2s both;
+}
+.sx-status-dot {
+  animation: sx-status-pulse 2.4s ease-in-out 0.8s infinite;
+}
+.sx-kicker {
+  animation: sx-kicker-in 0.55s cubic-bezier(0.2, 0.85, 0.25, 1) both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sx-mark .sx-pulse { display: none; }
+  .sx-mark .sx-disk,
+  .sx-mark .sx-disk-stroke,
+  .sx-mark .sx-check,
+  .sx-text,
+  .sx-line,
+  .sx-status-dot,
+  .sx-kicker {
+    animation: none;
+  }
+  .sx-mark .sx-check { stroke-dashoffset: 0; }
+  .sx-mark .sx-disk { opacity: 1; transform: none; }
+  .sx-mark .sx-disk-stroke { opacity: 1; }
+  .sx-text { opacity: 1; transform: none; }
+  .sx-line { transform: none; opacity: 1; }
+}
+
+/* Header collapsed pill — orgánica, border-radius morphing perpetuo. */
+@keyframes ln-pill-morph {
+  0%, 100% { border-radius: 28px 42px 24px 48px / 32px 38px 28px 44px; }
+  25%      { border-radius: 38px 30px 44px 28px / 36px 32px 40px 28px; }
+  50%      { border-radius: 22px 50px 32px 38px / 26px 46px 30px 36px; }
+  75%      { border-radius: 44px 24px 36px 30px / 40px 28px 32px 34px; }
+}
+.landing-root .ln-pill-morph {
+  animation: ln-pill-morph 14s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-root .ln-pill-morph {
+    animation: none;
+    border-radius: 32px 44px 28px 48px;
+  }
+}
+.landing-root .ln-stagger > * {
+  opacity: 0;
+  animation: ln-fade-in 0.7s cubic-bezier(0.2, 0.85, 0.25, 1) both;
+}
+.landing-root .ln-marquee-track {
+  animation: ln-marquee 40s linear infinite;
+}
+.landing-root .ln-marquee:hover .ln-marquee-track {
+  animation-play-state: paused;
+}
+.landing-root .ln-caret::after {
+  content: '';
+  display: inline-block;
+  width: 0.55ch;
+  height: 1em;
+  margin-left: 0.12ch;
+  vertical-align: -0.18em;
+  background: currentColor;
+  animation: ln-caret 1.05s steps(2) infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .landing-root .ln-line,
+  .landing-root .ln-stagger > *,
+  .landing-root .ln-marquee-track,
+  .landing-root .ln-caret::after {
+    animation: none;
+    opacity: 1;
+    clip-path: none;
+    transform: none;
+  }
+}
+
+@layer utilities {
+  .animate-fade-up {
+    animation: vertice-fade-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
+  }
+  .animate-pulse-ring {
+    animation: vertice-pulse-ring 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
+  }
+  .animate-shimmer {
+    background-image: linear-gradient(
+      90deg,
+      transparent 0%,
+      oklch(0.92 0.16 125 / 0.18) 50%,
+      transparent 100%
+    );
+    background-size: 200% 100%;
+    animation: vertice-shimmer 1.6s linear infinite;
+  }
+
+  /* Tipografía hero — bold tracking apretado, estilo fintech. */
+  .text-display {
+    font-family: var(--font-heading);
+    font-feature-settings: "ss01", "cv11";
+    letter-spacing: -0.02em;
+    font-weight: 600;
+    line-height: 1.05;
   }
 }

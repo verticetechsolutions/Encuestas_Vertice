@@ -6,8 +6,9 @@ Sistema de entrevista conversacional adaptativa para extraer el credit box de in
 
 ## Stack
 
-- Next.js 16 (App Router) + React 19 + TypeScript estricto
+- Next.js 15 (App Router) + React 19 + TypeScript estricto
 - Tailwind v4 + shadcn/ui (canary)
+- Base UI Dialog · Motion · GSAP ScrollTrigger · Lenis smooth scroll (landing)
 - Vercel AI SDK + `@anthropic-ai/sdk` (Sonnet 4.6 + Opus 4.7)
 - Deepgram Nova-3 Multilingual `es-419` (streaming)
 - Drizzle ORM + Neon Postgres + pgvector
@@ -44,6 +45,8 @@ Abre [http://localhost:3000](http://localhost:3000).
 
 ```
 app/
+├── page.tsx                      Landing pública (default sin link de encuesta)
+├── terminos/                     Términos · Privacidad · Cookies
 ├── (auth)/magic-link/[token]/    Validación magic link
 ├── entrevista/[sesion_id]/       Entrevista en vivo
 ├── admin/                         Vista interna Vértice
@@ -62,8 +65,21 @@ lib/
 └── observability/                Sentry, Axiom helpers
 
 inngest/functions/                Síntesis final, PDF
-components/                       UI (shadcn + custom)
+components/
+├── landing/                      Hero, CTAs, modales, smooth scroll
+└── ui/                           shadcn primitives
 ```
+
+## Landing pública (`/`)
+
+Página default para visitantes sin magic link. Hero editorial con:
+
+- **Selector dual** desde el navbar: modal con dos rutas — *Acceder a mi encuesta* (Google + reenviar magic link) o *Solicitar acceso* (formulario).
+- **Manifest** de tres datos clave (formato, duración, entrega) en card minimalista.
+- **Marca Vértice** con tilt 3D sobre cursor + scroll triggers GSAP pinning del hero.
+- **Smooth scroll** vía Lenis integrado con ScrollTrigger.
+
+Términos / Privacidad / Cookies en `/terminos`. La cookie banner (`CookiesCard`) se monta condicionalmente desde el footer.
 
 ## Idioma
 
