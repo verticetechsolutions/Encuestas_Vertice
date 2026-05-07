@@ -1040,7 +1040,7 @@ function ReceiptView({
   return (
     <div className="relative -mx-1">
       {/* Check protagonista — sello que abre la constancia */}
-      <BrandSuccessGlyph className="size-16" />
+      <BrandSuccessGlyph size={68} />
 
       {/* Title — bilínea editorial, primer línea sólida, segunda en peso liviano */}
       <Dialog.Title

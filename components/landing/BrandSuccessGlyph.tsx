@@ -16,14 +16,26 @@
 
 import { cn } from '@/lib/utils';
 
-export function BrandSuccessGlyph({ className }: { className?: string }) {
+export function BrandSuccessGlyph({
+  size = 64,
+  className,
+}: {
+  /** CSS px size for both width and height. Default 64. Pasamos via attribute
+   *  en vez de utility class para evitar inconsistencias del JIT de Tailwind
+   *  cuando se cambia el tamaño en HMR — un SVG sin width/height explícitos
+   *  cae a fill-container y rompe el layout. */
+  size?: number;
+  className?: string;
+}) {
   return (
     <svg
+      width={size}
+      height={size}
       viewBox="0 0 100 100"
       xmlns="http://www.w3.org/2000/svg"
       aria-hidden
       overflow="visible"
-      className={cn('bsg-mark', className)}
+      className={cn('bsg-mark block', className)}
     >
       {/* Disco navy — zona oscura que da contraste para el glow dorado */}
       <circle className="bsg-disk" cx="50" cy="50" r="32" fill="#0A0F1C" />
