@@ -172,6 +172,64 @@ describe('computeMapaIncertidumbre — cajas_declinadas (Phase 5 step 5)', () =>
   });
 });
 
+describe('computeMapaIncertidumbre — no_aplica gating con permite_no_aplica (Phase 3 D2)', () => {
+  const cajaConFlag = (codigo: string): CajaCanon => ({
+    codigo,
+    descripcion: `${codigo} (permite no_aplica)`,
+    criticidad: 'critica',
+    tipo_dato: 'int',
+    grupo_ui: 'numeros_del_negocio',
+    permite_no_aplica: true,
+  });
+
+  it('manual + null + threshold + permite_no_aplica=true → no_aplica', () => {
+    const m = computeMapaIncertidumbre(
+      [
+        ext('c1', 0.95, {
+          fuente: 'manual',
+          valor: null,
+        }),
+      ],
+      [cajaConFlag('c1')]
+    );
+    expect(m.cajas['c1'].status).toBe('no_aplica');
+  });
+
+  it('manual + null + threshold pero permite_no_aplica omitido (default false) → parcial', () => {
+    // cajaCritica() no setea la flag — debe caer a parcial aunque manual+null
+    // cumpla threshold. La idea: el aliado no puede declarar "no aplica" en una
+    // caja que el canon no autoriza (e.g. nm_productos_ofrecidos sí debe tener
+    // valor real, no se acepta null).
+    const m = computeMapaIncertidumbre(
+      [ext('c1', 0.95, { fuente: 'manual', valor: null })],
+      [cajaCritica('c1')]
+    );
+    expect(m.cajas['c1'].status).toBe('parcial');
+  });
+
+  it('llm + null + threshold sobre caja con permite_no_aplica=true → llena (no no_aplica, sigue siendo solo manual)', () => {
+    // Defensa contra Sonnet escribiendo null como sentinel "no usa". El estado
+    // no_aplica explícito debe venir del aliado vía form, no del LLM.
+    const m = computeMapaIncertidumbre(
+      [ext('c1', 0.95, { fuente: 'llm', valor: null })],
+      [cajaConFlag('c1')]
+    );
+    expect(m.cajas['c1'].status).toBe('llena');
+    expect(m.cajas['c1'].status).not.toBe('no_aplica');
+  });
+
+  it('caja con permite_no_aplica=true marcada manual+null cuenta en cajas_criticas_pct', () => {
+    // 2 críticas: 1 con extracción real (llena) + 1 con manual+null+flag (no_aplica)
+    // → 100% críticas resueltas.
+    const m = computeMapaIncertidumbre(
+      [ext('c1', 0.9), ext('c2', 0.9, { fuente: 'manual', valor: null })],
+      [cajaCritica('c1'), cajaConFlag('c2')]
+    );
+    expect(m.cajas_criticas_pct).toBe(1);
+    expect(m.cajas['c2'].status).toBe('no_aplica');
+  });
+});
+
 describe('CajaState shape (regression guard)', () => {
   it('todos los CajaStatus reconocidos en runtime', () => {
     const statuses: CajaState['status'][] = [
