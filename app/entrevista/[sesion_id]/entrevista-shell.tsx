@@ -26,6 +26,7 @@ import { HeroPregunta } from '@/components/entrevista/HeroPregunta';
 import { BatchNav } from '@/components/entrevista/BatchNav';
 import { PanelProgreso } from '@/components/entrevista/PanelProgreso';
 import { Stepper } from '@/components/entrevista/Stepper';
+import { VertexMark } from '@/components/landing/VertexMark';
 import { useEntrevistaStore } from '@/lib/state/entrevista';
 import { GrupoUISchema, getCajaAny, type GrupoUI } from '@/lib/schemas/cajas';
 import { cn } from '@/lib/utils';
@@ -132,46 +133,58 @@ export function EntrevistaShell({
 
   return (
     <div className="min-h-screen bg-canvas">
-      {/* Header dark forest — minimal */}
-      <header className="bg-forest-deep text-primary-foreground">
-        <div className="mx-auto flex max-w-6xl items-center justify-between px-6 py-3.5 md:px-8">
-          <div className="flex items-center gap-3">
-            <div className="flex size-8 items-center justify-center rounded-full bg-lime text-lime-foreground">
-              <span className="text-xs font-bold tracking-tight">V</span>
+      {/* Header navy ink — espejo del landing. VertexMark real + acentos gold. */}
+      <header className="relative bg-ink text-cream-pure">
+        {/* Atmosphere overlay sutil — radial gold + noise, 30% intensidad landing */}
+        <div
+          aria-hidden
+          className="atmosphere-radial-gold pointer-events-none absolute inset-0"
+        />
+        <div
+          aria-hidden
+          className="atmosphere-noise pointer-events-none absolute inset-0"
+        />
+        <div className="relative mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3.5 md:px-8">
+          <div className="flex items-center gap-3.5">
+            <div className="relative aspect-[1380/1093] w-9 shrink-0">
+              <VertexMark
+                variant="inline"
+                className="absolute inset-0 h-full w-full"
+              />
             </div>
             <div className="leading-tight">
-              <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-primary-foreground/60">
+              <p className="text-eyebrow text-cream-pure/55">
                 Vértice
               </p>
-              <p className="text-sm font-medium tracking-tight">
+              <p className="mt-1.5 text-sm font-medium tracking-tight text-cream-pure">
                 Entrevista de criterios
               </p>
             </div>
           </div>
-          <div className="hidden items-center gap-2 text-xs text-primary-foreground/65 md:flex">
+          <div className="hidden items-center md:flex">
             {preview ? (
-              <span className="inline-flex items-center gap-1.5 rounded-full bg-lime/15 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.18em] text-lime ring-1 ring-lime/30">
+              <span className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-eyebrow text-gold-bright ring-1 ring-gold/35">
                 <span
-                  className="size-1.5 rounded-full bg-lime animate-pulse-ring"
+                  className="size-1.5 rounded-full bg-gold-bright animate-pulse-ring"
                   aria-hidden
                 />
                 Preview UI
               </span>
             ) : (
-              <>
+              <span className="inline-flex items-center gap-2 text-eyebrow text-cream-pure/55">
                 <span
-                  className="size-1.5 rounded-full bg-lime/80 animate-pulse-ring"
+                  className="size-1.5 rounded-full bg-gold animate-pulse-ring"
                   aria-hidden
                 />
-                <span>Borrador autoguardado</span>
-              </>
+                Borrador autoguardado
+              </span>
             )}
           </div>
-          <div className="flex items-center gap-2 rounded-full bg-forest/40 px-2.5 py-1.5 ring-1 ring-primary-foreground/10">
-            <div className="flex size-7 items-center justify-center rounded-full bg-lime text-lime-foreground text-xs font-semibold">
+          <div className="flex items-center gap-2.5 rounded-full bg-cream-pure/[0.06] px-2.5 py-1.5 ring-1 ring-cream-pure/15 transition-colors hover:ring-cream-pure/25">
+            <div className="flex size-7 items-center justify-center rounded-full bg-gold text-ink text-xs font-semibold">
               {nombre_institucion.charAt(0)}
             </div>
-            <span className="hidden text-sm font-medium md:inline">
+            <span className="hidden pr-1 text-sm font-medium tracking-tight text-cream-pure md:inline">
               {nombre_institucion}
             </span>
           </div>
