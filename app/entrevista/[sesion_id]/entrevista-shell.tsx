@@ -21,7 +21,6 @@
 //   - Send turno button hace pulse-ring cuando todas marcadas (CTA breathing).
 
 import { useEffect, useMemo, useState } from 'react';
-import { Button } from '@/components/ui/button';
 import { HeroPregunta } from '@/components/entrevista/HeroPregunta';
 import { BatchNav } from '@/components/entrevista/BatchNav';
 import { PanelProgreso } from '@/components/entrevista/PanelProgreso';
@@ -31,7 +30,7 @@ import { useEntrevistaStore } from '@/lib/state/entrevista';
 import { GrupoUISchema, getCajaAny, type GrupoUI } from '@/lib/schemas/cajas';
 import { cn } from '@/lib/utils';
 import {
-  ArrowRight,
+  ArrowUpRight,
   Loader2,
   AlertCircle,
   CheckCircle2,
@@ -307,66 +306,103 @@ export function EntrevistaShell({
               </div>
             )}
 
-            {/* Send turno CTA — destaca cuando todas marcadas. Oculto al cerrar sesión. */}
+            {/* Send turno CTA — pill anidado estilo landing.
+                Activo (todasMarcadas): bg-cream-pure + sub-pill ink + arrow gold.
+                Pendiente: bg-ink + sub-pill ink + arrow gold. */}
             {batch && !sesionCerrada && (
               <div
                 className={cn(
-                  'mt-6 flex flex-col items-stretch gap-3 sm:flex-row sm:items-center sm:justify-between md:mt-8',
-                  'rounded-2xl bg-cream p-4 ring-1 ring-foreground/5 shadow-sm transition-all duration-500',
-                  todasMarcadas && !enError && 'ring-lime/60 bg-lime/15'
+                  'mt-6 flex flex-col items-stretch gap-4 sm:flex-row sm:items-center sm:justify-between md:mt-8',
+                  'rounded-2xl bg-cream-pure p-4 ring-1 ring-ink/8 shadow-sm transition-all duration-500',
+                  todasMarcadas && !enError && 'ring-gold/45 bg-gold/[0.06]'
                 )}
               >
-                <div className="flex flex-col gap-0.5">
-                  <p className="text-xs font-semibold tracking-tight text-foreground">
+                <div className="flex flex-col gap-1">
+                  <p className="text-xs font-medium tracking-tight text-foreground">
                     {(() => {
                       const pendientes = batch.preguntas.filter((p) => !marcadas[p.id]).length;
                       if (todasMarcadas) return '¡Listo para enviar!';
                       return `${pendientes} pregunta${pendientes === 1 ? '' : 's'} por marcar`;
                     })()}
                   </p>
-                  <p className="text-[11px] text-muted-foreground">
+                  <p className="text-[11px] leading-relaxed text-foreground/55">
                     {todasMarcadas
                       ? 'La IA generará las próximas preguntas con base en tus respuestas.'
                       : 'Marca cada respuesta para habilitar el envío del turno.'}
                   </p>
                 </div>
-              <Button
-                type="button"
-                size="lg"
-                onClick={() => void enviarBatch()}
-                disabled={!todasMarcadas || enviando}
-                className={cn(
-                  'h-12 rounded-full px-6 text-sm font-semibold tracking-tight transition-all',
-                  'bg-forest text-primary-foreground hover:bg-forest-soft active:scale-[0.98]',
-                  todasMarcadas &&
-                    !enError &&
-                    'bg-lime text-lime-foreground hover:bg-lime/90 shadow-md',
-                  todasMarcadas && !enError && !enviando && 'animate-pulse-ring',
-                  'disabled:opacity-60'
-                )}
-              >
-                {status === 'enviando' ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" />
-                    Enviando…
-                  </>
-                ) : status === 'procesando' ? (
-                  <>
-                    <Loader2 className="size-4 animate-spin" />
-                    Procesando…
-                  </>
-                ) : enError ? (
-                  <>
-                    Reintentar envío
-                    <ArrowRight className="size-4" />
-                  </>
-                ) : (
-                  <>
-                    Enviar turno
-                    <ArrowRight className="size-4" />
-                  </>
-                )}
-              </Button>
+                <button
+                  type="button"
+                  onClick={() => void enviarBatch()}
+                  disabled={!todasMarcadas || enviando}
+                  className={cn(
+                    'group/send relative inline-flex h-12 items-center gap-3 rounded-full pl-6 pr-2 text-[13.5px] font-medium tracking-tight transition-all',
+                    'will-change-transform active:scale-[0.99] disabled:cursor-not-allowed',
+                    todasMarcadas && !enError
+                      ? // CTA cream protagonista — espejo de "Solicitar alianza"
+                        [
+                          'bg-cream-pure text-ink',
+                          'shadow-[0_0_0_1px_rgb(10_15_28_/_0.04),0_30px_70px_-20px_rgb(200_168_100_/_0.45)]',
+                          'hover:bg-white',
+                          !enviando && 'animate-pulse-ring',
+                        ]
+                      : // CTA ink dimmed — espejo del SubmitButton del landing
+                        [
+                          'bg-ink text-cream-pure',
+                          'hover:bg-ink-raised',
+                          'disabled:opacity-50',
+                        ]
+                  )}
+                >
+                  {status === 'enviando' ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" />
+                      Enviando…
+                      <span
+                        aria-hidden
+                        className="inline-flex size-9 items-center justify-center rounded-full bg-gold/20 text-gold-bright"
+                      >
+                        <ArrowUpRight className="size-4" strokeWidth={2.5} />
+                      </span>
+                    </>
+                  ) : status === 'procesando' ? (
+                    <>
+                      <Loader2 className="size-4 animate-spin" />
+                      Procesando…
+                      <span
+                        aria-hidden
+                        className="inline-flex size-9 items-center justify-center rounded-full bg-gold/20 text-gold-bright"
+                      >
+                        <ArrowUpRight className="size-4" strokeWidth={2.5} />
+                      </span>
+                    </>
+                  ) : enError ? (
+                    <>
+                      Reintentar envío
+                      <span
+                        aria-hidden
+                        className="inline-flex size-9 items-center justify-center rounded-full bg-ink text-gold transition-transform group-hover/send:rotate-45"
+                      >
+                        <ArrowUpRight className="size-4" strokeWidth={2.5} />
+                      </span>
+                    </>
+                  ) : (
+                    <>
+                      Enviar turno
+                      <span
+                        aria-hidden
+                        className={cn(
+                          'inline-flex size-9 items-center justify-center rounded-full transition-transform group-hover/send:rotate-45',
+                          todasMarcadas
+                            ? 'bg-ink text-gold'
+                            : 'bg-cream-pure/15 text-cream-pure/55'
+                        )}
+                      >
+                        <ArrowUpRight className="size-4" strokeWidth={2.5} />
+                      </span>
+                    </>
+                  )}
+                </button>
               </div>
             )}
 
