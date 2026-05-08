@@ -19,7 +19,7 @@
 // /preview/ui.
 
 import { useEffect, useRef, useState } from 'react';
-import { Check, CircleDashed, Mic, Sparkles } from 'lucide-react';
+import { Check, CircleDashed, Mic } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { MicButton } from '@/components/stt/MicButton';
@@ -137,14 +137,13 @@ export function HeroPregunta({
         aria-hidden
       />
 
-      <div className="relative px-6 py-8 md:px-12 md:py-12">
-        {/* Eyebrow — código manifiesto P01 + sección. Tracking 0.32em landing. */}
-        <div className="text-eyebrow flex flex-wrap items-center gap-2.5 text-foreground/45">
-          <span className="tabular-nums text-gold-deep">
+      <div className="relative px-6 py-8 md:px-10 md:py-10">
+        {/* Top row — número de pregunta + chip respondida. Sin sección
+            duplicada (vive en eyebrow del shell M0X). */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className="text-eyebrow tabular-nums text-gold-deep">
             P{numero.toString().padStart(2, '0')}
           </span>
-          <span className="size-1 rounded-full bg-gold/55" aria-hidden />
-          <span>{seccionLabel}</span>
           {marcada && (
             <span className="ml-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-eyebrow text-gold-deep ring-1 ring-gold/40 animate-fade-up">
               <Check className="size-3" strokeWidth={2.5} />
@@ -154,30 +153,12 @@ export function HeroPregunta({
         </div>
 
         {/* Pregunta hero — display tracking apretado, ritmo landing */}
-        <h2 className="mt-7 text-display text-[32px] leading-[1.04] tracking-[-0.025em] text-foreground md:text-[44px] xl:text-[52px]">
+        <h2 className="mt-5 text-display text-[28px] leading-[1.05] tracking-[-0.025em] text-foreground md:text-[36px] xl:text-[40px]">
           {pregunta.texto_pregunta}
         </h2>
 
         {/* Hairline gold — sello editorial debajo del título */}
         <span aria-hidden className="gold-hairline mt-6 block w-12" />
-
-        {/* Cajas objetivo como chips minimal — paleta gold/ink */}
-        {pregunta.cajas_objetivo.length > 0 && (
-          <div className="mt-6 flex flex-wrap gap-1.5">
-            <span className="inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-eyebrow text-gold-deep ring-1 ring-gold/30">
-              <Sparkles className="size-3" />
-              Cubre
-            </span>
-            {pregunta.cajas_objetivo.map((c) => (
-              <code
-                key={c}
-                className="rounded-full px-2.5 py-1 font-mono text-[11px] tracking-tight text-foreground/55 ring-1 ring-ink/10"
-              >
-                {c}
-              </code>
-            ))}
-          </div>
-        )}
 
         {/* Textarea grande — filled inset estilo landing FormField, focus gold */}
         <div className="mt-8 md:mt-10">
@@ -239,9 +220,7 @@ export function HeroPregunta({
                 <span>{meta.text}</span>
               </>
             ) : (
-              <span className="text-foreground/45">
-                Pregunta {numero} de {total} · escribe para guardar borrador.
-              </span>
+              <span className="text-foreground/35">Borrador autoguardado</span>
             )}
           </div>
 
