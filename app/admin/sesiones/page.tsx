@@ -65,7 +65,7 @@ export default async function AdminSesionesIndexPage({ searchParams }: Props) {
       <FilterChips active={activeStatuses} />
 
       {visible.length === 0 ? (
-        <EmptyState filtered={activeStatuses.length > 0} />
+        <EmptyState isExplicitFilter={status !== undefined} />
       ) : (
         <div className="overflow-hidden rounded-3xl bg-cream shadow-sm ring-1 ring-foreground/5">
           <table className="w-full text-sm">
@@ -77,7 +77,7 @@ export default async function AdminSesionesIndexPage({ searchParams }: Props) {
                 <Th>Cajas</Th>
                 <Th>Iniciada</Th>
                 <Th>Último turno</Th>
-                <Th />
+                <Th srLabel="Acciones" />
               </tr>
             </thead>
             <tbody className="divide-y divide-foreground/5">
@@ -132,12 +132,13 @@ export default async function AdminSesionesIndexPage({ searchParams }: Props) {
 
 function FilterChips({ active }: { active: SesionStatus[] }) {
   const activeSet = new Set(active);
+  const isDefault =
+    activeSet.size === 2 &&
+    activeSet.has('abierta') &&
+    activeSet.has('sintetizando');
   return (
     <div className="flex flex-wrap gap-2">
-      <ChipLink
-        href="/admin/sesiones"
-        active={active.length === 0 /* nunca true por default; reservado */}
-      >
+      <ChipLink href="/admin/sesiones" active={isDefault}>
         Default (vivas)
       </ChipLink>
       {VALID_STATUSES.map((s) => {
@@ -183,15 +184,15 @@ function ChipLink({
   );
 }
 
-function EmptyState({ filtered }: { filtered: boolean }) {
+function EmptyState({ isExplicitFilter }: { isExplicitFilter: boolean }) {
   return (
     <div className="rounded-3xl bg-cream p-10 text-center shadow-sm ring-1 ring-foreground/5">
       <p className="text-sm text-muted-foreground">
-        {filtered
+        {isExplicitFilter
           ? 'Sin sesiones con estos filtros.'
           : 'Aún no hay sesiones. Crea una institución para emitir un magic link.'}
       </p>
-      {filtered && (
+      {isExplicitFilter && (
         <Link
           href="/admin/sesiones"
           className="mt-3 inline-block text-xs font-medium text-forest hover:underline"
@@ -203,8 +204,22 @@ function EmptyState({ filtered }: { filtered: boolean }) {
   );
 }
 
-function Th({ children }: { children?: React.ReactNode }) {
-  return <th className="px-5 py-3">{children}</th>;
+function Th({
+  children,
+  srLabel,
+}: {
+  children?: React.ReactNode;
+  srLabel?: string;
+}) {
+  return (
+    <th
+      scope="col"
+      aria-label={!children ? srLabel : undefined}
+      className="px-5 py-3"
+    >
+      {children}
+    </th>
+  );
 }
 
 function Td({
