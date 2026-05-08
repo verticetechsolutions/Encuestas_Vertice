@@ -144,66 +144,67 @@ export function EntrevistaShell({
         className="pointer-events-none absolute inset-0 atmosphere-noise"
       />
 
-      {/* Header navy ink — espejo del landing. VertexMark real + acentos gold. */}
-      <header className="relative z-10 bg-ink text-cream-pure">
-        {/* Atmosphere overlay sutil — radial gold + noise, 30% intensidad landing */}
-        <div
-          aria-hidden
-          className="atmosphere-radial-gold pointer-events-none absolute inset-0"
-        />
-        <div
-          aria-hidden
-          className="atmosphere-noise pointer-events-none absolute inset-0"
-        />
-        <div className="relative mx-auto flex max-w-6xl items-center justify-between gap-4 px-6 py-3.5 md:px-8">
-          <div className="flex items-center gap-3.5">
-            <div className="relative aspect-[1380/1093] w-9 shrink-0">
-              <VertexMark
-                variant="inline"
-                className="absolute inset-0 h-full w-full"
-              />
-            </div>
-            <div className="leading-tight">
-              <p className="text-eyebrow text-cream-pure/55">
-                Vértice
-              </p>
-              <p className="mt-1.5 text-sm font-medium tracking-tight text-cream-pure">
-                Entrevista de criterios
-              </p>
-            </div>
-          </div>
-          <div className="hidden items-center md:flex">
-            {preview ? (
-              <span className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-eyebrow text-gold-bright ring-1 ring-gold/35">
-                <span
-                  className="size-1.5 rounded-full bg-gold-bright animate-pulse-ring"
-                  aria-hidden
+      {/* Container — todo en cards apiladas sobre el mismo canvas, sin bandas
+          full-width. Header navy se vuelve un card más, no una sección aparte. */}
+      <main className="relative z-10 mx-auto max-w-6xl space-y-4 px-4 py-6 md:space-y-5 md:px-8 md:py-8">
+        {/* Card navy — VertexMark + brand + status + avatar */}
+        <div className="relative overflow-hidden rounded-3xl bg-ink text-cream-pure shadow-xl shadow-ink/30 ring-1 ring-ink/40">
+          <div
+            aria-hidden
+            className="atmosphere-radial-gold pointer-events-none absolute inset-0"
+          />
+          <div
+            aria-hidden
+            className="atmosphere-noise pointer-events-none absolute inset-0"
+          />
+          <div className="relative flex items-center justify-between gap-4 px-5 py-3.5 md:px-7">
+            <div className="flex items-center gap-3.5">
+              <div className="relative aspect-[1380/1093] w-9 shrink-0">
+                <VertexMark
+                  variant="inline"
+                  className="absolute inset-0 h-full w-full"
                 />
-                Preview UI
-              </span>
-            ) : (
-              <span className="inline-flex items-center gap-2 text-eyebrow text-cream-pure/55">
-                <span
-                  className="size-1.5 rounded-full bg-gold animate-pulse-ring"
-                  aria-hidden
-                />
-                Borrador autoguardado
-              </span>
-            )}
-          </div>
-          <div className="flex items-center gap-2.5 rounded-full bg-cream-pure/[0.06] px-2.5 py-1.5 ring-1 ring-cream-pure/15 transition-colors hover:ring-cream-pure/25">
-            <div className="flex size-7 items-center justify-center rounded-full bg-gold text-ink text-xs font-semibold">
-              {nombre_institucion.charAt(0)}
+              </div>
+              <div className="leading-tight">
+                <p className="text-eyebrow text-cream-pure/55">
+                  Vértice
+                </p>
+                <p className="mt-1.5 text-sm font-medium tracking-tight text-cream-pure">
+                  Entrevista de criterios
+                </p>
+              </div>
             </div>
-            <span className="hidden pr-1 text-sm font-medium tracking-tight text-cream-pure md:inline">
-              {nombre_institucion}
-            </span>
+            <div className="hidden items-center md:flex">
+              {preview ? (
+                <span className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-eyebrow text-gold-bright ring-1 ring-gold/35">
+                  <span
+                    className="size-1.5 rounded-full bg-gold-bright animate-pulse-ring"
+                    aria-hidden
+                  />
+                  Preview UI
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-2 text-eyebrow text-cream-pure/55">
+                  <span
+                    className="size-1.5 rounded-full bg-gold animate-pulse-ring"
+                    aria-hidden
+                  />
+                  Borrador autoguardado
+                </span>
+              )}
+            </div>
+            <div className="flex items-center gap-2.5 rounded-full bg-cream-pure/[0.06] px-2.5 py-1.5 ring-1 ring-cream-pure/15 transition-colors hover:ring-cream-pure/25">
+              <div className="flex size-7 items-center justify-center rounded-full bg-gold text-ink text-xs font-semibold">
+                {nombre_institucion.charAt(0)}
+              </div>
+              <span className="hidden pr-1 text-sm font-medium tracking-tight text-cream-pure md:inline">
+                {nombre_institucion}
+              </span>
+            </div>
           </div>
         </div>
-      </header>
 
-      {/* Container */}
-      <main className="relative z-10 mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-10">
+        {/* Card body — stepper + hero pregunta + send + panel */}
         <div className="gold-seam rounded-[28px] bg-cream-pure/85 p-3 shadow-xl shadow-ink/5 backdrop-blur md:p-5">
           {/* Top: stepper + chip progreso global */}
           <div className="gold-seam rounded-3xl bg-cream-pure p-4 shadow-sm md:p-5">
