@@ -200,15 +200,13 @@ export function EntrevistaShell({
                 porGrupo={cajas_llenas_por_grupo}
                 activo={grupoActivo}
               />
-              <div className="flex items-center gap-2 self-start rounded-full bg-muted/50 px-3 py-1.5 ring-1 ring-foreground/8 lg:self-center">
-                <Sparkles className="size-3 text-forest" />
-                <span className="font-mono text-[11px] tabular-nums tracking-tight text-foreground/80">
+              <div className="flex items-center gap-2.5 self-start rounded-full bg-cream-pure px-3 py-1.5 ring-1 ring-ink/10 lg:self-center">
+                <Sparkles className="size-3 text-gold-deep" />
+                <span className="font-mono text-[11px] tabular-nums tracking-tight text-foreground/85">
                   {cajasGlobal.llenas}
-                  <span className="text-muted-foreground">/{cajasGlobal.total}</span>
+                  <span className="text-foreground/45">/{cajasGlobal.total}</span>
                 </span>
-                <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
-                  cajas
-                </span>
+                <span className="text-eyebrow text-foreground/45">cajas</span>
               </div>
             </div>
           </div>
