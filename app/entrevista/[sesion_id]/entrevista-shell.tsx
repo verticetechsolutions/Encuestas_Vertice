@@ -216,10 +216,16 @@ export function EntrevistaShell({
 
           {/* Centered focus column */}
           <div className="mx-auto mt-6 max-w-3xl px-1 md:mt-8">
-            {/* Eyebrow + BatchNav */}
+            {/* Eyebrow + BatchNav — manifiesto landing-style M0X */}
             <div className="mb-6 flex flex-col items-center gap-4 md:mb-8">
-              <p className="text-[10px] font-semibold uppercase tracking-[0.22em] text-muted-foreground">
-                Sección actual · {GRUPO_LABEL[grupoActivo]}
+              <p className="text-eyebrow flex items-center gap-2.5 text-foreground/45">
+                <span className="tabular-nums text-gold-deep">
+                  M{(GrupoUISchema.options.indexOf(grupoActivo) + 1)
+                    .toString()
+                    .padStart(2, '0')}
+                </span>
+                <span className="size-1 rounded-full bg-gold/55" aria-hidden />
+                <span>{GRUPO_LABEL[grupoActivo]}</span>
               </p>
               {batch && total > 0 && (
                 <BatchNav
