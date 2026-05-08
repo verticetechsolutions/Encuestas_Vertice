@@ -8,6 +8,7 @@
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth/admin';
 import { logoutAdmin } from '@/app/actions/adminAuth';
+import { CommandPaletteTrigger } from '@/components/admin/command-palette-trigger';
 
 export default async function AdminLayout({
   children,
@@ -43,14 +44,17 @@ export default async function AdminLayout({
               </NavLink>
             </nav>
           </div>
-          <form action={logoutAdmin}>
-            <button
-              type="submit"
-              className="rounded-full bg-forest/40 px-3 py-1.5 text-xs font-medium text-primary-foreground/85 ring-1 ring-primary-foreground/10 transition hover:bg-forest/70"
-            >
-              Cerrar sesión
-            </button>
-          </form>
+          <div className="flex items-center gap-2">
+            <CommandPaletteTrigger />
+            <form action={logoutAdmin}>
+              <button
+                type="submit"
+                className="rounded-full bg-forest/40 px-3 py-1.5 text-xs font-medium text-primary-foreground/85 ring-1 ring-primary-foreground/10 transition hover:bg-forest/70"
+              >
+                Cerrar sesión
+              </button>
+            </form>
+          </div>
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-6 py-8">{children}</main>
