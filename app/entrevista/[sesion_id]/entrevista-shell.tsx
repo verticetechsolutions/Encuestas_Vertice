@@ -26,6 +26,7 @@ import { BatchNav } from '@/components/entrevista/BatchNav';
 import { PanelProgreso } from '@/components/entrevista/PanelProgreso';
 import { Stepper } from '@/components/entrevista/Stepper';
 import { VertexMark } from '@/components/landing/VertexMark';
+import { BrandSuccessGlyph } from '@/components/landing/BrandSuccessGlyph';
 import { useEntrevistaStore } from '@/lib/state/entrevista';
 import { GrupoUISchema, getCajaAny, type GrupoUI } from '@/lib/schemas/cajas';
 import { cn } from '@/lib/utils';
@@ -249,14 +250,18 @@ export function EntrevistaShell({
 
             {/* Hero pregunta, skeleton, o pantalla de cierre limpio */}
             {sesionCerrada ? (
-              <div className="rounded-3xl bg-cream px-6 py-16 text-center ring-1 ring-forest/15 shadow-sm animate-fade-up md:px-10 md:py-20">
-                <div className="mx-auto flex size-14 items-center justify-center rounded-full bg-forest/10">
-                  <CheckCircle2 className="size-7 text-forest" />
+              <div className="gold-seam rounded-3xl bg-cream-pure px-6 py-16 text-center shadow-sm animate-fade-up md:px-10 md:py-20">
+                <div className="flex justify-center">
+                  <BrandSuccessGlyph size={72} />
                 </div>
-                <h2 className="mt-5 text-xl font-semibold tracking-tight text-foreground md:text-2xl">
-                  Entrevista completada
+                <p className="text-eyebrow mt-9 text-gold-deep">
+                  Sesión cerrada
+                </p>
+                <h2 className="mt-5 text-display text-[28px] leading-[1.05] tracking-[-0.025em] text-foreground md:text-[36px]">
+                  Entrevista completada.
                 </h2>
-                <p className="mx-auto mt-2 max-w-md text-sm leading-relaxed text-muted-foreground">
+                <span aria-hidden className="gold-hairline mx-auto mt-6 block w-12" />
+                <p className="mx-auto mt-6 max-w-md text-sm leading-relaxed text-foreground/55">
                   {mensaje_estado ??
                     'Estamos generando la síntesis del perfil. Recibirás el resultado por correo cuando esté listo.'}
                 </p>
@@ -275,8 +280,8 @@ export function EntrevistaShell({
                 sttEnabled={!preview}
               />
             ) : enviando ? (
-              <div className="flex items-center justify-center gap-3 rounded-3xl bg-cream py-20 ring-1 ring-foreground/5 shadow-sm">
-                <Loader2 className="size-5 animate-spin text-forest" />
+              <div className="gold-seam flex items-center justify-center gap-3 rounded-3xl bg-cream-pure py-20 shadow-sm">
+                <Loader2 className="size-5 animate-spin text-gold-deep" />
                 <p className="text-sm text-foreground">
                   {status === 'enviando'
                     ? 'Enviando tus respuestas al motor…'
@@ -284,15 +289,15 @@ export function EntrevistaShell({
                 </p>
               </div>
             ) : (
-              <div className="rounded-3xl bg-cream py-20 text-center ring-1 ring-foreground/5 shadow-sm">
-                <p className="text-sm text-muted-foreground">Cargando preguntas…</p>
+              <div className="gold-seam rounded-3xl bg-cream-pure py-20 text-center shadow-sm">
+                <p className="text-sm text-foreground/55">Cargando preguntas…</p>
               </div>
             )}
 
-            {/* Banner informativo (cierre de sección, transición, etc) — verde forest */}
+            {/* Banner informativo (cierre de sección, transición, etc) — gold */}
             {!sesionCerrada && mensaje_estado && (
-              <div className="mt-4 flex items-start gap-3 rounded-2xl bg-forest/8 p-4 ring-1 ring-forest/20 animate-fade-up">
-                <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-forest" />
+              <div className="mt-4 flex items-start gap-3 rounded-2xl bg-gold/8 p-4 ring-1 ring-gold/30 animate-fade-up">
+                <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-gold-deep" />
                 <p className="text-sm leading-relaxed text-foreground/85">
                   {mensaje_estado}
                 </p>
@@ -417,14 +422,14 @@ export function EntrevistaShell({
 
             {/* Panel progreso opcional — collapse para no robar foco */}
             <details className="group/panel mt-4">
-              <summary className="cursor-pointer rounded-2xl bg-cream px-5 py-3 text-xs font-semibold tracking-tight text-foreground/85 ring-1 ring-foreground/5 shadow-sm transition-colors hover:bg-cream/80 [&::-webkit-details-marker]:hidden">
+              <summary className="cursor-pointer rounded-2xl bg-cream-pure px-5 py-3 text-xs font-medium tracking-tight text-foreground/85 ring-1 ring-ink/8 shadow-sm transition-colors hover:bg-cream-pure/80 [&::-webkit-details-marker]:hidden">
                 <span className="inline-flex w-full items-center justify-between">
                   <span className="inline-flex items-center gap-2">
-                    <span className="text-[10px] uppercase tracking-[0.2em] text-muted-foreground">
+                    <span className="text-eyebrow text-foreground/45">
                       Progreso por sección
                     </span>
                   </span>
-                  <ChevronDown className="size-4 text-muted-foreground transition-transform group-open/panel:rotate-180" />
+                  <ChevronDown className="size-4 text-foreground/45 transition-transform group-open/panel:rotate-180" />
                 </span>
               </summary>
               <div className="mt-3 animate-fade-up">
