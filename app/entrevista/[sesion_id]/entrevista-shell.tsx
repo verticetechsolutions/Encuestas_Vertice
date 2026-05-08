@@ -131,9 +131,20 @@ export function EntrevistaShell({
   }, [cajas_llenas_por_grupo]);
 
   return (
-    <div className="min-h-screen bg-canvas">
+    <div className="relative min-h-screen overflow-x-clip bg-canvas">
+      {/* Atmosphere overlays globales — radial gold + noise sutil, espejo del
+          landing. Pointer-events none para no robar interacción. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 atmosphere-radial-gold"
+      />
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0 atmosphere-noise"
+      />
+
       {/* Header navy ink — espejo del landing. VertexMark real + acentos gold. */}
-      <header className="relative bg-ink text-cream-pure">
+      <header className="relative z-10 bg-ink text-cream-pure">
         {/* Atmosphere overlay sutil — radial gold + noise, 30% intensidad landing */}
         <div
           aria-hidden
@@ -191,10 +202,10 @@ export function EntrevistaShell({
       </header>
 
       {/* Container */}
-      <main className="mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-10">
-        <div className="rounded-[28px] bg-cream/85 p-3 shadow-xl shadow-foreground/5 ring-1 ring-foreground/5 backdrop-blur md:p-5">
+      <main className="relative z-10 mx-auto max-w-6xl px-4 py-6 md:px-8 md:py-10">
+        <div className="gold-seam rounded-[28px] bg-cream-pure/85 p-3 shadow-xl shadow-ink/5 backdrop-blur md:p-5">
           {/* Top: stepper + chip progreso global */}
-          <div className="rounded-3xl bg-cream p-4 ring-1 ring-foreground/5 shadow-sm md:p-5">
+          <div className="gold-seam rounded-3xl bg-cream-pure p-4 shadow-sm md:p-5">
             <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
               <Stepper
                 porGrupo={cajas_llenas_por_grupo}
