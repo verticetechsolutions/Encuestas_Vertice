@@ -1,5 +1,8 @@
 // Helper para parsear el query param `?status=` del índice global de sesiones.
-// Validación contra el set de status del enum sesionStatusEnum (db/schema.ts).
+// `VALID_STATUSES` es un espejo manual del enum `sesionStatusEnum` de
+// `db/schema.ts` — si ese enum cambia, este archivo debe actualizarse a mano
+// (no importamos del schema para mantener el helper puro y libre de dependencias
+// transitivas a Drizzle).
 // Si el input está vacío o no contiene ningún valor válido, cae al default
 // operativo: las sesiones "vivas" (abiertas o en síntesis).
 

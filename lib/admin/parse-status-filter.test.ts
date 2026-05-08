@@ -45,4 +45,8 @@ describe('parseStatusFilter', () => {
       'abandonada',
     ]);
   });
+
+  it('rechaza mayúsculas — los status son lowercase exacto', () => {
+    expect(parseStatusFilter('Abierta')).toEqual(['abierta', 'sintetizando']);
+  });
 });
