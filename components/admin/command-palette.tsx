@@ -91,7 +91,9 @@ export function CommandPalette({
           setError('Búsqueda no disponible');
           setResults(EMPTY);
         })
-        .finally(() => setLoading(false));
+        .finally(() => {
+          if (!ctrl.signal.aborted) setLoading(false);
+        });
     }, DEBOUNCE_MS);
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
@@ -241,6 +243,7 @@ function ResultRow({
     <li>
       <button
         type="button"
+        aria-current={selected ? 'true' : undefined}
         onClick={onClick}
         onMouseEnter={onMouseEnter}
         className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition ${
