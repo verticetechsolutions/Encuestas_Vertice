@@ -41,8 +41,6 @@ export default async function AdminInstitucionDetailPage({ params }: Props) {
       .orderBy(desc(perfil_decision_final.version)),
   ]);
 
-  const latestPerfil = perfiles[0] ?? null;
-
   return (
     <div className="flex flex-col gap-6">
       <Link
@@ -142,15 +140,10 @@ export default async function AdminInstitucionDetailPage({ params }: Props) {
       <section className="rounded-3xl bg-cream p-1 shadow-sm ring-1 ring-foreground/5">
         <div className="flex items-center justify-between px-5 py-4">
           <h2 className="text-sm font-semibold tracking-tight text-foreground">
-            Perfil JSON (síntesis final)
+            Histórico de perfiles ({perfiles.length})
           </h2>
-          {latestPerfil && (
-            <Tag muted>
-              v{latestPerfil.version} · {formatRelative(latestPerfil.generado_at)}
-            </Tag>
-          )}
         </div>
-        {!latestPerfil ? (
+        {perfiles.length === 0 ? (
           <div className="rounded-2xl bg-background/30 px-6 py-12 text-center">
             <p className="text-sm text-muted-foreground">
               No hay perfil generado todavía. La síntesis se ejecuta cuando
@@ -158,37 +151,46 @@ export default async function AdminInstitucionDetailPage({ params }: Props) {
             </p>
           </div>
         ) : (
-          <div className="space-y-3 px-5 pb-5">
-            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
-              <Stat
-                label="Schema"
-                value={latestPerfil.schema_version}
-                mono
-              />
-              <Stat
-                label="Completitud"
-                value={`${Math.round(latestPerfil.completitud * 100)}%`}
-              />
-              <Stat
-                label="Confianza global"
-                value={latestPerfil.confianza_global.toFixed(2)}
-                mono
-              />
-              <Stat
-                label="Versión"
-                value={String(latestPerfil.version)}
-                mono
-              />
-            </div>
-            <details className="rounded-2xl bg-foreground text-primary-foreground">
-              <summary className="cursor-pointer rounded-2xl px-5 py-3 text-xs font-semibold tracking-tight text-primary-foreground/85 hover:text-primary-foreground [&::-webkit-details-marker]:hidden">
-                Ver JSON completo
-              </summary>
-              <pre className="max-h-96 overflow-auto px-5 pb-5 font-mono text-[11px] leading-relaxed text-primary-foreground/85">
-                {JSON.stringify(latestPerfil.perfil_json, null, 2)}
-              </pre>
-            </details>
-          </div>
+          <ul className="divide-y divide-foreground/5">
+            {perfiles.map((p, idx) => (
+              <li key={p.id} className="px-5 py-4">
+                <details open={idx === 0} className="group">
+                  <summary className="flex cursor-pointer items-center justify-between [&::-webkit-details-marker]:hidden">
+                    <div className="flex items-center gap-2">
+                      <span className="font-mono text-xs tabular-nums text-foreground">
+                        v{p.version}
+                      </span>
+                      <Tag muted>{formatRelative(p.generado_at)}</Tag>
+                      <span className="font-mono text-[10px] text-muted-foreground">
+                        sesión {p.sesion_id.slice(0, 8)}…
+                      </span>
+                    </div>
+                    <span className="text-[10px] uppercase tracking-[0.18em] text-muted-foreground transition group-open:opacity-50">
+                      Colapsar
+                    </span>
+                  </summary>
+                  <div className="mt-3 space-y-3">
+                    <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+                      <Stat label="Schema" value={p.schema_version} mono />
+                      <Stat
+                        label="Completitud"
+                        value={`${Math.round(p.completitud * 100)}%`}
+                      />
+                      <Stat
+                        label="Confianza"
+                        value={p.confianza_global.toFixed(2)}
+                        mono
+                      />
+                      <Stat label="Versión" value={String(p.version)} mono />
+                    </div>
+                    <pre className="max-h-96 overflow-auto rounded-2xl bg-foreground p-4 font-mono text-[11px] leading-relaxed text-primary-foreground/85">
+                      {JSON.stringify(p.perfil_json, null, 2)}
+                    </pre>
+                  </div>
+                </details>
+              </li>
+            ))}
+          </ul>
         )}
       </section>
     </div>
