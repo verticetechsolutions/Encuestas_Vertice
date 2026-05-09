@@ -97,9 +97,10 @@ export const sesiones = pgTable('sesiones', {
   secciones_cerradas: jsonb('secciones_cerradas').notNull().default(sql`'{}'::jsonb`),
 });
 
-// Magic-link tokens issued by `scripts/invitar.ts`. Token plain only ever exists in
-// the email URL; DB stores SHA-256 hash. One-shot: `consumed_at` is set when verified
-// and the row is never reused (cookie sustains the session afterward).
+// Magic-link tokens issued by `scripts/invitar.ts` o por el admin (paquete 2).
+// Token plain only ever exists in the email URL; DB stores SHA-256 hash. Three
+// terminal states: `consumed_at` set when verified, `revoked_at` set when admin
+// revoca o cuando el mismo institucion emite un nuevo link (auto-revoke).
 export const magic_tokens = pgTable('magic_tokens', {
   id: uuid('id').primaryKey().defaultRandom(),
   token_hash: text('token_hash').notNull().unique(),
@@ -108,6 +109,7 @@ export const magic_tokens = pgTable('magic_tokens', {
     .notNull(),
   expires_at: timestamp('expires_at', { withTimezone: true }).notNull(),
   consumed_at: timestamp('consumed_at', { withTimezone: true }),
+  revoked_at: timestamp('revoked_at', { withTimezone: true }), // null = vigente; timestamp = revocado por admin o por auto-revoke al reemitir.
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 

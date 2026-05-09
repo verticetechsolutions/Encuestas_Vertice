@@ -1,9 +1,9 @@
 'use client';
 
 // Stepper horizontal de los 6 grupos UI. Cada chip es un pill que cambia
-// según estado: pendiente (cream/outline), activo (lime), completado
-// (forest sólido + checkmark). Microanimación: hover scale leve, focus ring
-// lime, chip activo pulsa una vez al cambiar.
+// según estado: pendiente (cream/outline), activo (cream-pure + ring gold),
+// completado (ink sólido + checkmark gold). Microanimación: hover scale leve,
+// focus ring gold, chip activo pulsa una vez al cambiar.
 //
 // Decisión: en móvil colapsa a "Sección X de 6 — <nombre>" con barra
 // progress lineal abajo, no scroll horizontal de chips (genera fricción

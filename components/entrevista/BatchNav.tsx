@@ -1,8 +1,8 @@
 'use client';
 
 // BatchNav — navegación entre las N preguntas del turno actual.
-//   - Dots horizontales con estado: active (lime), respondida (forest+check),
-//     pendiente (outline).
+//   - Dots horizontales con estado: active (ink + gold ring), respondida
+//     (ink sólido + check gold), pendiente (outline ink).
 //   - Botones Anterior / Siguiente a los lados (rounded-full pill).
 //   - Click en un dot navega a esa pregunta.
 //   - En mobile: dots compactos sin labels, en desktop: dots + label "P01"

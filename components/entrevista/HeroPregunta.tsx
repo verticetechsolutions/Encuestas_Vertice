@@ -3,10 +3,10 @@
 // HeroPregunta — pregunta como protagonista absoluto de la pantalla.
 // Estilo:
 //   - Card cream rounded-[32px], generosísimo padding (md:p-12)
-//   - Eyebrow chip "P01 · Sección Productos" (meta pequeña arriba)
+//   - Eyebrow chip "P01" (meta pequeña arriba) — sección vive en el shell
 //   - Pregunta gigante (text-3xl → 5xl), display tracking apretado
-//   - Cajas objetivo como chips inline (forest/8 ring forest/10)
-//   - Textarea sin bordes visibles, min-h grande, focus ring lime
+//   - Cajas objetivo NO inline aquí — viven en el right rail con label humano
+//   - Textarea filled inset, min-h grande, focus shadow gold
 //   - Footer ancho: autosave indicator izq + mic + Marcar respondida der
 //   - Microanimación: cambia con animate-fade-up (key={pregunta.id} en wrapper)
 //
@@ -45,6 +45,22 @@ interface AutosaveMeta {
   text: string;
   tone: 'muted' | 'success' | 'warn';
   pulsing: boolean;
+}
+
+// Separa la pregunta canónica de su microcopy "Por ejemplo: ..." cuando existe.
+// Solo divide si Sonnet (o el fixture) usa el separador exacto " Por ejemplo:" — no
+// inventamos splits para preguntas con "Mencionar...", "Es decir..." u otras formas
+// porque ahí el clarificador es parte legítima de la pregunta. Conservador por
+// diseño: si el fixture cambia, sigue renderizando completo, no se rompe nada.
+function splitPreguntaYEjemplo(texto: string): {
+  pregunta: string;
+  ejemplo: string | null;
+} {
+  const match = texto.match(/^(.+?)(\s+Por ejemplo:.*)$/);
+  if (match) {
+    return { pregunta: match[1].trim(), ejemplo: match[2].trim() };
+  }
+  return { pregunta: texto, ejemplo: null };
 }
 
 function autosaveMeta(status: AutosaveStatus): AutosaveMeta {
@@ -115,6 +131,7 @@ export function HeroPregunta({
   return (
     <article
       key={pregunta.id}
+      style={{ viewTransitionName: 'question-card' }}
       className={cn(
         'group/hero relative overflow-hidden rounded-[32px] bg-cream-pure shadow-xl shadow-ink/5 ring-1 ring-ink/8 animate-fade-up',
         marcada && 'ring-gold/40'
@@ -138,12 +155,21 @@ export function HeroPregunta({
       />
 
       <div className="relative px-6 py-8 md:px-10 md:py-10">
-        {/* Top row — número de pregunta + chip respondida. Sin sección
-            duplicada (vive en eyebrow del shell M0X). */}
+        {/* Top row — número de pregunta + sección actual (eyebrow secundario
+            sutil) + chip respondida. La sección vive aquí ahora (no en eyebrow
+            duplicado del shell), reduciendo ruido visual. */}
         <div className="flex flex-wrap items-center gap-2.5">
           <span className="text-eyebrow tabular-nums text-gold-deep">
             P{numero.toString().padStart(2, '0')}
           </span>
+          {seccionLabel && (
+            <>
+              <span aria-hidden className="size-1 rounded-full bg-foreground/25" />
+              <span className="text-eyebrow text-foreground/45">
+                {seccionLabel}
+              </span>
+            </>
+          )}
           {marcada && (
             <span className="ml-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-eyebrow text-gold-deep ring-1 ring-gold/40 animate-fade-up">
               <Check className="size-3" strokeWidth={2.5} />
@@ -152,13 +178,30 @@ export function HeroPregunta({
           )}
         </div>
 
-        {/* Pregunta hero — display tracking apretado, ritmo landing */}
-        <h2 className="mt-5 text-display text-[28px] leading-[1.05] tracking-[-0.025em] text-foreground md:text-[36px] xl:text-[40px]">
-          {pregunta.texto_pregunta}
-        </h2>
+        {(() => {
+          const { pregunta: q, ejemplo } = splitPreguntaYEjemplo(
+            pregunta.texto_pregunta
+          );
+          return (
+            <>
+              {/* Pregunta hero — display tracking apretado, ritmo landing */}
+              <h2 className="mt-5 text-display text-[28px] leading-[1.05] tracking-[-0.025em] text-foreground md:text-[36px] xl:text-[40px]">
+                {q}
+              </h2>
 
-        {/* Hairline gold — sello editorial debajo del título */}
-        <span aria-hidden className="gold-hairline mt-6 block w-12" />
+              {/* Microcopy "Por ejemplo:..." — italic más pequeño debajo,
+                  jerarquía clara vs título. Solo cuando el fixture/IA lo trae. */}
+              {ejemplo && (
+                <p className="mt-4 max-w-[52ch] text-[15px] leading-relaxed text-foreground/55 italic md:text-base">
+                  {ejemplo}
+                </p>
+              )}
+
+              {/* Hairline gold — sello editorial debajo del título */}
+              <span aria-hidden className="gold-hairline mt-6 block w-12" />
+            </>
+          );
+        })()}
 
         {/* Textarea grande — filled inset estilo landing FormField, focus gold */}
         <div className="mt-8 md:mt-10">
@@ -238,7 +281,9 @@ export function HeroPregunta({
               />
             ) : (
               // Preview / dev (sin cookie). /api/stt/token devolvería 401 —
-              // mejor mostrar disabled con tooltip claro.
+              // mejor mostrar disabled con tooltip claro. Pill inline (no
+              // circle) para alinear con el lenguaje de pares Mic + Marcar
+              // respondida del footer (ambos rounded-full pill, no shape mismatch).
               <div className="relative">
                 <button
                   type="button"
@@ -248,10 +293,10 @@ export function HeroPregunta({
                   onFocus={() => setShowMicTooltip(true)}
                   onBlur={() => setShowMicTooltip(false)}
                   aria-describedby={`mic-tip-${pregunta.id}`}
-                  className="inline-flex size-11 items-center justify-center rounded-full bg-ink/[0.04] text-foreground/45 ring-1 ring-ink/10 transition-all cursor-not-allowed opacity-70"
+                  className="inline-flex h-11 items-center gap-2 rounded-full px-4 text-sm font-medium tracking-tight text-foreground/55 ring-1 ring-ink/10 transition-colors hover:text-foreground hover:bg-ink/[0.04] disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   <Mic className="size-4" />
-                  <span className="sr-only">Activar micrófono</span>
+                  Dictar respuesta
                 </button>
                 {showMicTooltip && (
                   <div

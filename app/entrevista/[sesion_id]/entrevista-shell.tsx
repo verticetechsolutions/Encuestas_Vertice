@@ -7,7 +7,7 @@
 // "responder rápido para terminar el formulario".
 //
 // Layout:
-//   - Header dark forest-deep (compact)
+//   - Header dark ink (compact, espejo del landing)
 //   - Card outer cream con stepper + chip-progreso top
 //   - Centered column max-w-3xl con:
 //       eyebrow ("Pregunta X de Y · Sección …") + BatchNav
@@ -21,21 +21,20 @@
 //   - Send turno button hace pulse-ring cuando todas marcadas (CTA breathing).
 
 import Image from 'next/image';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { HeroPregunta } from '@/components/entrevista/HeroPregunta';
 import { BatchNav } from '@/components/entrevista/BatchNav';
-import { PanelProgreso } from '@/components/entrevista/PanelProgreso';
+import { RightRail } from '@/components/entrevista/RightRail';
 import { Stepper } from '@/components/entrevista/Stepper';
 import { BrandSuccessGlyph } from '@/components/landing/BrandSuccessGlyph';
 import { useEntrevistaStore } from '@/lib/state/entrevista';
+import { withViewTransition } from '@/lib/view-transitions';
 import { GrupoUISchema, getCajaAny, type GrupoUI } from '@/lib/schemas/cajas';
 import { cn } from '@/lib/utils';
 import {
-  ArrowUpRight,
   Loader2,
   AlertCircle,
   CheckCircle2,
-  Sparkles,
 } from 'lucide-react';
 
 interface Props {
@@ -91,6 +90,32 @@ export function EntrevistaShell({
   // se rehidrata del fixture/api y el índice se reinicia).
   const [pregIndex, setPregIndex] = useState(0);
 
+  // Wrapper view-transition para navegación entre preguntas. En Chrome ≥111,
+  // Edge, Safari 18+ activa la animación nativa CSS sobre `view-transition-name:
+  // question-card` (declarada en HeroPregunta + globals.css). En el resto cae
+  // al callback directo (no-op visual, sin throw).
+  const navegarAPregunta = useCallback((idx: number) => {
+    withViewTransition(() => setPregIndex(idx));
+  }, []);
+
+  // BrandSuccessGlyph overlay al cierre exitoso de turno. Detectamos transición
+  // 'procesando' → 'mostrando_batch' (= turno enviado, IA respondió, llegó nuevo
+  // batch). ~2.2s de display, después fade out. Refuerzo de progreso editorial.
+  const [mostrandoGlyphTurno, setMostrandoGlyphTurno] = useState(false);
+  const statusAnteriorRef = useRef<string | null>(null);
+  useEffect(() => {
+    if (
+      statusAnteriorRef.current === 'procesando' &&
+      status === 'mostrando_batch'
+    ) {
+      setMostrandoGlyphTurno(true);
+      const t = setTimeout(() => setMostrandoGlyphTurno(false), 2200);
+      statusAnteriorRef.current = status;
+      return () => clearTimeout(t);
+    }
+    statusAnteriorRef.current = status;
+  }, [status]);
+
   useEffect(() => {
     init(sesion_id, totales_por_grupo, { preview });
     cargarFixtureMock();
@@ -117,6 +142,21 @@ export function EntrevistaShell({
     return 'identificacion';
   }, [activePregunta]);
 
+  // Glyph divider entre transición de secciones (ej: Productos → Números).
+  // Cuando grupoActivo cambia, mostramos un ✦ dorado durante 1.2s para
+  // marcar tipográficamente el cambio sin romper el flujo de lectura.
+  const [mostrandoDividerSeccion, setMostrandoDividerSeccion] = useState(false);
+  const grupoAnteriorRef = useRef<GrupoUI | null>(null);
+  useEffect(() => {
+    if (grupoAnteriorRef.current && grupoAnteriorRef.current !== grupoActivo) {
+      setMostrandoDividerSeccion(true);
+      const t = setTimeout(() => setMostrandoDividerSeccion(false), 1200);
+      grupoAnteriorRef.current = grupoActivo;
+      return () => clearTimeout(t);
+    }
+    grupoAnteriorRef.current = grupoActivo;
+  }, [grupoActivo]);
+
   // Total cajas llenas global — chip discreto arriba.
   const cajasGlobal = useMemo(() => {
     const grupos = GrupoUISchema.options;
@@ -132,16 +172,27 @@ export function EntrevistaShell({
 
   return (
     <div className="relative min-h-screen overflow-x-clip bg-canvas">
-      {/* Atmosphere overlays globales — radial gold + noise sutil, espejo del
-          landing. Pointer-events none para no robar interacción. */}
+      {/* Atmosphere overlay — solo radial gold a 50% para light surface (cream).
+          El noise que usa el landing no aplica en light: agrega ruido visible
+          que compite con la legibilidad de la pregunta-héroe (12 min de lectura). */}
       <div
         aria-hidden
-        className="pointer-events-none absolute inset-0 atmosphere-radial-gold"
+        className="pointer-events-none absolute inset-0 atmosphere-radial-gold opacity-50"
       />
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 atmosphere-noise"
-      />
+
+      {/* BrandSuccessGlyph overlay — celebración editorial al cierre exitoso de
+          turno. Refuerzo de progreso cinemático cada ~3 preguntas. ~2.2s. */}
+      {mostrandoGlyphTurno && (
+        <div
+          aria-live="polite"
+          className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none animate-fade-up"
+        >
+          <div className="flex flex-col items-center gap-5 rounded-3xl bg-cream-pure/95 px-14 py-12 backdrop-blur-md shadow-2xl shadow-ink/25 ring-1 ring-ink/8">
+            <BrandSuccessGlyph size={72} />
+            <p className="text-eyebrow text-gold-deep">Turno completado</p>
+          </div>
+        </div>
+      )}
 
       {/* Container — todo en cards apiladas sobre el mismo canvas, sin bandas
           full-width. Header navy se vuelve un card más, no una sección aparte. */}
@@ -201,37 +252,29 @@ export function EntrevistaShell({
           </div>
         </div>
 
-        {/* Card stepper — barra de secciones full width sobre el grid 2 cols */}
+        {/* Card stepper — barra de secciones full width.
+            User-facing: NO chip de counts absolutos (eran "0/54 cajas",
+            término interno). El % global vive en RightRail. */}
         <div className="gold-seam rounded-3xl bg-cream-pure p-4 shadow-sm md:p-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <Stepper porGrupo={cajas_llenas_por_grupo} activo={grupoActivo} />
-            <div className="flex items-center gap-2.5 self-start rounded-full bg-canvas/40 px-3 py-1.5 ring-1 ring-ink/10 lg:self-center">
-              <Sparkles className="size-3 text-gold-deep" />
-              <span className="font-mono text-[11px] tabular-nums tracking-tight text-foreground/85">
-                {cajasGlobal.llenas}
-                <span className="text-foreground/45">/{cajasGlobal.total}</span>
-              </span>
-              <span className="text-eyebrow text-foreground/45">cajas</span>
-            </div>
-          </div>
+          <Stepper porGrupo={cajas_llenas_por_grupo} activo={grupoActivo} />
         </div>
 
         {/* Grid 2 columnas: hero pregunta (lg:col-span-8) + sidebar (lg:col-span-4) */}
         <div className="grid gap-4 md:gap-5 lg:grid-cols-12">
-          {/* Columna izquierda — pregunta protagonista */}
+          {/* Columna izquierda — pregunta protagonista. El contexto de
+              sección vive en el Stepper arriba + en el header del HeroPregunta
+              (vía seccionLabel). Eliminado eyebrow M0X redundante. */}
           <div className="space-y-4 md:space-y-5 lg:col-span-8">
-            {/* Eyebrow contextual M0X · sección */}
-            {!sesionCerrada && (
-              <div className="flex items-center justify-between gap-4">
-                <p className="text-eyebrow flex items-center gap-2.5 text-foreground/55">
-                  <span className="tabular-nums text-gold-deep">
-                    M{(GrupoUISchema.options.indexOf(grupoActivo) + 1)
-                      .toString()
-                      .padStart(2, '0')}
-                  </span>
-                  <span className="size-1 rounded-full bg-gold/55" aria-hidden />
-                  <span>{GRUPO_LABEL[grupoActivo]}</span>
-                </p>
+            {/* Glyph divider editorial entre secciones — marca el cambio
+                tipográficamente sin texto adicional (estilo Stratechery * * *). */}
+            {mostrandoDividerSeccion && (
+              <div className="flex justify-center py-6 animate-fade-up">
+                <span
+                  aria-hidden
+                  className="text-display text-gold text-[28px] tracking-[1em]"
+                >
+                  ✦
+                </span>
               </div>
             )}
 
@@ -279,23 +322,18 @@ export function EntrevistaShell({
               </div>
             )}
 
-            {/* BatchNav inferior — navegación clara entre preguntas del turno */}
+            {/* BatchNav inferior — navegación clara entre preguntas del turno.
+                Eliminada la redundancia "Pregunta X / Y" (el dot activo ya
+                comunica posición vía label P0X embedded). */}
             {!sesionCerrada && batch && total > 0 && (
-              <div className="flex items-center justify-between gap-4 rounded-2xl bg-cream-pure px-4 py-2.5 ring-1 ring-ink/8 shadow-sm md:px-5">
-                <p className="text-eyebrow text-foreground/55">
-                  Pregunta{' '}
-                  <span className="tabular-nums text-foreground">
-                    {pregIndex + 1}
-                  </span>
-                  <span className="text-foreground/35"> / {total}</span>
-                </p>
+              <div className="flex items-center justify-end rounded-2xl bg-cream-pure px-4 py-2.5 ring-1 ring-ink/8 shadow-sm md:px-5">
                 <BatchNav
                   preguntas={batch.preguntas.map((p) => ({
                     id: p.id,
                     marcada: marcadas[p.id] === true,
                   }))}
                   activeIndex={pregIndex}
-                  onChange={setPregIndex}
+                  onChange={navegarAPregunta}
                 />
               </div>
             )}
@@ -327,125 +365,24 @@ export function EntrevistaShell({
             )}
           </div>
 
-          {/* Columna derecha — sidebar de control: turno, contexto, progreso */}
-          {!sesionCerrada && (
-            <aside className="space-y-4 md:space-y-5 lg:col-span-4">
-              {/* Card 1 — Estado del turno + CTA Enviar */}
-              {batch && (
-                <div
-                  className={cn(
-                    'rounded-2xl bg-cream-pure p-5 ring-1 ring-ink/8 shadow-sm transition-all duration-500',
-                    todasMarcadas && !enError && 'ring-gold/45 bg-gold/[0.06]'
-                  )}
-                >
-                  <p className="text-eyebrow text-foreground/45">Turno actual</p>
-                  <p className="mt-3 text-display text-[26px] leading-[1.05] tracking-[-0.025em] text-foreground">
-                    {(() => {
-                      const pendientes = batch.preguntas.filter(
-                        (p) => !marcadas[p.id]
-                      ).length;
-                      if (todasMarcadas) return '¡Listo!';
-                      return `${pendientes} sin marcar`;
-                    })()}
-                  </p>
-                  <p className="mt-2 text-[12.5px] leading-relaxed text-foreground/55">
-                    {todasMarcadas
-                      ? 'La IA generará las próximas preguntas con base en tus respuestas.'
-                      : 'Marca cada respuesta para habilitar el envío.'}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => void enviarBatch()}
-                    disabled={!todasMarcadas || enviando}
-                    className={cn(
-                      'group/send relative mt-5 inline-flex h-12 w-full items-center justify-between gap-2 rounded-full pl-6 pr-2 text-[13.5px] font-medium tracking-tight transition-all',
-                      'will-change-transform active:scale-[0.99] disabled:cursor-not-allowed',
-                      todasMarcadas && !enError
-                        ? [
-                            'bg-cream-pure text-ink ring-1 ring-ink/8',
-                            'shadow-[0_30px_70px_-20px_rgb(200_168_100_/_0.45)]',
-                            'hover:bg-white',
-                            !enviando && 'animate-pulse-ring',
-                          ]
-                        : ['bg-ink text-cream-pure hover:bg-ink-raised disabled:opacity-50']
-                    )}
-                  >
-                    {status === 'enviando' || status === 'procesando' ? (
-                      <>
-                        <span className="inline-flex items-center gap-2">
-                          <Loader2 className="size-4 animate-spin" />
-                          {status === 'enviando' ? 'Enviando…' : 'Procesando…'}
-                        </span>
-                        <span
-                          aria-hidden
-                          className="inline-flex size-9 items-center justify-center rounded-full bg-gold/20 text-gold-bright"
-                        >
-                          <ArrowUpRight className="size-4" strokeWidth={2.5} />
-                        </span>
-                      </>
-                    ) : enError ? (
-                      <>
-                        Reintentar envío
-                        <span
-                          aria-hidden
-                          className="inline-flex size-9 items-center justify-center rounded-full bg-ink text-gold transition-transform group-hover/send:rotate-45"
-                        >
-                          <ArrowUpRight className="size-4" strokeWidth={2.5} />
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        Enviar turno
-                        <span
-                          aria-hidden
-                          className={cn(
-                            'inline-flex size-9 items-center justify-center rounded-full transition-transform group-hover/send:rotate-45',
-                            todasMarcadas ? 'bg-ink text-gold' : 'bg-cream-pure/15 text-cream-pure/55'
-                          )}
-                        >
-                          <ArrowUpRight className="size-4" strokeWidth={2.5} />
-                        </span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              )}
-
-              {/* Card 2 — Cajas que cubre la pregunta activa */}
-              {activePregunta && activePregunta.cajas_objetivo.length > 0 && (
-                <div className="rounded-2xl bg-cream-pure p-5 ring-1 ring-ink/8 shadow-sm">
-                  <p className="text-eyebrow text-foreground/45">
-                    Esta pregunta cubre
-                  </p>
-                  <ul className="mt-4 space-y-2">
-                    {activePregunta.cajas_objetivo.map((c) => (
-                      <li key={c} className="flex items-center gap-2.5">
-                        <span
-                          aria-hidden
-                          className="size-1.5 shrink-0 rounded-full bg-gold"
-                        />
-                        <code className="font-mono text-[12px] tracking-tight text-foreground/75">
-                          {c}
-                        </code>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Card 3 — Progreso por sección, siempre visible */}
-              <div className="rounded-2xl bg-cream-pure p-5 ring-1 ring-ink/8 shadow-sm">
-                <p className="text-eyebrow text-foreground/45">
-                  Progreso por sección
-                </p>
-                <div className="mt-4">
-                  <PanelProgreso
-                    porGrupo={cajas_llenas_por_grupo}
-                    grupoActivo={grupoActivo}
-                  />
-                </div>
-              </div>
-            </aside>
+          {/* Columna derecha — RightRail unificado: 2 secciones hairline
+              (Turno + Progreso) en lugar de 3 cards apiladas. */}
+          {!sesionCerrada && batch && activePregunta && (
+            <div className="lg:col-span-4">
+              <RightRail
+                pendientes={batch.preguntas.filter((p) => !marcadas[p.id]).length}
+                total={total}
+                todasMarcadas={todasMarcadas}
+                enviando={enviando}
+                enError={enError}
+                status={status}
+                cajasObjetivo={activePregunta.cajas_objetivo}
+                cajasGlobal={cajasGlobal}
+                cajasPorGrupo={cajas_llenas_por_grupo}
+                grupoActivo={grupoActivo}
+                onEnviarBatch={() => void enviarBatch()}
+              />
+            </div>
           )}
         </div>
       </main>

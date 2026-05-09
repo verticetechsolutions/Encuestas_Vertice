@@ -37,7 +37,11 @@ export default defineConfig({
     // TRUNCATE las tablas que toca y los singletons de postgres-js no son
     // re-entrantes seguros por suite. Ejecución secuencial es barata (suite
     // dura segundos) y elimina la clase de bugs por concurrencia entre suites.
-    fileParallelism: true,
+    // Aplicamos a TODO el suite (no solo a *.integration.test.ts) porque
+    // vitest no permite scope per-pattern; el costo extra en unit tests es
+    // menor que la fragilidad cuando dos integration files corren en paralelo
+    // contra la misma DB y se TRUNCATEan entre sí.
+    fileParallelism: false,
     sequence: { concurrent: false },
     env: {
       // Stub para unit tests que importan @/lib/db (no hacen queries reales).

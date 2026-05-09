@@ -140,6 +140,18 @@
 
   /* Tipografía display — General Sans (Fontshare). */
   --font-display: 'General Sans', 'Satoshi', ui-sans-serif, sans-serif;
+
+  /* Survey surface tokens (light) — encuesta usa cream/ink invertido al landing.
+     Prefix --survey-* para futuros ajustes globales sin tocar 30 componentes. */
+  --survey-bg: var(--cream-pure);
+  --survey-text: var(--ink);
+  --survey-text-72: rgb(10 15 28 / 0.72);
+  --survey-text-65: rgb(10 15 28 / 0.65);
+  --survey-text-45: rgb(10 15 28 / 0.45);
+  --survey-hairline: rgb(10 15 28 / 0.08);
+  --survey-hairline-strong: rgb(10 15 28 / 0.12);
+  --survey-hover: rgb(10 15 28 / 0.04);
+  --survey-active-bg: rgb(200 168 100 / 0.10);
 }
 
 .dark {
@@ -195,13 +207,13 @@
 
 @keyframes vertice-pulse-ring {
   0% {
-    box-shadow: 0 0 0 0 oklch(0.92 0.16 125 / 0.5);
+    box-shadow: 0 0 0 0 oklch(0.78 0.14 80 / 0.5);
   }
   70% {
-    box-shadow: 0 0 0 8px oklch(0.92 0.16 125 / 0);
+    box-shadow: 0 0 0 8px oklch(0.78 0.14 80 / 0);
   }
   100% {
-    box-shadow: 0 0 0 0 oklch(0.92 0.16 125 / 0);
+    box-shadow: 0 0 0 0 oklch(0.78 0.14 80 / 0);
   }
 }
 
@@ -215,23 +227,65 @@
 }
 
 /* Cierre de caja — celebración corta cuando llenas_por_grupo[g] incrementa.
-   Lime ring expand + scale sutil; out-expo per CLAUDE.md easing guidance. */
+   Gold-bright ring expand + scale sutil; out-expo per CLAUDE.md easing guidance.
+   Migrado de lime (oklch 0.92 0.16 125) a gold-bright equivalente (2026-05-09). */
 @keyframes vertice-cierre-caja {
   0% {
-    box-shadow: 0 0 0 0 oklch(0.92 0.16 125 / 0.55);
+    box-shadow: 0 0 0 0 oklch(0.78 0.14 80 / 0.55);
     transform: translateZ(0) scale(1);
   }
   35% {
-    box-shadow: 0 0 0 10px oklch(0.92 0.16 125 / 0);
+    box-shadow: 0 0 0 10px oklch(0.78 0.14 80 / 0);
     transform: scale(1.015);
   }
   100% {
-    box-shadow: 0 0 0 0 oklch(0.92 0.16 125 / 0);
+    box-shadow: 0 0 0 0 oklch(0.78 0.14 80 / 0);
     transform: scale(1);
   }
 }
 .animate-cierre-caja {
   animation: vertice-cierre-caja 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
+}
+
+/* Tabular numerics — alinea counters, paginación, percentages.
+   Aplicar a cualquier número que necesite alineación vertical estable. */
+.numeric {
+  font-variant-numeric: tabular-nums lining-nums;
+  font-feature-settings: "tnum" 1, "lnum" 1;
+}
+
+/* View Transitions API entre preguntas — fade + translate sutil.
+   El elemento con `view-transition-name: question-card` cross-fade entre
+   estados antiguo y nuevo. Curve outExpo (entrada), iosSheet (salida).
+   En browsers sin soporte, withViewTransition() llama el callback directo
+   sin animar (fallback Framer Motion en HeroPregunta para feel coherente). */
+@keyframes survey-fade-out-left {
+  to {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+}
+
+@keyframes survey-fade-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+}
+
+::view-transition-old(question-card) {
+  animation: survey-fade-out-left 200ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+::view-transition-new(question-card) {
+  animation: survey-fade-in-right 320ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(question-card),
+  ::view-transition-new(question-card) {
+    animation-duration: 1ms !important;
+  }
 }
 
 /* Reduced-motion global safety net. Respeta a usuarios con motion sensitivity

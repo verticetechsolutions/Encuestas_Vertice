@@ -6,6 +6,7 @@ const MENSAJES: Record<string, string> = {
   token_invalido: 'No reconocemos ese enlace. Probablemente está incompleto o ya fue revocado.',
   expirado: 'Tu enlace de acceso expiró. Vértice los emite con vigencia de 7 días.',
   consumido: 'Este enlace ya fue usado. Por seguridad sólo funciona una vez.',
+  revocado: 'Este enlace fue revocado por el equipo Vértice. Solicita uno nuevo a tu contacto.',
   institucion_no_encontrada: 'No encontramos la institución asociada a este enlace.',
   sin_sesion: 'No tienes una sesión activa. Pide un enlace nuevo para iniciar.',
 };

@@ -8,9 +8,16 @@ import {
   instituciones,
   sesiones,
   perfil_decision_final,
+  magic_tokens,
 } from '@/db/schema';
 import { ArrowLeft, ArrowRight, Mail } from 'lucide-react';
 import { formatRelative } from '@/lib/utils';
+import { magicTokenStatus } from '@/lib/admin/magic-token-status';
+import {
+  ReenviarPorCorreoButton,
+  GenerarUrlButton,
+  RevocarButton,
+} from '@/components/admin/magic-link-actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -28,7 +35,7 @@ export default async function AdminInstitucionDetailPage({ params }: Props) {
     .limit(1);
   if (!inst) notFound();
 
-  const [sesionesList, perfiles] = await Promise.all([
+  const [sesionesList, perfiles, magicLinks] = await Promise.all([
     db
       .select()
       .from(sesiones)
@@ -39,6 +46,18 @@ export default async function AdminInstitucionDetailPage({ params }: Props) {
       .from(perfil_decision_final)
       .where(eq(perfil_decision_final.institucion_id, id))
       .orderBy(desc(perfil_decision_final.version)),
+    db
+      .select({
+        id: magic_tokens.id,
+        expires_at: magic_tokens.expires_at,
+        consumed_at: magic_tokens.consumed_at,
+        revoked_at: magic_tokens.revoked_at,
+        created_at: magic_tokens.created_at,
+      })
+      .from(magic_tokens)
+      .where(eq(magic_tokens.institucion_id, id))
+      .orderBy(desc(magic_tokens.created_at))
+      .limit(50),
   ]);
 
   return (
@@ -131,6 +150,67 @@ export default async function AdminInstitucionDetailPage({ params }: Props) {
                     </td>
                   </tr>
                 ))}
+              </tbody>
+            </table>
+          </div>
+        )}
+      </section>
+
+      <section className="rounded-3xl bg-cream p-1 shadow-sm ring-1 ring-foreground/5">
+        <div className="flex items-center justify-between px-5 py-4">
+          <h2 className="text-sm font-semibold tracking-tight text-foreground">
+            Magic links ({magicLinks.length})
+          </h2>
+          <div className="flex items-center gap-2">
+            <ReenviarPorCorreoButton institucion_id={id} />
+            <GenerarUrlButton institucion_id={id} />
+          </div>
+        </div>
+        {magicLinks.length === 0 ? (
+          <div className="rounded-2xl bg-background/30 px-6 py-8 text-center">
+            <p className="text-sm text-muted-foreground">
+              Aún no se ha emitido ningún magic link para esta institución.
+            </p>
+          </div>
+        ) : (
+          <div className="overflow-hidden rounded-2xl bg-background/30">
+            <table className="w-full text-sm">
+              <thead className="bg-background/50 text-left text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
+                <tr>
+                  <th scope="col" className="px-5 py-3">Status</th>
+                  <th scope="col" className="px-5 py-3">Creado</th>
+                  <th scope="col" className="px-5 py-3">Expira</th>
+                  <th scope="col" className="px-5 py-3">Consumido / Revocado</th>
+                  <th scope="col" className="px-5 py-3 text-right" aria-label="Acciones" />
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-foreground/5">
+                {magicLinks.map((m) => {
+                  const status = magicTokenStatus(m);
+                  return (
+                    <tr key={m.id}>
+                      <td className="px-5 py-3">
+                        <MagicStatusPill status={status} />
+                      </td>
+                      <td className="px-5 py-3 text-xs text-muted-foreground">
+                        {formatRelative(m.created_at)}
+                      </td>
+                      <td className="px-5 py-3 text-xs text-muted-foreground">
+                        {formatRelative(m.expires_at)}
+                      </td>
+                      <td className="px-5 py-3 text-xs text-muted-foreground">
+                        {m.consumed_at
+                          ? `consumido ${formatRelative(m.consumed_at)}`
+                          : m.revoked_at
+                            ? `revocado ${formatRelative(m.revoked_at)}`
+                            : '—'}
+                      </td>
+                      <td className="px-5 py-3 text-right">
+                        {status === 'vigente' && <RevocarButton token_id={m.id} />}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>
@@ -242,5 +322,21 @@ function Stat({
         {value}
       </p>
     </div>
+  );
+}
+
+const MAGIC_STATUS_STYLE: Record<string, string> = {
+  vigente: 'bg-lime/30 text-lime-foreground ring-lime/40',
+  consumido: 'bg-forest text-primary-foreground ring-forest',
+  expirado: 'bg-amber-100 text-amber-900 ring-amber-200',
+  revocado: 'bg-foreground/8 text-muted-foreground ring-foreground/15',
+};
+
+function MagicStatusPill({ status }: { status: string }) {
+  const cls = MAGIC_STATUS_STYLE[status] ?? 'bg-muted text-foreground ring-foreground/15';
+  return (
+    <span className={`inline-flex items-center rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ring-1 ${cls}`}>
+      {status}
+    </span>
   );
 }
