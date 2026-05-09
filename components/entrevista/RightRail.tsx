@@ -102,8 +102,13 @@ export function RightRail({
           onClick={onEnviarBatch}
           disabled={!todasMarcadas || enviando}
           className={cn(
-            'group/send relative mt-8 inline-flex h-12 w-full items-center justify-between gap-2 rounded-full pl-6 pr-2 text-[13.5px] font-medium tracking-tight transition-all',
-            'will-change-transform active:scale-[0.99] disabled:cursor-not-allowed',
+            'group/send relative mt-8 inline-flex h-12 w-full items-center justify-between gap-2 rounded-full pl-6 pr-2 text-[13.5px] font-medium tracking-tight',
+            // Hover/press alineados al landing: micro lift + brightness en
+            // hover (160ms outExpo), scale 0.97 en active (100ms iosSheet).
+            'transition-all duration-[160ms] ease-[cubic-bezier(0.16,1,0.3,1)]',
+            'hover:not-disabled:-translate-y-px hover:not-disabled:brightness-[1.04]',
+            'active:not-disabled:scale-[0.97] active:not-disabled:duration-[100ms] active:not-disabled:ease-[cubic-bezier(0.32,0.72,0,1)]',
+            'will-change-transform disabled:cursor-not-allowed',
             todasMarcadas && !enError
               ? [
                   'bg-cream-pure text-ink ring-1 ring-ink/8',
