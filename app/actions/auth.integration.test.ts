@@ -44,7 +44,6 @@ describe('emitirMagicLink (integration)', () => {
         nombre_comercial: null,
         tipo: 'banco',
         email_contacto: 'test@bank.example',
-        cajas_aplicables: 49,
       })
       .returning({ id: instituciones.id });
 
@@ -74,7 +73,6 @@ describe('emitirMagicLink (integration)', () => {
         nombre_comercial: null,
         tipo: 'banco',
         email_contacto: 'test2@bank.example',
-        cajas_aplicables: 49,
       })
       .returning({ id: instituciones.id });
 
@@ -107,7 +105,6 @@ describe('emitirMagicLink (integration)', () => {
         nombre_comercial: null,
         tipo: 'banco',
         email_contacto: 'test3@bank.example',
-        cajas_aplicables: 49,
       })
       .returning({ id: instituciones.id });
 
@@ -129,7 +126,6 @@ describe('emitirMagicLink (integration)', () => {
         nombre_comercial: null,
         tipo: 'banco',
         email_contacto: 'test4@bank.example',
-        cajas_aplicables: 49,
       })
       .returning({ id: instituciones.id });
 

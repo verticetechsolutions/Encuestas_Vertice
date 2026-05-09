@@ -96,8 +96,10 @@ export async function verificarMagicLink(plain: string): Promise<VerificarMagicL
   if (row.revoked_at) return { ok: false, razon: 'revocado' };
   if (row.expires_at.getTime() < Date.now()) return { ok: false, razon: 'expirado' };
 
-  // Marca consumido y crea/reanuda sesión. Si la creación de sesión falla, el token
-  // queda consumido pero sin sesión — el usuario tendría que pedir otro link.
+  // Crea/reanuda sesión PRIMERO; si falla, lanzamos antes de marcar consumed_at,
+  // así el token sigue vigente y el usuario puede reintentar el mismo link.
+  // Si la sesión se crea OK pero el UPDATE falla (raro), el usuario no podría
+  // re-entrar con este token — pediría otro vía admin.
   const sesionResult = await crearOReanudarSesion(row.institucion_id);
   await db
     .update(magic_tokens)
