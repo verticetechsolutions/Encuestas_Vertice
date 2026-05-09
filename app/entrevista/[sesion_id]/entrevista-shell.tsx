@@ -196,13 +196,24 @@ export function EntrevistaShell({
             hairline divider, stepper integrado debajo.
            ───────────────────────────────────────────────────────────── */}
         <section
-          className="rounded-3xl bg-survey-card-1 border border-[color:var(--survey-hairline)] overflow-hidden animate-fade-up"
+          className="relative overflow-hidden rounded-3xl bg-survey-card-1 border border-[color:var(--survey-card-1-hairline)] animate-fade-up"
           style={{ animationDelay: '0ms' }}
         >
+          {/* Atmosphere internal — landing-aligned vibe sobre el navy ink.
+              Radial gold + noise SVG como el dark hero del landing. */}
+          <div
+            aria-hidden
+            className="atmosphere-radial-gold pointer-events-none absolute inset-0"
+          />
+          <div
+            aria-hidden
+            className="atmosphere-noise pointer-events-none absolute inset-0"
+          />
+
           {/* Top row — logo huge izquierda + meta derecha (asym suave) */}
-          <div className="flex items-start justify-between gap-6 px-6 pt-6 pb-5 md:px-9 md:pt-8 md:pb-6">
+          <div className="relative flex items-start justify-between gap-6 px-6 pt-6 pb-5 md:px-9 md:pt-8 md:pb-6">
             <Image
-              src="/Logo_blue.svg"
+              src="/Logo_white.svg"
               alt="Vértice"
               width={7095}
               height={2369}
@@ -210,24 +221,24 @@ export function EntrevistaShell({
               className="h-9 w-auto select-none md:h-10"
             />
             <div className="flex flex-col items-end gap-1.5 text-right">
-              <p className="text-eyebrow text-[color:var(--ink)]/45">
+              <p className="text-eyebrow text-[color:var(--survey-card-1-fg-muted)]">
                 Entrevista de criterios
               </p>
-              <p className="text-[15px] font-medium tracking-tight text-[color:var(--ink)]/90">
+              <p className="text-[15px] font-medium tracking-tight text-[color:var(--survey-card-1-fg)]">
                 {nombre_institucion}
               </p>
               {preview ? (
-                <span className="inline-flex items-center gap-1.5 text-eyebrow text-gold-deep">
+                <span className="inline-flex items-center gap-1.5 text-eyebrow text-gold-bright">
                   <span
-                    className="size-1.5 rounded-full bg-gold animate-pulse-ring"
+                    className="size-1.5 rounded-full bg-gold-bright animate-pulse-ring"
                     aria-hidden
                   />
                   Preview UI
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1.5 text-eyebrow text-[color:var(--ink)]/40">
+                <span className="inline-flex items-center gap-1.5 text-eyebrow text-[color:var(--survey-card-1-fg-faint)]">
                   <span
-                    className="size-1.5 rounded-full bg-gold/70 animate-pulse-ring"
+                    className="size-1.5 rounded-full bg-gold animate-pulse-ring"
                     aria-hidden
                   />
                   Borrador autoguardado
@@ -240,9 +251,13 @@ export function EntrevistaShell({
               + stepper). El espacio padding-top del stepper basta como
               separador visual sin partir la card. */}
 
-          {/* Stepper integrado — mismo padding horizontal que el header */}
-          <div className="px-6 pt-2 pb-6 md:px-9 md:pt-3 md:pb-7">
-            <Stepper porGrupo={cajas_llenas_por_grupo} activo={grupoActivo} />
+          {/* Stepper integrado en surface dark — colores cream-pure */}
+          <div className="relative px-6 pt-2 pb-6 md:px-9 md:pt-3 md:pb-7">
+            <Stepper
+              porGrupo={cajas_llenas_por_grupo}
+              activo={grupoActivo}
+              surface="dark"
+            />
           </div>
         </section>
 
