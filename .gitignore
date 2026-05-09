@@ -45,3 +45,8 @@ next-env.d.ts
 .claude/
 .agents/
 skills-lock.json
+
+# Local QA artefacts (screenshots, MCP snapshots, manual checkpoints)
+.tmp_design_audit/
+.playwright-mcp/
+/CHECKPOINT.md
