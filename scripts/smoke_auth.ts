@@ -65,7 +65,21 @@ async function main() {
   if (r3.ok || r3.razon !== 'expirado') throw new Error('D: esperaba razon=expirado');
   console.log('    ✓ outcome correcto: expirado');
 
-  console.log('\n✓ smoke E2E auth: 4/4 outcomes correctos (token_invalido, ok, consumido, expirado)');
+  // ---------- Test E: auto-revoke en reemisión ----------------------------
+  // Emitimos tokenE1, luego tokenE2; tokenE1 debe quedar revocado y verificar
+  // debe devolver razon='revocado' (paquete admin 2).
+  const emitE1 = await emitirMagicLink(institucion_id, { dryRun: true });
+  const tokenE1 = new URL(emitE1.url).pathname.split('/').pop()!;
+  await emitirMagicLink(institucion_id, { dryRun: true }); // E2: revoca E1
+  const r4 = await verificarMagicLink(tokenE1);
+  console.log(`\n[E] verify tokenE1 tras reemisión → ${JSON.stringify(r4)}`);
+  if (r4.ok) throw new Error('E: esperaba ok=false, recibí ok=true');
+  if (!r4.ok && r4.razon !== 'revocado') {
+    throw new Error(`E: esperaba razon=revocado, recibí ${r4.razon}`);
+  }
+  console.log('    ✓ outcome correcto: revocado (auto-revoke en reemisión)');
+
+  console.log('\n✓ smoke E2E auth: 5/5 outcomes correctos (token_invalido, ok, consumido, expirado, revocado)');
   process.exit(0);
 }
 
