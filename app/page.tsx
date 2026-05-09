@@ -392,7 +392,7 @@ export default function Landing() {
   return (
     <LenisProvider>
       <div
-        className="landing-root relative flex min-h-screen w-full flex-1 flex-col overflow-x-clip bg-[#0A0F1C] text-[#F4F1EA]"
+        className="landing-root relative flex min-h-screen w-full flex-1 flex-col overflow-x-clip bg-ink text-cream-pure"
         style={{ fontFamily: "'Satoshi', ui-sans-serif, system-ui, sans-serif" }}
       >
         {/* Atmosphere */}
@@ -444,14 +444,14 @@ export default function Landing() {
             >
               <div className="col-span-12 lg:col-span-8">
                 <div
-                  className="font-mono text-[10.5px] uppercase tracking-[0.32em] text-[#F4F1EA]/45"
+                  className="font-mono text-[10.5px] uppercase tracking-[0.32em] text-cream-pure/45"
                   style={{ animation: 'ln-fade-in 0.9s 0.05s both' }}
                 >
                   Red de financieras aliadas · MX 2026
                 </div>
 
                 <h1
-                  className="mt-7 font-display leading-[0.95] tracking-[-0.03em] text-[#F4F1EA]"
+                  className="mt-7 font-display leading-[0.95] tracking-[-0.03em] text-cream-pure"
                   style={{
                     fontWeight: 500,
                     fontSize: 'clamp(46px, 7.4vw, 108px)',
@@ -471,7 +471,7 @@ export default function Landing() {
 
                 <div data-anim="hero-deck">
                   <p
-                    className="mt-9 max-w-[52ch] text-[15.5px] leading-relaxed text-[#F4F1EA]/72 sm:text-[17px]"
+                    className="mt-9 max-w-[52ch] text-[15.5px] leading-relaxed text-cream-pure/72 sm:text-[17px]"
                     style={{ animation: 'ln-fade-in 0.9s 1.05s both' }}
                   >
                     En una entrevista breve, nuestra IA aprende la política de crédito de tu
@@ -489,14 +489,14 @@ export default function Landing() {
                       type="button"
                       onClick={() => openMode('request')}
                       className={cn(
-                        'group/cta relative inline-flex h-12 items-center gap-3 rounded-full bg-[#F4F1EA] pl-6 pr-2 text-[13.5px] font-medium text-[#0A0F1C]',
+                        'group/cta relative inline-flex h-12 items-center gap-3 rounded-full bg-cream-pure pl-6 pr-2 text-[13.5px] font-medium text-ink',
                         'transition-colors duration-200 will-change-transform',
                         'shadow-[0_0_0_1px_rgba(244,241,234,0.04),0_30px_70px_-20px_rgba(200,168,100,0.45)]',
                         'hover:bg-white'
                       )}
                     >
                       Solicitar alianza
-                      <span className="inline-flex size-9 items-center justify-center rounded-full bg-[#0A0F1C] text-[#C8A864] transition-transform group-hover/cta:rotate-45">
+                      <span className="inline-flex size-9 items-center justify-center rounded-full bg-ink text-gold transition-transform group-hover/cta:rotate-45">
                         <ArrowUpRight className="size-4" strokeWidth={2.5} />
                       </span>
                     </button>
@@ -505,9 +505,9 @@ export default function Landing() {
                       type="button"
                       onClick={() => openMode('access')}
                       className={cn(
-                        'group/ghost inline-flex h-12 items-center gap-2.5 rounded-full border border-[#F4F1EA]/20 px-5 text-[13.5px] font-medium text-[#F4F1EA]',
+                        'group/ghost inline-flex h-12 items-center gap-2.5 rounded-full border border-cream-pure/20 px-5 text-[13.5px] font-medium text-cream-pure',
                         'transition-[color,border-color] duration-200 will-change-transform',
-                        'hover:border-[#F4F1EA]/45'
+                        'hover:border-cream-pure/45'
                       )}
                     >
                       <GoogleG className="size-4" />
@@ -532,10 +532,10 @@ export default function Landing() {
                     className="vx-glow absolute inset-0 h-full w-full"
                   />
                 </div>
-                <div className="hidden lg:mt-14 lg:flex lg:items-center lg:gap-2 lg:font-mono lg:text-[10.5px] lg:uppercase lg:tracking-[0.32em] lg:text-[#F4F1EA]/45">
+                <div className="hidden lg:mt-14 lg:flex lg:items-center lg:gap-2 lg:font-mono lg:text-[10.5px] lg:uppercase lg:tracking-[0.32em] lg:text-cream-pure/45">
                   <span className="ln-scroll-cue">↓</span>
                   <span>
-                    Cómo <span className="text-[#C8A864]">funciona</span>
+                    Cómo <span className="text-gold">funciona</span>
                   </span>
                 </div>
               </div>
@@ -548,22 +548,22 @@ export default function Landing() {
               className={cn(
                 'relative my-10 overflow-hidden rounded-[28px] px-6 py-14 sm:my-14 sm:px-10 sm:py-20 lg:px-14',
                 // subtle card: cream wash + cream hairline + barely-visible gold seam at top
-                'bg-gradient-to-b from-[#F4F1EA]/[0.028] via-[#F4F1EA]/[0.014] to-[#F4F1EA]/[0.005]',
+                'bg-gradient-to-b from-cream-pure/[0.028] via-cream-pure/[0.014] to-cream-pure/[0.005]',
                 'shadow-[inset_0_0_0_1px_rgba(244,241,234,0.055),inset_0_1px_0_rgba(200,168,100,0.18)]'
               )}
             >
               <div className="relative grid grid-cols-12 items-start gap-x-6 gap-y-10 lg:gap-x-10">
                 <div className="col-span-12 lg:col-span-3" data-anim="manifest-title">
-                  <div className="font-mono text-[10.5px] uppercase tracking-[0.32em] text-[#F4F1EA]/45">
+                  <div className="font-mono text-[10.5px] uppercase tracking-[0.32em] text-cream-pure/45">
                     Cómo funciona
                   </div>
                   <h2
-                    className="mt-5 font-display tracking-[-0.022em] leading-[1.02] text-[#F4F1EA]"
+                    className="mt-5 font-display tracking-[-0.022em] leading-[1.02] text-cream-pure"
                     style={{ fontWeight: 500, fontSize: 'clamp(28px, 3.6vw, 46px)' }}
                   >
                     Dos momentos.
                     <br />
-                    <span className="font-light text-[#F4F1EA]/55">Una alianza.</span>
+                    <span className="font-light text-cream-pure/55">Una alianza.</span>
                   </h2>
                 </div>
                 <dl className="col-span-12 grid grid-cols-1 gap-y-6 lg:col-span-9">
@@ -606,15 +606,15 @@ export default function Landing() {
             </div>
 
             <div className="mx-auto flex w-full max-w-[1480px] flex-col items-start justify-between gap-6 px-6 py-8 sm:flex-row sm:items-center sm:px-10 lg:px-14">
-              <div className="font-mono text-[10.5px] uppercase tracking-[0.3em] text-[#F4F1EA]/45">
+              <div className="font-mono text-[10.5px] uppercase tracking-[0.3em] text-cream-pure/45">
                 Vértice © 2026 · Red de financieras aliadas
               </div>
               <nav className="flex flex-wrap items-center gap-6">
                 <FooterLink href="/terminos">Términos</FooterLink>
                 <FooterLink href="/terminos#privacidad">Privacidad</FooterLink>
                 <FooterLink onClick={() => setCookiesOpen(true)}>Cookies</FooterLink>
-                <span className="font-mono text-[10.5px] uppercase tracking-[0.3em] text-[#F4F1EA]/25">/</span>
-                <span className="font-mono text-[10.5px] uppercase tracking-[0.3em] text-[#F4F1EA]/35">
+                <span className="font-mono text-[10.5px] uppercase tracking-[0.3em] text-cream-pure/25">/</span>
+                <span className="font-mono text-[10.5px] uppercase tracking-[0.3em] text-cream-pure/35">
                   Acceso por invitación
                 </span>
               </nav>
@@ -626,7 +626,7 @@ export default function Landing() {
             <Dialog.Backdrop
               data-lenis-prevent
               className={cn(
-                'fixed inset-0 z-50 bg-[#0A0F1C]/82 backdrop-blur-sm',
+                'fixed inset-0 z-50 bg-ink/82 backdrop-blur-sm',
                 'data-[starting-style]:opacity-0 data-[ending-style]:opacity-0',
                 'transition-opacity duration-300'
               )}
@@ -635,7 +635,7 @@ export default function Landing() {
               data-lenis-prevent
               className={cn(
                 'fixed left-1/2 top-1/2 z-50 w-[min(94vw,480px)] -translate-x-1/2 -translate-y-1/2',
-                'overflow-hidden rounded-[24px] border border-[#F4F1EA]/8 bg-[#F4F1EA] text-[#0A0F1C] shadow-2xl shadow-black/50',
+                'overflow-hidden rounded-[24px] border border-cream-pure/8 bg-cream-pure text-ink shadow-2xl shadow-black/50',
                 'data-[starting-style]:scale-95 data-[starting-style]:opacity-0',
                 'data-[ending-style]:scale-95 data-[ending-style]:opacity-0',
                 'transition-all duration-300'
@@ -685,23 +685,23 @@ function ManifestRow({ num, label, value }: { num: string; label: string; value:
   return (
     <div
       data-anim="manifest-row"
-      className="grid grid-cols-12 items-baseline gap-x-4 border-t border-[#F4F1EA]/6 pt-6 first:border-t-0 first:pt-0"
+      className="grid grid-cols-12 items-baseline gap-x-4 border-t border-cream-pure/6 pt-6 first:border-t-0 first:pt-0"
     >
       <span
         data-row="num"
-        className="col-span-2 font-mono text-[10.5px] uppercase tracking-[0.3em] text-[#C8A864] sm:col-span-1"
+        className="col-span-2 font-mono text-[10.5px] uppercase tracking-[0.3em] text-gold sm:col-span-1"
       >
         {num}
       </span>
       <dt
         data-row="label"
-        className="col-span-10 font-mono text-[10.5px] uppercase tracking-[0.32em] text-[#F4F1EA]/45 sm:col-span-3"
+        className="col-span-10 font-mono text-[10.5px] uppercase tracking-[0.32em] text-cream-pure/45 sm:col-span-3"
       >
         {label}
       </dt>
       <dd
         data-row="value"
-        className="col-span-12 mt-3 text-[16.5px] leading-relaxed text-[#F4F1EA]/85 sm:col-span-8 sm:mt-0 sm:text-[18px]"
+        className="col-span-12 mt-3 text-[16.5px] leading-relaxed text-cream-pure/85 sm:col-span-8 sm:mt-0 sm:text-[18px]"
       >
         {value}
       </dd>
@@ -728,21 +728,21 @@ function DialogShell({
       <div
         className={cn(
           'flex items-center justify-between border-b px-6 py-3.5 transition-colors',
-          sealed ? 'border-[#C8A864]/35 bg-[#C8A864]/[0.06]' : 'border-[#0A0F1C]/8'
+          sealed ? 'border-gold/35 bg-gold/[0.06]' : 'border-ink/8'
         )}
       >
         <div
           key={kicker}
           className={cn(
             'sx-kicker flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-[0.3em]',
-            sealed ? 'text-[#9C824A]' : 'text-[#0A0F1C]/55'
+            sealed ? 'text-gold-deep' : 'text-ink/55'
           )}
         >
           {onBack && (
             <button
               type="button"
               onClick={onBack}
-              className="-ml-1 inline-flex size-6 items-center justify-center rounded-full text-[#0A0F1C]/50 transition-colors hover:bg-[#0A0F1C]/5 hover:text-[#0A0F1C]"
+              className="-ml-1 inline-flex size-6 items-center justify-center rounded-full text-ink/50 transition-colors hover:bg-ink/5 hover:text-ink"
               aria-label="Volver"
             >
               <ArrowLeft className="size-3.5" strokeWidth={2.25} />
@@ -750,7 +750,7 @@ function DialogShell({
           )}
           <span
             className={cn(
-              'size-1.5 rounded-full bg-[#C8A864]',
+              'size-1.5 rounded-full bg-gold',
               sealed && 'sx-status-dot'
             )}
           />
@@ -759,7 +759,7 @@ function DialogShell({
         <button
           type="button"
           onClick={onClose}
-          className="inline-flex size-7 items-center justify-center rounded-full text-[#0A0F1C]/50 transition-colors hover:bg-[#0A0F1C]/5 hover:text-[#0A0F1C]"
+          className="inline-flex size-7 items-center justify-center rounded-full text-ink/50 transition-colors hover:bg-ink/5 hover:text-ink"
           aria-label="Cerrar"
         >
           <X className="size-4" />
@@ -780,7 +780,7 @@ function MenuFlow({ onPick }: { onPick: (m: 'access' | 'request') => void }) {
       >
         Acceso a la plataforma.
       </Dialog.Title>
-      <Dialog.Description className="mt-2 text-[13.5px] leading-relaxed text-[#0A0F1C]/60">
+      <Dialog.Description className="mt-2 text-[13.5px] leading-relaxed text-ink/60">
         Selecciona la opción que aplica a tu institución.
       </Dialog.Description>
 
@@ -788,14 +788,14 @@ function MenuFlow({ onPick }: { onPick: (m: 'access' | 'request') => void }) {
         <button
           type="button"
           onClick={() => onPick('access')}
-          className="group/menu flex w-full items-center justify-between gap-4 rounded-xl border border-[#0A0F1C]/12 bg-white px-5 py-4 text-left transition-colors hover:border-[#0A0F1C]/30"
+          className="group/menu flex w-full items-center justify-between gap-4 rounded-xl border border-ink/12 bg-white px-5 py-4 text-left transition-colors hover:border-ink/30"
         >
           <div>
-            <div className="text-[14px] font-medium text-[#0A0F1C]">Reanudar entrevista</div>
-            <div className="mt-0.5 text-[12.5px] text-[#0A0F1C]/55">Mi institución ya está registrada</div>
+            <div className="text-[14px] font-medium text-ink">Reanudar entrevista</div>
+            <div className="mt-0.5 text-[12.5px] text-ink/55">Mi institución ya está registrada</div>
           </div>
           <ArrowUpRight
-            className="size-4 text-[#0A0F1C]/40 transition-all group-hover/menu:translate-x-0.5 group-hover/menu:text-[#C8A864]"
+            className="size-4 text-ink/40 transition-all group-hover/menu:translate-x-0.5 group-hover/menu:text-gold"
             strokeWidth={2.25}
           />
         </button>
@@ -803,13 +803,13 @@ function MenuFlow({ onPick }: { onPick: (m: 'access' | 'request') => void }) {
         <button
           type="button"
           onClick={() => onPick('request')}
-          className="group/menu flex w-full items-center justify-between gap-4 rounded-xl bg-[#0A0F1C] px-5 py-4 text-left transition-colors hover:bg-[#1a2236]"
+          className="group/menu flex w-full items-center justify-between gap-4 rounded-xl bg-ink px-5 py-4 text-left transition-colors hover:bg-ink-raised"
         >
           <div>
-            <div className="text-[14px] font-medium text-[#F4F1EA]">Solicitar alianza</div>
-            <div className="mt-0.5 text-[12.5px] text-[#F4F1EA]/55">Registrar mi institución en la red</div>
+            <div className="text-[14px] font-medium text-cream-pure">Solicitar alianza</div>
+            <div className="mt-0.5 text-[12.5px] text-cream-pure/55">Registrar mi institución en la red</div>
           </div>
-          <span className="inline-flex size-9 items-center justify-center rounded-lg bg-[#C8A864] text-[#0A0F1C] transition-transform group-hover/menu:rotate-45">
+          <span className="inline-flex size-9 items-center justify-center rounded-lg bg-gold text-ink transition-transform group-hover/menu:rotate-45">
             <ArrowUpRight className="size-4" strokeWidth={2.25} />
           </span>
         </button>
@@ -833,7 +833,7 @@ function AccessFlow() {
         >
           Reanudar entrevista.
         </Dialog.Title>
-        <Dialog.Description className="mt-2 text-[13.5px] leading-relaxed text-[#0A0F1C]/60">
+        <Dialog.Description className="mt-2 text-[13.5px] leading-relaxed text-ink/60">
           Continúa con la cuenta de Google registrada por tu institución. La misma del correo de
           invitación.
         </Dialog.Description>
@@ -841,25 +841,25 @@ function AccessFlow() {
         <button
           type="button"
           onClick={() => setStage('google')}
-          className="mt-7 inline-flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-[#0A0F1C]/12 bg-white text-[14px] font-medium text-[#0A0F1C] transition-colors hover:border-[#0A0F1C]/30"
+          className="mt-7 inline-flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-ink/12 bg-white text-[14px] font-medium text-ink transition-colors hover:border-ink/30"
         >
           <GoogleG className="size-4" />
           Continuar con Google
         </button>
 
-        <div className="mt-6 flex items-center gap-3 text-[10.5px] uppercase tracking-[0.28em] text-[#0A0F1C]/40">
-          <span className="h-px flex-1 bg-[#0A0F1C]/10" />
+        <div className="mt-6 flex items-center gap-3 text-[10.5px] uppercase tracking-[0.28em] text-ink/40">
+          <span className="h-px flex-1 bg-ink/10" />
           <span>o</span>
-          <span className="h-px flex-1 bg-[#0A0F1C]/10" />
+          <span className="h-px flex-1 bg-ink/10" />
         </div>
 
         <button
           type="button"
           onClick={() => setStage('email')}
-          className="group/submit mt-6 inline-flex h-12 w-full items-center justify-between gap-2 rounded-xl bg-[#0A0F1C] pl-5 pr-2 text-[13.5px] font-medium text-[#F4F1EA] transition-colors hover:bg-[#1a2236]"
+          className="group/submit mt-6 inline-flex h-12 w-full items-center justify-between gap-2 rounded-xl bg-ink pl-5 pr-2 text-[13.5px] font-medium text-cream-pure transition-colors hover:bg-ink-raised"
         >
           Reenviar mi enlace por correo
-          <span className="inline-flex size-9 items-center justify-center rounded-lg bg-[#C8A864] text-[#0A0F1C] transition-transform group-hover/submit:translate-x-0.5">
+          <span className="inline-flex size-9 items-center justify-center rounded-lg bg-gold text-ink transition-transform group-hover/submit:translate-x-0.5">
             <Mail className="size-4" strokeWidth={2.25} />
           </span>
         </button>
@@ -870,7 +870,7 @@ function AccessFlow() {
   if (stage === 'google') {
     return (
       <div className="flex flex-col items-center text-center">
-        <span className="inline-flex size-12 items-center justify-center rounded-full border border-[#0A0F1C]/10 bg-white">
+        <span className="inline-flex size-12 items-center justify-center rounded-full border border-ink/10 bg-white">
           <GoogleG className="size-5" />
         </span>
         <Dialog.Title
@@ -879,14 +879,14 @@ function AccessFlow() {
         >
           Próximamente.
         </Dialog.Title>
-        <Dialog.Description className="mt-2 max-w-[36ch] text-[13.5px] leading-relaxed text-[#0A0F1C]/60">
+        <Dialog.Description className="mt-2 max-w-[36ch] text-[13.5px] leading-relaxed text-ink/60">
           La autenticación con Google estará disponible al activar el panel. Mientras tanto,
           reenvíate el enlace que llegó a tu correo.
         </Dialog.Description>
         <button
           type="button"
           onClick={() => setStage('email')}
-          className="mt-7 font-mono text-[10.5px] uppercase tracking-[0.28em] text-[#0A0F1C] underline-offset-[6px] hover:underline"
+          className="mt-7 font-mono text-[10.5px] uppercase tracking-[0.28em] text-ink underline-offset-[6px] hover:underline"
         >
           Usar mi correo →
         </button>
@@ -915,7 +915,7 @@ function AccessFlow() {
         >
           Reenviar enlace.
         </Dialog.Title>
-        <Dialog.Description className="mt-2 text-[13.5px] leading-relaxed text-[#0A0F1C]/60">
+        <Dialog.Description className="mt-2 text-[13.5px] leading-relaxed text-ink/60">
           Ingresa el correo donde recibiste la invitación y te volvemos a enviar el enlace.
         </Dialog.Description>
 
@@ -942,7 +942,7 @@ function AccessFlow() {
 
   return (
     <div className="flex flex-col items-center text-center">
-      <span className="inline-flex size-12 items-center justify-center rounded-full bg-[#0A0F1C] text-[#C8A864]">
+      <span className="inline-flex size-12 items-center justify-center rounded-full bg-ink text-gold">
         <Mail className="size-5" strokeWidth={2.25} />
       </span>
       <Dialog.Title
@@ -951,8 +951,8 @@ function AccessFlow() {
       >
         Revisa tu correo.
       </Dialog.Title>
-      <Dialog.Description className="mt-2 max-w-[34ch] text-[13.5px] leading-relaxed text-[#0A0F1C]/60">
-        Si <span className="font-medium text-[#0A0F1C]">{email}</span> está autorizado, recibirás
+      <Dialog.Description className="mt-2 max-w-[34ch] text-[13.5px] leading-relaxed text-ink/60">
+        Si <span className="font-medium text-ink">{email}</span> está autorizado, recibirás
         un enlace en los próximos minutos.
       </Dialog.Description>
     </div>
@@ -998,7 +998,7 @@ function RequestFlow({ onSent }: { onSent: (folio: string | null) => void }) {
       >
         Solicitar alianza.
       </Dialog.Title>
-      <Dialog.Description className="mt-2 text-[13.5px] leading-relaxed text-[#0A0F1C]/60">
+      <Dialog.Description className="mt-2 text-[13.5px] leading-relaxed text-ink/60">
         Tres datos básicos de tu institución. Te contactamos en menos de 24 horas hábiles para
         agendar la entrevista.
       </Dialog.Description>
@@ -1062,18 +1062,18 @@ function ReceiptView({
 
       {/* Title — bilínea editorial, primer línea sólida, segunda en peso liviano */}
       <Dialog.Title
-        className="sx-text mt-7 font-display text-[34px] leading-[0.96] tracking-[-0.025em] text-[#0A0F1C]"
+        className="sx-text mt-7 font-display text-[34px] leading-[0.96] tracking-[-0.025em] text-ink"
         style={{ fontWeight: 500, animationDelay: '0.05s' }}
       >
         Solicitud
         <br />
-        <span className="font-light text-[#0A0F1C]/55">registrada.</span>
+        <span className="font-light text-ink/55">registrada.</span>
       </Dialog.Title>
 
       {/* Hairline dorada que se traza */}
       <span
         aria-hidden
-        className="sx-line mt-5 block h-px w-12 bg-[#C8A864]"
+        className="sx-line mt-5 block h-px w-12 bg-gold"
       />
 
       {/* Folio — anchor visual de la constancia */}
@@ -1081,33 +1081,33 @@ function ReceiptView({
         className="sx-text mt-7"
         style={{ animationDelay: '0.32s' }}
       >
-        <span className="block font-mono text-[10px] uppercase tracking-[0.32em] text-[#C8A864]">
+        <span className="block font-mono text-[10px] uppercase tracking-[0.32em] text-gold">
           Folio
         </span>
-        <span className="mt-2 block font-mono text-[34px] font-medium leading-none tracking-[0.16em] text-[#0A0F1C]">
+        <span className="mt-2 block font-mono text-[34px] font-medium leading-none tracking-[0.16em] text-ink">
           {folio}
         </span>
       </div>
 
       {/* Hairline divider editorial */}
       <div
-        className="sx-text mt-8 h-px w-full bg-[#0A0F1C]/8"
+        className="sx-text mt-8 h-px w-full bg-ink/8"
         style={{ animationDelay: '0.55s' }}
       />
 
       {/* Single-line institution context — razón social · tipo */}
       <p
-        className="sx-text mt-5 text-[13.5px] leading-relaxed text-[#0A0F1C]/55"
+        className="sx-text mt-5 text-[13.5px] leading-relaxed text-ink/55"
         style={{ animationDelay: '0.7s' }}
       >
-        <span className="text-[#0A0F1C]">{razon}</span>
-        <span className="mx-2 text-[#0A0F1C]/30">·</span>
+        <span className="text-ink">{razon}</span>
+        <span className="mx-2 text-ink/30">·</span>
         <span>{tipoLabel}</span>
       </p>
 
       {/* Próximo paso — copy condensado, sin label decorativo */}
       <Dialog.Description
-        className="sx-text mt-3 text-[13.5px] leading-relaxed text-[#0A0F1C]/65"
+        className="sx-text mt-3 text-[13.5px] leading-relaxed text-ink/65"
         style={{ animationDelay: '0.85s' }}
       >
         Te contactamos en menos de 24 horas hábiles para agendar la entrevista de doce minutos.
@@ -1153,8 +1153,8 @@ function FormField({
         className={cn(
           'font-mono text-[10px] uppercase tracking-[0.32em] transition-colors',
           error
-            ? 'text-[#8B3A3A]'
-            : 'text-[#0A0F1C]/45 group-focus-within/field:text-[#C8A864]'
+            ? 'text-burgundy'
+            : 'text-ink/45 group-focus-within/field:text-gold'
         )}
       >
         {label}
@@ -1166,8 +1166,8 @@ function FormField({
             className={cn(
               'pointer-events-none absolute left-4 top-1/2 -translate-y-1/2 transition-colors',
               error
-                ? 'text-[#8B3A3A]/70'
-                : 'text-[#0A0F1C]/35 group-focus-within/field:text-[#C8A864]'
+                ? 'text-burgundy/70'
+                : 'text-ink/35 group-focus-within/field:text-gold'
             )}
           >
             {icon}
@@ -1186,14 +1186,14 @@ function FormField({
           onBlur={onBlur}
           placeholder={placeholder}
           className={cn(
-            'h-14 w-full rounded-2xl border-0 bg-[#0A0F1C]/[0.04] pr-4 text-[16px] text-[#0A0F1C] placeholder:text-[#0A0F1C]/30 outline-none transition-all',
+            'h-14 w-full rounded-2xl border-0 bg-ink/[0.04] pr-4 text-[16px] text-ink placeholder:text-ink/30 outline-none transition-all',
             error
               ? // Estado inválido: hairline + glow burgundy desaturado
                 'shadow-[inset_0_0_0_1.5px_rgba(139,58,58,0.55),0_0_0_4px_rgba(139,58,58,0.08)] focus:shadow-[inset_0_0_0_1.5px_rgba(139,58,58,0.75),0_0_0_4px_rgba(139,58,58,0.14)]'
               : [
                   'shadow-[inset_0_0_0_1px_rgba(10,15,28,0.06)]',
-                  'hover:bg-[#0A0F1C]/[0.055] hover:shadow-[inset_0_0_0_1px_rgba(10,15,28,0.10)]',
-                  'focus:bg-[#0A0F1C]/[0.06] focus:shadow-[inset_0_0_0_1.5px_rgba(200,168,100,0.55),0_0_0_4px_rgba(200,168,100,0.10)]',
+                  'hover:bg-ink/[0.055] hover:shadow-[inset_0_0_0_1px_rgba(10,15,28,0.10)]',
+                  'focus:bg-ink/[0.06] focus:shadow-[inset_0_0_0_1.5px_rgba(200,168,100,0.55),0_0_0_4px_rgba(200,168,100,0.10)]',
                 ],
             icon ? 'pl-11' : 'pl-4'
           )}
@@ -1203,9 +1203,9 @@ function FormField({
         <span
           id={errorId}
           role="alert"
-          className="mt-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.28em] text-[#8B3A3A]"
+          className="mt-2 flex items-center gap-1.5 font-mono text-[10px] uppercase tracking-[0.28em] text-burgundy"
         >
-          <span aria-hidden className="size-1 rounded-full bg-[#8B3A3A]" />
+          <span aria-hidden className="size-1 rounded-full bg-burgundy" />
           {error}
         </span>
       )}
@@ -1228,7 +1228,7 @@ function FormSelect({
 }) {
   return (
     <div className="group/field block">
-      <label className="block font-mono text-[10px] uppercase tracking-[0.32em] text-[#0A0F1C]/45 transition-colors group-focus-within/field:text-[#C8A864]">
+      <label className="block font-mono text-[10px] uppercase tracking-[0.32em] text-ink/45 transition-colors group-focus-within/field:text-gold">
         {label}
       </label>
       <div className="mt-2.5">
@@ -1261,14 +1261,14 @@ function SubmitButton({
       type="submit"
       disabled={disabled}
       className={cn(
-        'group/submit mt-7 inline-flex h-14 w-full items-center justify-between gap-2 rounded-2xl bg-[#0A0F1C] pl-6 pr-2 text-[14px] font-medium text-[#F4F1EA]',
-        'transition-all hover:bg-[#1a2236] active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed'
+        'group/submit mt-7 inline-flex h-14 w-full items-center justify-between gap-2 rounded-2xl bg-ink pl-6 pr-2 text-[14px] font-medium text-cream-pure',
+        'transition-all hover:bg-ink-raised active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed'
       )}
     >
       {children}
       <span
         className={cn(
-          'inline-flex size-10 items-center justify-center rounded-xl bg-[#C8A864] text-[#0A0F1C]',
+          'inline-flex size-10 items-center justify-center rounded-xl bg-gold text-ink',
           'transition-transform duration-200 group-hover/submit:rotate-45'
         )}
       >

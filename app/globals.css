@@ -53,6 +53,7 @@
   --color-gold-deep: var(--gold-deep);
   --color-gold-bright: var(--gold-bright);
   --color-gold-light: var(--gold-light);
+  --color-burgundy: var(--burgundy);
 
   /* Legacy fintech tokens — admin sigue usándolos. No tocar. */
   --color-canvas: var(--canvas);
