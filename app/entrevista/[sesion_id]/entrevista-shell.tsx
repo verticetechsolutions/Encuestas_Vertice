@@ -172,9 +172,19 @@ export function EntrevistaShell({
 
   return (
     <div className="relative min-h-screen overflow-x-clip bg-survey-bg">
-      {/* Paleta A (2026-05-09): off-white pure como canvas, sin atmosphere overlay.
-          El radial gold y el noise SVG distraen en una lectura de 12 min con un
-          único punto de foco (la pregunta). Hairlines + tipografía hacen el resto. */}
+      {/* Atmosphere — canvas con play visual sutil (F3.5, 2026-05-09).
+          - Radial gold ~5% top-right (asym, da depth sin competir)
+          - Radial cream-warm ~3% bottom-left (balance asimétrico)
+          Las cards (#FBF6EE cream + #FFFFFF white) son las superficies
+          principales; este overlay vive detrás dándoles atmósfera. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage:
+            'radial-gradient(800px 500px at 92% 4%, rgb(200 168 100 / 0.05), transparent 65%), radial-gradient(700px 500px at 6% 96%, rgb(200 168 100 / 0.03), transparent 60%)',
+        }}
+      />
 
       {/* BrandSuccessGlyph overlay — celebración editorial al cierre exitoso de
           turno. ~2.2s. */}
