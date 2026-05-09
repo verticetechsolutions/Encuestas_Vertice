@@ -20,7 +20,7 @@ function buildPerfilMuestra(): PerfilDecisionFinal {
       tipo: 'banco',
     },
     sesion_id: '22222222-2222-2222-2222-222222222222',
-    generado_at: new Date(),
+    generado_at: new Date().toISOString(),
     metricas: {
       cajas_llenas: 64,
       cajas_aplicables: 81,

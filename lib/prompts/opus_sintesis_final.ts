@@ -2,7 +2,11 @@
 // Opus síntesis final — generador del PerfilDecisionFinal (Phase 5 step iv)
 // =============================================================================
 //
-// AUTONOMOUS DRAFT — pending founder sign-off (PROMPT_READY === false).
+// SIGNED OFF (founder, 2026-05-09 — Paquete 3). El motor invoca al sintetizador
+// real vía `productionOpusSintesisCall` en `lib/motor/sintesis_final.ts` con
+// extended thinking 8K. Cualquier ajuste al prompt o few-shots requiere
+// flippar `OPUS_SINTESIS_FINAL_PROMPT_READY` a false, editar, validar con un
+// smoke E2E, y volver a flippar.
 //
 // Contrato:
 //   Input  → transcripción completa + extracciones (con supersede aplicado) +
@@ -313,5 +317,6 @@ Sesión abandonada o fallida en grupo 1. Identidad no levantada → resumen_ejec
 export const OPUS_SINTESIS_FINAL_SYSTEM_PROMPT: string =
   OPUS_SINTESIS_FINAL_SYSTEM_PROMPT_BODY;
 
-// READY guard. Founder review pending.
-export const OPUS_SINTESIS_FINAL_PROMPT_READY: boolean = false;
+// READY guard. Flipped 2026-05-09 (Paquete 3, founder sign-off). El motor
+// (lib/motor/sintesis_final.ts) invoca a Opus real cuando esto es true.
+export const OPUS_SINTESIS_FINAL_PROMPT_READY: boolean = true;

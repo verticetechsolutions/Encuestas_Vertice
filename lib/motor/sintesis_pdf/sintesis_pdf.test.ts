@@ -24,7 +24,7 @@ function fakePerfil(): PerfilDecisionFinal {
       tipo: 'banco',
     },
     sesion_id: '22222222-2222-2222-2222-222222222222',
-    generado_at: new Date('2026-05-09T18:30:00Z'),
+    generado_at: '2026-05-09T18:30:00.000Z',
     metricas: {
       cajas_llenas: 42,
       cajas_aplicables: 81,

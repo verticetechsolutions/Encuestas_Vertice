@@ -318,6 +318,9 @@ describe('Escenario (iii) — profundizar→caso_sintetico (escalación)', () =>
     const result = await processSolicitarReview(baseInput, {
       sesion_id: 'sesion-3',
       opusCall,
+      // Override del feature flag — sin esto el motor coercionaría caso_sintetico
+      // a avanzar (CASOS_PIPELINE_READY=false en módulo).
+      casosPipelineReady: true,
     });
 
     expect(result.estado).toBe('caso_solicitado');

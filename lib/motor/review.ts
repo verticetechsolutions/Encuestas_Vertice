@@ -22,6 +22,8 @@
 // para tests. Producción usa el placeholder hasta step iv.
 
 import { sql, eq, and, count } from 'drizzle-orm';
+import { generateObject } from 'ai';
+import { anthropic } from '@ai-sdk/anthropic';
 import { db } from '@/lib/db';
 import {
   sesiones,
@@ -38,7 +40,10 @@ import {
 } from '@/lib/schemas/review_seccion';
 import type { GrupoUI } from '@/lib/schemas/cajas';
 import { logger } from '@/lib/observability/axiom';
-import { OPUS_DIRECTOR_PROMPT_READY } from '@/lib/prompts/opus_director';
+import {
+  OPUS_DIRECTOR_PROMPT_READY,
+  OPUS_DIRECTOR_SYSTEM_PROMPT,
+} from '@/lib/prompts/opus_director';
 import { inngest } from '@/lib/inngest/client';
 
 // =============================================================================
@@ -101,16 +106,47 @@ export class OpusReviewPromptNotReady extends Error {
 }
 
 // =============================================================================
-// Producción opusCall — placeholder hasta step (iv)
+// Feature flag — pipeline de generación de casos sintéticos
+// =============================================================================
+// Mientras el pipeline Opus de generación de casos no esté implementado,
+// `enforzarReglasMotor` coerciona toda decisión `caso_sintetico` a `avanzar`
+// con razón `cap_casos_alcanzado` (la misma rama que el cap natural).
+// Cuando el pipeline aterrice, flippar a true en una sola línea.
+export const CASOS_PIPELINE_READY: boolean = false;
+
+// =============================================================================
+// Producción opusCall — wire real (Phase 5 step iv)
 // =============================================================================
 
-export const productionOpusCall: OpusCallFn = async () => {
+export const productionOpusCall: OpusCallFn = async ({
+  sonnet_input,
+  round,
+  casos_usados,
+}) => {
   if (!OPUS_DIRECTOR_PROMPT_READY) {
     throw new OpusReviewPromptNotReady();
   }
-  // TODO step (iv): wire real Opus call con SDK Anthropic + system_prompt literal +
-  // tool-output schema (RespuestaOpusSchema vía z.toJSONSchema).
-  throw new OpusReviewPromptNotReady();
+
+  // Payload espejo del <input_contract> en opus_director.ts: snapshot + meta.
+  // Lo serializamos como JSON pretty para que Opus lo lea sin ambigüedad.
+  const userPayload = {
+    grupo_ui_codigo: sonnet_input.grupo_ui_codigo,
+    extracciones_snapshot: sonnet_input.extracciones_snapshot,
+    cajas_no_clausuradas: sonnet_input.cajas_no_clausuradas,
+    hipotesis_sonnet: sonnet_input.hipotesis_sonnet,
+    turno_disparador: sonnet_input.turno_disparador,
+    round,
+    casos_usados,
+  };
+
+  const { object } = await generateObject({
+    model: anthropic('claude-opus-4-7'),
+    system: OPUS_DIRECTOR_SYSTEM_PROMPT,
+    schema: RespuestaOpusSchema,
+    prompt: JSON.stringify(userPayload, null, 2),
+  });
+
+  return object;
 };
 
 // =============================================================================
@@ -119,7 +155,17 @@ export const productionOpusCall: OpusCallFn = async () => {
 
 export async function processSolicitarReview(
   input: SolicitarReviewSeccionInput,
-  ctx: { sesion_id: string; opusCall?: OpusCallFn }
+  ctx: {
+    sesion_id: string;
+    opusCall?: OpusCallFn;
+    /**
+     * Override del feature flag CASOS_PIPELINE_READY. Solo lo usan los tests
+     * E2E que validan la rama caso_sintetico contra el motor (sin este flag,
+     * `enforzarReglasMotor` coercionaría a avanzar y el escenario no se
+     * ejercita). Producción NUNCA pasa este parámetro.
+     */
+    casosPipelineReady?: boolean;
+  }
 ): Promise<ProcessReviewResult> {
   const { sesion_id } = ctx;
   const opusCall = ctx.opusCall ?? productionOpusCall;
@@ -191,12 +237,16 @@ export async function processSolicitarReview(
   const decisionInicial = opusValidacion.data;
 
   // 7. Enforzar reglas del motor (round 2 + profundizar; cap + caso).
-  const decisionFinal = enforzarReglasMotor(decisionInicial, {
-    round,
-    casos_usados: casosUsados,
-    sesion_id,
-    grupo_ui: input.grupo_ui_codigo,
-  });
+  const decisionFinal = enforzarReglasMotor(
+    decisionInicial,
+    {
+      round,
+      casos_usados: casosUsados,
+      sesion_id,
+      grupo_ui: input.grupo_ui_codigo,
+    },
+    { casosPipelineReady: ctx.casosPipelineReady }
+  );
 
   logger.review.opusDecidio({
     sesion_id,
@@ -262,10 +312,18 @@ interface EnforzarCtx {
   grupo_ui: string;
 }
 
+interface EnforzarOpts {
+  /** Override del feature flag CASOS_PIPELINE_READY. Solo para tests. */
+  casosPipelineReady?: boolean;
+}
+
 export function enforzarReglasMotor(
   d: RespuestaOpus,
-  ctx: EnforzarCtx
+  ctx: EnforzarCtx,
+  opts: EnforzarOpts = {}
 ): RespuestaOpus {
+  const casosPipelineReady = opts.casosPipelineReady ?? CASOS_PIPELINE_READY;
+
   // Regla 1: profundizar solo en round 1.
   if (d.decision === 'profundizar' && ctx.round >= 2) {
     logger.review.profundizacionRejected({
@@ -282,10 +340,14 @@ export function enforzarReglasMotor(
     };
   }
 
-  // Regla 2: caso_sintetico solo si bajo el cap.
+  // Regla 2: caso_sintetico solo si (a) bajo el cap Y (b) pipeline ready.
+  // El feature flag CASOS_PIPELINE_READY está en false hasta que el pipeline de
+  // generación de casos aterrice; mientras tanto reusamos la rama cap_casos_alcanzado
+  // (mismo razonDecline, misma telemetría) para que Opus no quede emitiendo
+  // decisiones que el motor no puede cumplir.
   if (
     d.decision === 'caso_sintetico' &&
-    ctx.casos_usados >= CAP_CASOS_SINTETICOS
+    (ctx.casos_usados >= CAP_CASOS_SINTETICOS || !casosPipelineReady)
   ) {
     logger.review.escalacionCasoRejectedPorCap({
       sesion_id: ctx.sesion_id,

@@ -170,23 +170,33 @@ describe('enforzarReglasMotor — Regla 2: caso_sintetico bajo cap', () => {
     razon_escalacion: 'profundizacion_agotada',
   };
 
-  it('caso_sintetico con casos_usados < 5 → pasa intacto', () => {
-    const out = enforzarReglasMotor(baseCaso, {
-      round: 1,
-      casos_usados: 3,
-      sesion_id: 's',
-      grupo_ui: 'pricing_y_criterio',
-    });
+  // Pasamos `casosPipelineReady: true` en estos tests para aislar la regla del
+  // cap (el flag CASOS_PIPELINE_READY=false en módulo coercionaría todo).
+  it('caso_sintetico con casos_usados < 5 + pipeline ready → pasa intacto', () => {
+    const out = enforzarReglasMotor(
+      baseCaso,
+      {
+        round: 1,
+        casos_usados: 3,
+        sesion_id: 's',
+        grupo_ui: 'pricing_y_criterio',
+      },
+      { casosPipelineReady: true }
+    );
     expect(out).toEqual(baseCaso);
   });
 
   it('caso_sintetico con casos_usados === 5 (cap) → coerce a avanzar', () => {
-    const out = enforzarReglasMotor(baseCaso, {
-      round: 1,
-      casos_usados: 5,
-      sesion_id: 's',
-      grupo_ui: 'pricing_y_criterio',
-    });
+    const out = enforzarReglasMotor(
+      baseCaso,
+      {
+        round: 1,
+        casos_usados: 5,
+        sesion_id: 's',
+        grupo_ui: 'pricing_y_criterio',
+      },
+      { casosPipelineReady: true }
+    );
     expect(out.decision).toBe('avanzar');
     if (out.decision === 'avanzar') {
       expect(out.siguiente_grupo_ui).toBe('contacto_y_especificos');
@@ -195,12 +205,73 @@ describe('enforzarReglasMotor — Regla 2: caso_sintetico bajo cap', () => {
   });
 
   it('caso_sintetico con casos_usados > 5 (corrupto) → también coerce', () => {
+    const out = enforzarReglasMotor(
+      baseCaso,
+      {
+        round: 1,
+        casos_usados: 7,
+        sesion_id: 's',
+        grupo_ui: 'pricing_y_criterio',
+      },
+      { casosPipelineReady: true }
+    );
+    expect(out.decision).toBe('avanzar');
+  });
+});
+
+describe('enforzarReglasMotor — Regla 2 (extensión): feature flag CASOS_PIPELINE_READY', () => {
+  const baseCaso: RespuestaOpus = {
+    decision: 'caso_sintetico',
+    cajas_objetivo: ['to_historial_credito'],
+    hipotesis_a_clausurar: 'Entender si aceptan restructuras concluidas hace <6 meses',
+    urgencia: 'alta',
+    razon_escalacion: 'profundizacion_agotada',
+  };
+
+  it('pipeline NO ready + casos_usados=0 → coerce con misma anotacion que cap', () => {
+    const out = enforzarReglasMotor(
+      baseCaso,
+      {
+        round: 1,
+        casos_usados: 0,
+        sesion_id: 's',
+        grupo_ui: 'pricing_y_criterio',
+      },
+      { casosPipelineReady: false }
+    );
+    expect(out.decision).toBe('avanzar');
+    if (out.decision === 'avanzar') {
+      expect(out.siguiente_grupo_ui).toBe('contacto_y_especificos');
+      // Misma anotacion que cap_casos_alcanzado: razonDecline downstream
+      // mapea ambos casos a la misma rama.
+      expect(out.anotacion_audit).toContain('cap_casos_alcanzado');
+    }
+  });
+
+  it('pipeline ready + casos_usados=0 → pasa intacto (sin coerción)', () => {
+    const out = enforzarReglasMotor(
+      baseCaso,
+      {
+        round: 1,
+        casos_usados: 0,
+        sesion_id: 's',
+        grupo_ui: 'pricing_y_criterio',
+      },
+      { casosPipelineReady: true }
+    );
+    expect(out).toEqual(baseCaso);
+  });
+
+  it('default (sin opts) usa CASOS_PIPELINE_READY del módulo (hoy=false → coerce)', () => {
     const out = enforzarReglasMotor(baseCaso, {
       round: 1,
-      casos_usados: 7,
+      casos_usados: 0,
       sesion_id: 's',
       grupo_ui: 'pricing_y_criterio',
     });
+    // Test acoplado al estado actual del flag. Si flag se flippa a true en el
+    // futuro, este test rompe — y eso es correcto: avísale al refactor que
+    // tiene que actualizar el contrato del default.
     expect(out.decision).toBe('avanzar');
   });
 });
@@ -272,36 +343,48 @@ describe('enforzarReglasMotor — Regla 3: avanzar con orden canónico', () => {
 });
 
 // =============================================================================
-// Production opusCall — placeholder hasta step (iv)
+// Production opusCall — wire real (Phase 5 step iv firmado)
 // =============================================================================
 
 describe('productionOpusCall', () => {
-  it('arroja OpusReviewPromptNotReady mientras el prompt no esté listo', async () => {
-    await expect(
-      productionOpusCall({
-        sonnet_input: {
-          grupo_ui_codigo: 'identificacion',
-          extracciones_snapshot: [
-            {
-              caja_codigo: 'id_razon_social',
-              valor: 'Demo SA',
-              confianza: 0.9,
-              evidencia_textual: 'Somos Demo SA',
-              status: 'llena',
-              version: 1,
-            },
-          ],
-          cajas_no_clausuradas: [],
-          hipotesis_sonnet: 'Banco regional medio enfocado en PyME del bajío con CNBV',
-          turno_disparador: 1,
-        },
-        round: 1,
-        casos_usados: 0,
-      })
-    ).rejects.toBeInstanceOf(OpusReviewPromptNotReady);
+  // Con OPUS_DIRECTOR_PROMPT_READY=true, productionOpusCall ya NO arroja
+  // OpusReviewPromptNotReady — invoca generateObject del AI SDK. Sin
+  // ANTHROPIC_API_KEY el AI SDK arroja AI_LoadAPIKeyError. Eso es la garantía
+  // que queremos: "lo único que falta para correr de verdad es la key".
+  it('sin ANTHROPIC_API_KEY arroja AI_LoadAPIKeyError (no OpusReviewPromptNotReady)', async () => {
+    const prevKey = process.env.ANTHROPIC_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
+    try {
+      await expect(
+        productionOpusCall({
+          sonnet_input: {
+            grupo_ui_codigo: 'identificacion',
+            extracciones_snapshot: [
+              {
+                caja_codigo: 'id_razon_social',
+                valor: 'Demo SA',
+                confianza: 0.9,
+                evidencia_textual: 'Somos Demo SA',
+                status: 'llena',
+                version: 1,
+              },
+            ],
+            cajas_no_clausuradas: [],
+            hipotesis_sonnet: 'Banco regional medio enfocado en PyME del bajío con CNBV',
+            turno_disparador: 1,
+          },
+          round: 1,
+          casos_usados: 0,
+        })
+      ).rejects.toThrow(/api key/i);
+    } finally {
+      if (prevKey !== undefined) process.env.ANTHROPIC_API_KEY = prevKey;
+    }
   });
 
-  it('OpusReviewPromptNotReady tiene name y mensaje específicos', () => {
+  it('OpusReviewPromptNotReady sigue siendo el error contractual si el flag se vuelve a flippar a false', () => {
+    // No re-test del flujo (eso requeriría mockear el módulo); validamos el
+    // shape del error para que el contrato del fail-fast quede documentado.
     const err = new OpusReviewPromptNotReady();
     expect(err.name).toBe('OpusReviewPromptNotReady');
     expect(err.message).toContain('step iv');

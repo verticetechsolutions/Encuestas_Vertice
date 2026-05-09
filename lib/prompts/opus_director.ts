@@ -2,10 +2,10 @@
 // Opus director — review de sección (Phase 5 step iv)
 // =============================================================================
 //
-// AUTONOMOUS DRAFT — pending founder sign-off (PROMPT_READY === false).
-// El founder revisa este prompt + few-shots antes de flip a true. Mientras
-// el guard sea false, `productionOpusCall` arroja `OpusReviewPromptNotReady`
-// y `app/api/turn` devuelve 503 al cliente. NO usar en producción.
+// SIGNED OFF (founder, 2026-05-09 — Paquete 3). El motor invoca al director
+// real vía `productionOpusCall` en `lib/motor/review.ts`. Cualquier ajuste al
+// prompt o few-shots requiere flippar `OPUS_DIRECTOR_PROMPT_READY` a false,
+// editar, validar con un smoke E2E, y volver a flippar.
 //
 // Contrato:
 //   Input  → SolicitarReviewSeccionInput (lib/schemas/review_seccion.ts §2)
@@ -254,9 +254,9 @@ Round 2 — profundizar ya no es opción. El entrevistado evade tres turnos segu
 
 export const OPUS_DIRECTOR_SYSTEM_PROMPT: string = OPUS_DIRECTOR_SYSTEM_PROMPT_BODY;
 
-// READY guard. Founder review pending — do NOT flip without explicit sign-off.
-// Engine (lib/motor/review.ts) checks this before invoking Opus.
-export const OPUS_DIRECTOR_PROMPT_READY: boolean = false;
+// READY guard. Flipped 2026-05-09 (Paquete 3, founder sign-off). El motor
+// (lib/motor/review.ts) invoca a Opus real cuando esto es true.
+export const OPUS_DIRECTOR_PROMPT_READY: boolean = true;
 
 // Backward-compat: previous step (iii) exposed a placeholder constant. Keep it
 // re-exported so any consumer that imported it doesn't break, and so the
