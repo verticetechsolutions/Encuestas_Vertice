@@ -17,6 +17,7 @@ import {
   casos_generados,
   reviews_seccion,
   cajas_declinadas,
+  perfil_decision_final,
 } from '@/db/schema';
 import { ArrowLeft } from 'lucide-react';
 import { formatRelative } from '@/lib/utils';
@@ -41,34 +42,48 @@ export default async function AdminSesionDetailPage({ params }: Props) {
     .limit(1);
   if (!row) notFound();
 
-  const [turnos, extraccionesActivas, casos, reviews, declinadas] =
-    await Promise.all([
-      db
-        .select()
-        .from(turnos_conversacion)
-        .where(eq(turnos_conversacion.sesion_id, id))
-        .orderBy(asc(turnos_conversacion.numero_turno)),
-      db
-        .select()
-        .from(extracciones)
-        .where(eq(extracciones.sesion_id, id))
-        .orderBy(desc(extracciones.created_at)),
-      db
-        .select()
-        .from(casos_generados)
-        .where(eq(casos_generados.sesion_id, id))
-        .orderBy(asc(casos_generados.numero_caso)),
-      db
-        .select()
-        .from(reviews_seccion)
-        .where(eq(reviews_seccion.sesion_id, id))
-        .orderBy(asc(reviews_seccion.created_at)),
-      db
-        .select()
-        .from(cajas_declinadas)
-        .where(eq(cajas_declinadas.sesion_id, id))
-        .orderBy(asc(cajas_declinadas.declinada_at)),
-    ]);
+  const [
+    turnos,
+    extraccionesActivas,
+    casos,
+    reviews,
+    declinadas,
+    perfilSesionRows,
+  ] = await Promise.all([
+    db
+      .select()
+      .from(turnos_conversacion)
+      .where(eq(turnos_conversacion.sesion_id, id))
+      .orderBy(asc(turnos_conversacion.numero_turno)),
+    db
+      .select()
+      .from(extracciones)
+      .where(eq(extracciones.sesion_id, id))
+      .orderBy(desc(extracciones.created_at)),
+    db
+      .select()
+      .from(casos_generados)
+      .where(eq(casos_generados.sesion_id, id))
+      .orderBy(asc(casos_generados.numero_caso)),
+    db
+      .select()
+      .from(reviews_seccion)
+      .where(eq(reviews_seccion.sesion_id, id))
+      .orderBy(asc(reviews_seccion.created_at)),
+    db
+      .select()
+      .from(cajas_declinadas)
+      .where(eq(cajas_declinadas.sesion_id, id))
+      .orderBy(asc(cajas_declinadas.declinada_at)),
+    db
+      .select()
+      .from(perfil_decision_final)
+      .where(eq(perfil_decision_final.sesion_id, id))
+      .orderBy(desc(perfil_decision_final.version))
+      .limit(1),
+  ]);
+
+  const perfilSesion = perfilSesionRows[0] ?? null;
 
   const activas = extraccionesActivas.filter((e) => e.superseded_by === null);
   const supersedidas = extraccionesActivas.length - activas.length;
@@ -371,6 +386,36 @@ export default async function AdminSesionDetailPage({ params }: Props) {
               ))}
             </tbody>
           </table>
+        )}
+      </Section>
+
+      <Section title="Perfil de esta sesión">
+        {!perfilSesion ? (
+          <Empty message="La síntesis aún no se ha generado para esta sesión." />
+        ) : (
+          <div className="space-y-3 px-5 py-4">
+            <div className="grid grid-cols-2 gap-3 md:grid-cols-4">
+              <Stat label="Schema" value={perfilSesion.schema_version} mono />
+              <Stat
+                label="Completitud"
+                value={`${Math.round(perfilSesion.completitud * 100)}%`}
+              />
+              <Stat
+                label="Confianza global"
+                value={perfilSesion.confianza_global.toFixed(2)}
+                mono
+              />
+              <Stat label="Versión" value={String(perfilSesion.version)} mono />
+            </div>
+            <details className="rounded-2xl bg-foreground text-primary-foreground">
+              <summary className="cursor-pointer rounded-2xl px-5 py-3 text-xs font-semibold tracking-tight text-primary-foreground/85 hover:text-primary-foreground [&::-webkit-details-marker]:hidden">
+                Ver JSON completo
+              </summary>
+              <pre className="max-h-96 overflow-auto px-5 pb-5 font-mono text-[11px] leading-relaxed text-primary-foreground/85">
+                {JSON.stringify(perfilSesion.perfil_json, null, 2)}
+              </pre>
+            </details>
+          </div>
         )}
       </Section>
 

@@ -458,10 +458,10 @@ export default function Landing() {
                   }}
                 >
                   <HeroLine n={1} text="Solicitantes" baseDelay={120} />
-                  <HeroLine n={2} text="que cumplen" baseDelay={300} />
+                  <HeroLine n={2} text="pre-calificados" baseDelay={300} />
                   <HeroLine
                     n={3}
-                    text="tu política."
+                    text="con IA."
                     baseDelay={620}
                     charStagger
                     charStep={42}
@@ -474,9 +474,9 @@ export default function Landing() {
                     className="mt-9 max-w-[52ch] text-[15.5px] leading-relaxed text-[#F4F1EA]/72 sm:text-[17px]"
                     style={{ animation: 'ln-fade-in 0.9s 1.05s both' }}
                   >
-                    Vértice estructura los criterios crediticios de tu institución en una entrevista
-                    de doce minutos. A partir de ahí, tu mesa recibe solicitudes preprocesadas que
-                    ya cumplen tu política. Reduces tiempo de screening y aumentas conversión.
+                    En una entrevista breve, nuestra IA aprende la política de crédito de tu
+                    institución. A partir de ahí, tu mesa solo recibe solicitantes que ya cumplen
+                    tus criterios.
                   </p>
 
                   {/* CTAs above the fold */}
@@ -555,13 +555,13 @@ export default function Landing() {
               <div className="relative grid grid-cols-12 items-start gap-x-6 gap-y-10 lg:gap-x-10">
                 <div className="col-span-12 lg:col-span-3" data-anim="manifest-title">
                   <div className="font-mono text-[10.5px] uppercase tracking-[0.32em] text-[#F4F1EA]/45">
-                    M01 · Cómo funciona
+                    Cómo funciona
                   </div>
                   <h2
                     className="mt-5 font-display tracking-[-0.022em] leading-[1.02] text-[#F4F1EA]"
                     style={{ fontWeight: 500, fontSize: 'clamp(28px, 3.6vw, 46px)' }}
                   >
-                    Tres pasos.
+                    Dos momentos.
                     <br />
                     <span className="font-light text-[#F4F1EA]/55">Una alianza.</span>
                   </h2>
@@ -569,18 +569,13 @@ export default function Landing() {
                 <dl className="col-span-12 grid grid-cols-1 gap-y-6 lg:col-span-9">
                   <ManifestRow
                     num="01"
-                    label="Entrevista"
-                    value="Doce minutos. Texto o voz. Adaptiva al perfil de tu institución."
+                    label="Tu entrevista"
+                    value="Doce minutos. Tu institución le explica a nuestra IA cómo evalúa el crédito. Voz o texto."
                   />
                   <ManifestRow
                     num="02"
-                    label="Estructura"
-                    value="Cuarenta y cuatro cajas canónicas. Schema v1.0 firmable y versionado."
-                  />
-                  <ManifestRow
-                    num="03"
-                    label="Distribución"
-                    value="Solicitudes preprocesadas llegan a tu mesa. Cero coordinación operativa."
+                    label="Tus casos"
+                    value="Distribuimos solicitantes pre-calificados según tu política. Llegan listos para que tu mesa decida."
                   />
                 </dl>
               </div>

@@ -39,10 +39,9 @@ export function Stepper({ porGrupo, activo }: Props) {
 
   return (
     <>
-      {/* Desktop / tablet: chips horizontales. En md mostramos solo el chip
-          activo + dots; en lg+ mostramos labels completos. */}
+      {/* Desktop / tablet: chips horizontales con paleta ink/gold landing. */}
       <nav aria-label="Progreso de la entrevista" className="hidden md:block">
-        <ol className="flex items-center gap-1 rounded-full bg-cream p-1.5 ring-1 ring-foreground/5 shadow-sm">
+        <ol className="flex items-center gap-1 rounded-full bg-cream-pure p-1.5 ring-1 ring-ink/8 shadow-sm">
           {grupos.map((g, i) => {
             const grupoCount = porGrupo[g];
             const completo =
@@ -58,22 +57,20 @@ export function Stepper({ porGrupo, activo }: Props) {
                 <div
                   className={cn(
                     'flex items-center gap-1.5 rounded-full px-2 py-1.5 text-xs font-medium tracking-tight transition-all duration-300 ease-out lg:px-3 lg:text-sm',
-                    estado === 'done' &&
-                      'bg-forest text-primary-foreground shadow-sm',
+                    estado === 'done' && 'bg-ink text-cream-pure shadow-sm',
                     estado === 'active' &&
-                      'bg-lime text-lime-foreground shadow-sm scale-[1.02]',
-                    estado === 'pending' &&
-                      'text-muted-foreground hover:text-foreground'
+                      'bg-cream-pure text-ink shadow-sm ring-1 ring-gold/40 scale-[1.02]',
+                    estado === 'pending' && 'text-foreground/45 hover:text-foreground'
                   )}
                   aria-current={esActivo ? 'step' : undefined}
                 >
                   <span
                     className={cn(
                       'inline-flex size-5 items-center justify-center rounded-full text-[10px] font-semibold tabular-nums transition-colors',
-                      estado === 'done' && 'bg-lime text-lime-foreground',
-                      estado === 'active' && 'bg-forest text-primary-foreground',
+                      estado === 'done' && 'bg-gold text-ink',
+                      estado === 'active' && 'bg-ink text-gold',
                       estado === 'pending' &&
-                        'bg-muted text-muted-foreground ring-1 ring-foreground/10'
+                        'bg-ink/[0.04] text-foreground/55 ring-1 ring-ink/10'
                     )}
                   >
                     {estado === 'done' ? <Check className="size-3" /> : i + 1}
@@ -93,7 +90,7 @@ export function Stepper({ porGrupo, activo }: Props) {
                   <span
                     className={cn(
                       'h-px w-2 transition-colors duration-300 lg:w-3',
-                      i < idxActivo ? 'bg-forest/40' : 'bg-foreground/10'
+                      i < idxActivo ? 'bg-gold/45' : 'bg-ink/12'
                     )}
                     aria-hidden
                   />
@@ -107,17 +104,17 @@ export function Stepper({ porGrupo, activo }: Props) {
       {/* Mobile: label + barra lineal */}
       <div className="md:hidden">
         <div className="flex items-baseline justify-between gap-3">
-          <p className="text-xs font-medium uppercase tracking-[0.18em] text-muted-foreground">
+          <p className="text-eyebrow text-foreground/45">
             Sección {idxActivo + 1} de {grupos.length}
           </p>
-          <p className="text-xs tabular-nums text-muted-foreground">
+          <p className="text-xs tabular-nums text-foreground/55">
             {pct}% completado
           </p>
         </div>
         <h2 className="mt-1 text-display text-lg">{GRUPO_LABEL[activo]}</h2>
-        <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+        <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-ink/8">
           <div
-            className="h-full bg-forest transition-all duration-500 ease-out"
+            className="h-full bg-gold transition-all duration-500 ease-out"
             style={{ width: `${pct}%` }}
             aria-hidden
           />

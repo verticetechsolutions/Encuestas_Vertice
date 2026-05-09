@@ -19,7 +19,7 @@
 // /preview/ui.
 
 import { useEffect, useRef, useState } from 'react';
-import { Check, CircleDashed, Mic, Sparkles } from 'lucide-react';
+import { Check, CircleDashed, Mic } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { MicButton } from '@/components/stt/MicButton';
@@ -116,67 +116,51 @@ export function HeroPregunta({
     <article
       key={pregunta.id}
       className={cn(
-        'group/hero relative overflow-hidden rounded-[32px] bg-cream shadow-xl shadow-foreground/5 ring-1 ring-foreground/5 animate-fade-up',
-        marcada && 'ring-lime/50'
+        'group/hero relative overflow-hidden rounded-[32px] bg-cream-pure shadow-xl shadow-ink/5 ring-1 ring-ink/8 animate-fade-up',
+        marcada && 'ring-gold/40'
       )}
     >
       {/* Glow esquina sutil cuando marcada — celebración visual */}
       {marcada && (
         <div
-          className="absolute -right-24 -top-24 size-72 rounded-full bg-lime/20 blur-3xl"
+          className="absolute -right-24 -top-24 size-72 rounded-full bg-gold/20 blur-3xl"
           aria-hidden
         />
       )}
 
-      {/* Línea lateral lime cuando marcada */}
+      {/* Línea lateral gold cuando marcada */}
       <div
         className={cn(
-          'absolute inset-y-0 left-0 w-[3px] bg-lime transition-all duration-500',
+          'absolute inset-y-0 left-0 w-[3px] bg-gold transition-all duration-500',
           marcada ? 'opacity-100' : 'opacity-0'
         )}
         aria-hidden
       />
 
-      <div className="relative px-6 py-8 md:px-12 md:py-12">
-        {/* Eyebrow — meta context: número, sección, cajas */}
-        <div className="flex flex-wrap items-center gap-2 text-[11px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
-          <span className="font-mono tabular-nums text-forest">
+      <div className="relative px-6 py-8 md:px-10 md:py-10">
+        {/* Top row — número de pregunta + chip respondida. Sin sección
+            duplicada (vive en eyebrow del shell M0X). */}
+        <div className="flex flex-wrap items-center gap-2.5">
+          <span className="text-eyebrow tabular-nums text-gold-deep">
             P{numero.toString().padStart(2, '0')}
           </span>
-          <span className="size-1 rounded-full bg-foreground/25" aria-hidden />
-          <span>{seccionLabel}</span>
           {marcada && (
-            <span className="ml-auto inline-flex items-center gap-1.5 rounded-full bg-lime px-3 py-1 text-[10px] font-semibold tracking-[0.18em] text-lime-foreground animate-fade-up">
+            <span className="ml-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-eyebrow text-gold-deep ring-1 ring-gold/40 animate-fade-up">
               <Check className="size-3" strokeWidth={2.5} />
               Respondida
             </span>
           )}
         </div>
 
-        {/* Pregunta hero */}
-        <h2 className="mt-6 text-display text-[28px] leading-[1.08] text-foreground md:text-[40px] xl:text-[44px]">
+        {/* Pregunta hero — display tracking apretado, ritmo landing */}
+        <h2 className="mt-5 text-display text-[28px] leading-[1.05] tracking-[-0.025em] text-foreground md:text-[36px] xl:text-[40px]">
           {pregunta.texto_pregunta}
         </h2>
 
-        {/* Cajas objetivo como chips minimal */}
-        {pregunta.cajas_objetivo.length > 0 && (
-          <div className="mt-5 flex flex-wrap gap-1.5">
-            <span className="inline-flex items-center gap-1 rounded-full bg-forest/6 px-2.5 py-1 text-[11px] font-medium text-forest/85">
-              <Sparkles className="size-3" />
-              Cubre
-            </span>
-            {pregunta.cajas_objetivo.map((c) => (
-              <code
-                key={c}
-                className="rounded-full bg-foreground/4 px-2.5 py-1 font-mono text-[11px] tracking-tight text-foreground/70 ring-1 ring-foreground/8"
-              >
-                {c}
-              </code>
-            ))}
-          </div>
-        )}
+        {/* Hairline gold — sello editorial debajo del título */}
+        <span aria-hidden className="gold-hairline mt-6 block w-12" />
 
-        {/* Textarea grande */}
+        {/* Textarea grande — filled inset estilo landing FormField, focus gold */}
         <div className="mt-8 md:mt-10">
           <Textarea
             value={texto}
@@ -184,9 +168,11 @@ export function HeroPregunta({
             placeholder="Empieza a escribir tu respuesta o usa el micrófono…"
             rows={5}
             className={cn(
-              'min-h-[180px] resize-none rounded-2xl border-0 px-5 py-4 text-base leading-relaxed shadow-none transition-all md:text-lg',
-              'bg-muted/40 placeholder:text-muted-foreground/70',
-              'focus-visible:bg-background focus-visible:ring-2 focus-visible:ring-forest/40'
+              'min-h-[180px] resize-none rounded-2xl border-0 px-5 py-4 text-base leading-relaxed transition-all md:text-lg',
+              'bg-ink/[0.04] text-foreground placeholder:text-foreground/35',
+              'shadow-[inset_0_0_0_1px_rgb(10_15_28_/_0.06)]',
+              'hover:bg-ink/[0.055] hover:shadow-[inset_0_0_0_1px_rgb(10_15_28_/_0.10)]',
+              'focus-visible:bg-ink/[0.06] focus-visible:shadow-[inset_0_0_0_1.5px_rgb(200_168_100_/_0.55),0_0_0_4px_rgb(200_168_100_/_0.10)] focus-visible:ring-0'
             )}
             aria-label={`Respuesta a la pregunta ${numero}`}
           />
@@ -213,9 +199,9 @@ export function HeroPregunta({
           <div
             className={cn(
               'inline-flex items-center gap-2 text-xs font-medium tabular-nums',
-              meta.tone === 'success' && 'text-forest',
+              meta.tone === 'success' && 'text-gold-deep',
               meta.tone === 'warn' && 'text-amber-700',
-              meta.tone === 'muted' && 'text-muted-foreground'
+              meta.tone === 'muted' && 'text-foreground/55'
             )}
             aria-live="polite"
           >
@@ -224,9 +210,9 @@ export function HeroPregunta({
                 <span
                   className={cn(
                     'inline-block size-1.5 rounded-full',
-                    meta.tone === 'success' && 'bg-forest',
+                    meta.tone === 'success' && 'bg-gold-deep',
                     meta.tone === 'warn' && 'bg-amber-500',
-                    meta.tone === 'muted' && 'bg-muted-foreground/60',
+                    meta.tone === 'muted' && 'bg-foreground/40',
                     meta.pulsing && 'animate-pulse-ring'
                   )}
                   aria-hidden
@@ -234,9 +220,7 @@ export function HeroPregunta({
                 <span>{meta.text}</span>
               </>
             ) : (
-              <span className="text-muted-foreground/70">
-                Pregunta {numero} de {total} · escribe para guardar borrador.
-              </span>
+              <span className="text-foreground/35">Borrador autoguardado</span>
             )}
           </div>
 
@@ -264,7 +248,7 @@ export function HeroPregunta({
                   onFocus={() => setShowMicTooltip(true)}
                   onBlur={() => setShowMicTooltip(false)}
                   aria-describedby={`mic-tip-${pregunta.id}`}
-                  className="inline-flex size-11 items-center justify-center rounded-full bg-muted/60 text-muted-foreground/70 ring-1 ring-foreground/10 transition-all cursor-not-allowed opacity-60"
+                  className="inline-flex size-11 items-center justify-center rounded-full bg-ink/[0.04] text-foreground/45 ring-1 ring-ink/10 transition-all cursor-not-allowed opacity-70"
                 >
                   <Mic className="size-4" />
                   <span className="sr-only">Activar micrófono</span>
@@ -273,7 +257,7 @@ export function HeroPregunta({
                   <div
                     id={`mic-tip-${pregunta.id}`}
                     role="tooltip"
-                    className="absolute right-0 bottom-full mb-2 w-56 rounded-xl bg-forest-deep px-3 py-2 text-xs text-primary-foreground shadow-lg animate-fade-up"
+                    className="absolute right-0 bottom-full mb-2 w-56 rounded-xl bg-ink px-3 py-2 text-xs text-cream-pure shadow-lg animate-fade-up"
                   >
                     Disponible solo en sesión real (preview lo desactiva).
                   </div>
@@ -286,11 +270,11 @@ export function HeroPregunta({
               size="lg"
               onClick={() => onToggleMarcada(!marcada)}
               className={cn(
-                'h-11 rounded-full px-5 text-sm font-semibold tracking-tight transition-all',
+                'h-11 rounded-full px-5 text-sm font-medium tracking-tight transition-all',
                 'active:scale-[0.98]',
                 marcada
-                  ? 'bg-cream text-forest ring-1 ring-forest/20 hover:bg-cream'
-                  : 'bg-forest text-primary-foreground hover:bg-forest-soft'
+                  ? 'bg-cream-pure text-ink ring-1 ring-gold/45 hover:bg-cream-pure'
+                  : 'bg-ink text-cream-pure hover:bg-ink-raised'
               )}
             >
               {marcada ? (

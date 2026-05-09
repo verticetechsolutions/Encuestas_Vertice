@@ -43,7 +43,18 @@
   --color-card-foreground: var(--card-foreground);
   --color-card: var(--card);
 
-  /* Vértice fintech tokens — extiende el sistema shadcn sin pelearse con él. */
+  /* Vértice brand tokens — paleta unificada landing+entrevista (2026-05-08).
+     ink/cream/gold son los tokens de marca cementados. forest/lime quedan
+     vivos para admin (Fase 9) hasta sweep posterior. */
+  --color-ink: var(--ink);
+  --color-ink-raised: var(--ink-raised);
+  --color-cream-pure: var(--cream-pure);
+  --color-gold: var(--gold);
+  --color-gold-deep: var(--gold-deep);
+  --color-gold-bright: var(--gold-bright);
+  --color-gold-light: var(--gold-light);
+
+  /* Legacy fintech tokens — admin sigue usándolos. No tocar. */
   --color-canvas: var(--canvas);
   --color-cream: var(--cream);
   --color-forest: var(--forest);
@@ -63,20 +74,30 @@
 }
 
 :root {
-  /* Page canvas — taupe cálido, evoca papel/folder de archivos. */
-  --canvas: oklch(0.62 0.025 75);
+  /* === Brand tokens unificados (espejo del landing) ============================
+     Hex matching exacto con app/page.tsx para zero drift entre productos. */
+  --ink: #0A0F1C;            /* navy ink — fondo dark editorial del landing */
+  --ink-raised: #1a2236;     /* navy raised — hover sobre ink */
+  --cream-pure: #F4F1EA;     /* cream off-white — texto sobre ink + surface clara */
+  --gold: #C8A864;           /* champán — acento principal, pills, hairlines */
+  --gold-deep: #9C824A;      /* gold deep — brand "tu política", labels acento */
+  --gold-bright: #F2D89C;    /* gold bright — highlight scrub, focus, glow */
+  --gold-light: #E0BE7C;     /* gold light — gradient base de la V */
+  --burgundy: #8B3A3A;       /* burgundy desat — error states landing-aligned */
 
-  /* Card base — cream off-white. */
+  /* === Surface entrevista ===================================================
+     La encuesta es light por decisión UX (sesión 12 min, lectura larga).
+     canvas se mantiene taupe pero los acentos migran a navy/gold. */
+  --canvas: oklch(0.62 0.025 75);
   --cream: oklch(0.965 0.012 90);
   --background: var(--cream);
-  --foreground: oklch(0.18 0.02 145);
+  --foreground: oklch(0.16 0.025 260);   /* migrado a navy ink para consistencia */
 
-  /* Forest — verde profundo para hero panels. */
+  /* === Legacy forest/lime ===================================================
+     Vivos para admin (Fase 9). NO usar en entrevista nueva — usar gold. */
   --forest: oklch(0.36 0.075 145);
   --forest-deep: oklch(0.22 0.04 110);
   --forest-soft: oklch(0.46 0.07 145);
-
-  /* Lime — accent fintech, CTA y stepper activo. */
   --lime: oklch(0.92 0.16 125);
   --lime-soft: oklch(0.95 0.08 125);
   --lime-foreground: oklch(0.28 0.06 145);
@@ -606,5 +627,50 @@
     letter-spacing: -0.02em;
     font-weight: 600;
     line-height: 1.05;
+  }
+
+  /* === Brand utilities (espejo del landing, scope: entrevista) ================ */
+
+  /* Eyebrow microcaps — tracking generoso 0.32em estilo manifiesto landing.
+     Úsalo para meta labels: "M02 · PRODUCTOS Y MERCADO", "P01 · …", chips.
+     Densidad mejor que tracking-[0.18em] del legacy stepper. */
+  .text-eyebrow {
+    font-family: var(--font-mono);
+    font-size: 10.5px;
+    line-height: 1;
+    text-transform: uppercase;
+    letter-spacing: 0.32em;
+    font-weight: 500;
+  }
+
+  /* Gold hairline — 1px de seam dorada decorativa. Aplicar como border o como
+     separador inline. La opacidad 0.22 viene del landing manifest. */
+  .gold-hairline {
+    background-color: rgb(200 168 100 / 0.55);
+    height: 1px;
+  }
+
+  /* Gold seam superior — replica el manifest card del landing.
+     `inset_0_1px_0` deja una línea fina dorada en el top edge del contenedor. */
+  .gold-seam {
+    box-shadow:
+      inset 0 0 0 1px rgb(244 241 234 / 0.06),
+      inset 0 1px 0 rgb(200 168 100 / 0.18);
+  }
+
+  /* Atmosphere overlay — radial gold + noise SVG, intensidad 30% del landing.
+     Aplicar a un absolute child con pointer-events-none. */
+  .atmosphere-radial-gold {
+    background-image: radial-gradient(
+      900px 600px at 88% -8%,
+      rgb(200 168 100 / 0.04),
+      transparent 60%
+    );
+  }
+
+  .atmosphere-noise {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.7'/%3E%3C/svg%3E");
+    opacity: 0.012;
+    mix-blend-mode: multiply;
   }
 }

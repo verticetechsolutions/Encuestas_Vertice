@@ -1,19 +1,29 @@
-// Admin layout. Protege todas las rutas `/admin/*` (excepto /admin/login que
-// está fuera del segmento — su page.tsx renderiza el form sin guard).
+// Admin layout. Protege todas las rutas `/admin/*` excepto `/admin/login`.
+//
+// `/admin/login` SÍ vive bajo este segmento (`app/admin/login/page.tsx`), así
+// que el layout también lo envuelve. Para evitar bucle de redirect, leemos el
+// header `x-pathname` (inyectado por `middleware.ts`) y, si es `/admin/login`,
+// renderizamos el form sin guard ni chrome admin.
 //
 // El header repite el branding del producto pero con un ribbon visible que
 // recuerda al operador que está en panel administrativo (evita confusión
 // entre admin y entrevistado vista).
 
+import { headers } from 'next/headers';
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth/admin';
 import { logoutAdmin } from '@/app/actions/adminAuth';
+import { CommandPaletteTrigger } from '@/components/admin/command-palette-trigger';
 
 export default async function AdminLayout({
   children,
 }: {
   children: React.ReactNode;
 }) {
+  const h = await headers();
+  if (h.get('x-pathname') === '/admin/login') {
+    return <>{children}</>;
+  }
   await requireAdmin();
 
   return (
@@ -36,20 +46,24 @@ export default async function AdminLayout({
             </Link>
             <nav className="ml-6 hidden items-center gap-1 md:flex">
               <NavLink href="/admin">Resumen</NavLink>
+              <NavLink href="/admin/sesiones">Sesiones</NavLink>
               <NavLink href="/admin/instituciones">Instituciones</NavLink>
               <NavLink href="/admin/instituciones/nueva">
                 Nueva institución
               </NavLink>
             </nav>
           </div>
-          <form action={logoutAdmin}>
-            <button
-              type="submit"
-              className="rounded-full bg-forest/40 px-3 py-1.5 text-xs font-medium text-primary-foreground/85 ring-1 ring-primary-foreground/10 transition hover:bg-forest/70"
-            >
-              Cerrar sesión
-            </button>
-          </form>
+          <div className="flex items-center gap-2">
+            <CommandPaletteTrigger />
+            <form action={logoutAdmin}>
+              <button
+                type="submit"
+                className="rounded-full bg-forest/40 px-3 py-1.5 text-xs font-medium text-primary-foreground/85 ring-1 ring-primary-foreground/10 transition hover:bg-forest/70"
+              >
+                Cerrar sesión
+              </button>
+            </form>
+          </div>
         </div>
       </header>
       <main className="mx-auto max-w-7xl px-6 py-8">{children}</main>

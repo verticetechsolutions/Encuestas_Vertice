@@ -40,16 +40,14 @@ export function BatchNav({ preguntas, activeIndex, onChange }: Props) {
         className={cn(
           'inline-flex size-10 items-center justify-center rounded-full ring-1 transition-all',
           canPrev
-            ? 'bg-cream text-foreground ring-foreground/15 hover:bg-foreground/5 active:scale-95'
-            : 'bg-cream/50 text-muted-foreground/40 ring-foreground/8 cursor-not-allowed'
+            ? 'bg-cream-pure text-foreground ring-ink/15 hover:bg-ink/[0.04] active:scale-95'
+            : 'bg-cream-pure/40 text-foreground/35 ring-ink/8 cursor-not-allowed'
         )}
       >
         <ChevronLeft className="size-4" />
       </button>
 
-      <ol
-        className="flex items-center gap-1.5 rounded-full bg-cream px-3 py-2 ring-1 ring-foreground/10"
-      >
+      <ol className="flex items-center gap-1.5 rounded-full bg-cream-pure px-3 py-2 ring-1 ring-ink/10">
         {preguntas.map((p, i) => {
           const esActivo = i === activeIndex;
           const respondida = p.marcada;
@@ -70,14 +68,14 @@ export function BatchNav({ preguntas, activeIndex, onChange }: Props) {
                   className={cn(
                     'inline-flex items-center justify-center rounded-full text-[10px] font-semibold tabular-nums transition-all',
                     esActivo
-                      ? 'size-6 bg-lime text-lime-foreground'
+                      ? 'size-6 bg-ink text-gold ring-1 ring-gold/35'
                       : respondida
-                      ? 'size-6 bg-forest text-primary-foreground'
-                      : 'size-6 bg-muted text-muted-foreground/70 ring-1 ring-foreground/10 group-hover/dot:bg-foreground/8'
+                      ? 'size-6 bg-ink text-cream-pure'
+                      : 'size-6 bg-ink/[0.04] text-foreground/55 ring-1 ring-ink/10 group-hover/dot:bg-ink/[0.08]'
                   )}
                 >
                   {respondida && !esActivo ? (
-                    <Check className="size-3" strokeWidth={2.8} />
+                    <Check className="size-3 text-gold" strokeWidth={2.8} />
                   ) : (
                     i + 1
                   )}
@@ -101,8 +99,8 @@ export function BatchNav({ preguntas, activeIndex, onChange }: Props) {
         className={cn(
           'inline-flex size-10 items-center justify-center rounded-full ring-1 transition-all',
           canNext
-            ? 'bg-cream text-foreground ring-foreground/15 hover:bg-foreground/5 active:scale-95'
-            : 'bg-cream/50 text-muted-foreground/40 ring-foreground/8 cursor-not-allowed'
+            ? 'bg-cream-pure text-foreground ring-ink/15 hover:bg-ink/[0.04] active:scale-95'
+            : 'bg-cream-pure/40 text-foreground/35 ring-ink/8 cursor-not-allowed'
         )}
       >
         <ChevronRight className="size-4" />
