@@ -88,6 +88,17 @@ describe('adminMagicLinks (integration)', () => {
       expect(result.ok).toBe(false);
     });
 
+    skip('falla con token consumido', async () => {
+      if (!db) return;
+      const { token_id } = await seedInstWithLink('G');
+      await db
+        .update(magic_tokens)
+        .set({ consumed_at: new Date() })
+        .where(eq(magic_tokens.id, token_id));
+      const result = await revocarMagicLink(token_id);
+      expect(result.ok).toBe(false);
+    });
+
     skip('falla sin auth', async () => {
       if (!db) return;
       const { token_id } = await seedInstWithLink('C');

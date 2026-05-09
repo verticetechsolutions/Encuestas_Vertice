@@ -51,6 +51,11 @@ export async function reenviarMagicLink(
       sent_to: link.enviado ? link.email_contacto : undefined,
     };
   } catch (err) {
+    // emitirMagicLink puede haber commiteado la transacción (revoke + insert)
+    // antes de que falle el envío via Resend. Refrescamos las vistas para que
+    // admin vea el nuevo estado real (previo revocado, nuevo vigente sin email).
+    revalidatePath(`/admin/instituciones/${institucion_id}`);
+    revalidatePath('/admin/magic-links');
     return {
       ok: false,
       error: err instanceof Error ? err.message : 'Error al reemitir.',
@@ -69,16 +74,18 @@ export async function revocarMagicLink(
 
   // UPDATE atómico: solo si está vigente (no consumido, no revocado, no
   // expirado). Si el token ya cambió de estado entre render y click,
-  // `returning()` queda vacío y devolvemos error de race.
+  // `returning()` queda vacío y devolvemos error de race. Capturamos `now`
+  // una sola vez para que set + where comparen contra el mismo instante.
+  const now = new Date();
   const updated = await db
     .update(magic_tokens)
-    .set({ revoked_at: new Date() })
+    .set({ revoked_at: now })
     .where(
       and(
         eq(magic_tokens.id, token_id),
         isNull(magic_tokens.consumed_at),
         isNull(magic_tokens.revoked_at),
-        gt(magic_tokens.expires_at, new Date())
+        gt(magic_tokens.expires_at, now)
       )
     )
     .returning({ institucion_id: magic_tokens.institucion_id });
