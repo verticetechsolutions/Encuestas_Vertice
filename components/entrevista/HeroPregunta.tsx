@@ -161,9 +161,9 @@ export function HeroPregunta({
         {q}
       </h2>
 
-      {/* Helper "Por ejemplo:" — regular weight, no italic, jerarquía clara */}
+      {/* Helper "Por ejemplo:" — sutil, no compite con la pregunta */}
       {ejemplo && (
-        <p className="mt-4 max-w-[58ch] text-[15px] leading-relaxed text-foreground/55">
+        <p className="mt-4 max-w-[58ch] text-[14.5px] leading-relaxed text-foreground/40">
           {ejemplo}
         </p>
       )}
@@ -171,14 +171,11 @@ export function HeroPregunta({
       {/* Tema inline — lo que esta pregunta cubre. Reemplaza al RightRail.
           Una sola línea, joined por bullet middle (·). */}
       {temaLabel && (
-        <p className="mt-5 text-[13px] tracking-tight text-foreground/50">
-          <span className="text-foreground/35">Tema:</span>{' '}
-          <span className="text-foreground/65">{temaLabel}</span>
+        <p className="mt-5 text-[13px] tracking-tight text-foreground/45">
+          <span className="text-foreground/30">Tema:</span>{' '}
+          <span className="text-foreground/60">{temaLabel}</span>
         </p>
       )}
-
-      {/* Hairline gold — sello editorial, ancho fijo bajo el bloque de meta */}
-      <span aria-hidden className="gold-hairline mt-8 block w-12" />
 
       {/* Textarea — surface white pure + hairline 1px solid, focus gold */}
       <div className="mt-8">
