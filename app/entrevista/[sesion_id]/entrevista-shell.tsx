@@ -7,7 +7,7 @@
 // "responder rápido para terminar el formulario".
 //
 // Layout:
-//   - Header dark forest-deep (compact)
+//   - Header dark ink (compact, espejo del landing)
 //   - Card outer cream con stepper + chip-progreso top
 //   - Centered column max-w-3xl con:
 //       eyebrow ("Pregunta X de Y · Sección …") + BatchNav

@@ -3,10 +3,10 @@
 // HeroPregunta — pregunta como protagonista absoluto de la pantalla.
 // Estilo:
 //   - Card cream rounded-[32px], generosísimo padding (md:p-12)
-//   - Eyebrow chip "P01 · Sección Productos" (meta pequeña arriba)
+//   - Eyebrow chip "P01" (meta pequeña arriba) — sección vive en el shell
 //   - Pregunta gigante (text-3xl → 5xl), display tracking apretado
-//   - Cajas objetivo como chips inline (forest/8 ring forest/10)
-//   - Textarea sin bordes visibles, min-h grande, focus ring lime
+//   - Cajas objetivo NO inline aquí — viven en el right rail con label humano
+//   - Textarea filled inset, min-h grande, focus shadow gold
 //   - Footer ancho: autosave indicator izq + mic + Marcar respondida der
 //   - Microanimación: cambia con animate-fade-up (key={pregunta.id} en wrapper)
 //

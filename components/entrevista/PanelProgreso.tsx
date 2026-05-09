@@ -87,7 +87,7 @@ export function PanelProgreso({ porGrupo, grupoActivo }: Props) {
   return (
     <aside className="overflow-hidden rounded-3xl bg-cream ring-1 ring-foreground/5 shadow-sm">
       <div className="border-b border-foreground/5 p-6">
-        <p className="text-[10px] font-semibold uppercase tracking-[0.2em] text-muted-foreground">
+        <p className="text-eyebrow text-muted-foreground">
           Progreso
         </p>
         <div className="mt-2 flex items-baseline gap-2">
