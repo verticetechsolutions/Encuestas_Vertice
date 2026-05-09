@@ -21,13 +21,14 @@
 //   - Send turno button hace pulse-ring cuando todas marcadas (CTA breathing).
 
 import Image from 'next/image';
-import { useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { HeroPregunta } from '@/components/entrevista/HeroPregunta';
 import { BatchNav } from '@/components/entrevista/BatchNav';
 import { RightRail } from '@/components/entrevista/RightRail';
 import { Stepper } from '@/components/entrevista/Stepper';
 import { BrandSuccessGlyph } from '@/components/landing/BrandSuccessGlyph';
 import { useEntrevistaStore } from '@/lib/state/entrevista';
+import { withViewTransition } from '@/lib/view-transitions';
 import { GrupoUISchema, getCajaAny, type GrupoUI } from '@/lib/schemas/cajas';
 import { cn } from '@/lib/utils';
 import {
@@ -88,6 +89,14 @@ export function EntrevistaShell({
   // no necesitamos persistir cuál es la pregunta visible al recargar (el batch
   // se rehidrata del fixture/api y el índice se reinicia).
   const [pregIndex, setPregIndex] = useState(0);
+
+  // Wrapper view-transition para navegación entre preguntas. En Chrome ≥111,
+  // Edge, Safari 18+ activa la animación nativa CSS sobre `view-transition-name:
+  // question-card` (declarada en HeroPregunta + globals.css). En el resto cae
+  // al callback directo (no-op visual, sin throw).
+  const navegarAPregunta = useCallback((idx: number) => {
+    withViewTransition(() => setPregIndex(idx));
+  }, []);
 
   useEffect(() => {
     init(sesion_id, totales_por_grupo, { preview });
@@ -267,7 +276,7 @@ export function EntrevistaShell({
                     marcada: marcadas[p.id] === true,
                   }))}
                   activeIndex={pregIndex}
-                  onChange={setPregIndex}
+                  onChange={navegarAPregunta}
                 />
               </div>
             )}

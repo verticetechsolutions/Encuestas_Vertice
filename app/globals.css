@@ -254,6 +254,40 @@
   font-feature-settings: "tnum" 1, "lnum" 1;
 }
 
+/* View Transitions API entre preguntas — fade + translate sutil.
+   El elemento con `view-transition-name: question-card` cross-fade entre
+   estados antiguo y nuevo. Curve outExpo (entrada), iosSheet (salida).
+   En browsers sin soporte, withViewTransition() llama el callback directo
+   sin animar (fallback Framer Motion en HeroPregunta para feel coherente). */
+@keyframes survey-fade-out-left {
+  to {
+    opacity: 0;
+    transform: translateX(-12px);
+  }
+}
+
+@keyframes survey-fade-in-right {
+  from {
+    opacity: 0;
+    transform: translateX(12px);
+  }
+}
+
+::view-transition-old(question-card) {
+  animation: survey-fade-out-left 200ms cubic-bezier(0.32, 0.72, 0, 1) forwards;
+}
+
+::view-transition-new(question-card) {
+  animation: survey-fade-in-right 320ms cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  ::view-transition-old(question-card),
+  ::view-transition-new(question-card) {
+    animation-duration: 1ms !important;
+  }
+}
+
 /* Reduced-motion global safety net. Respeta a usuarios con motion sensitivity
    o que tengan la preferencia activada en el OS. Las animaciones ya curadas
    por componente (vx-mark, ln-*, sx-*) tienen sus propios overrides locales;

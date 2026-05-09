@@ -131,6 +131,7 @@ export function HeroPregunta({
   return (
     <article
       key={pregunta.id}
+      style={{ viewTransitionName: 'question-card' }}
       className={cn(
         'group/hero relative overflow-hidden rounded-[32px] bg-cream-pure shadow-xl shadow-ink/5 ring-1 ring-ink/8 animate-fade-up',
         marcada && 'ring-gold/40'
