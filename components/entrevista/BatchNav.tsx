@@ -1,14 +1,17 @@
 'use client';
 
-// BatchNav — navegación entre las N preguntas del turno actual.
-//   - Dots horizontales con estado: active (ink + gold ring), respondida
-//     (ink sólido + check gold), pendiente (outline ink).
-//   - Botones Anterior / Siguiente a los lados (rounded-full pill).
-//   - Click en un dot navega a esa pregunta.
-//   - En mobile: dots compactos sin labels, en desktop: dots + label "P01"
-//     en el activo.
+// BatchNav minimal — Paleta A (2026-05-09 refactor F3.4).
+//   - Sin pills, sin rings, sin background. Vive como text-link inline en el
+//     footer de card-2 (workspace).
+//   - 3 elementos: "← Anterior" (link/disabled), "X / N" counter (eyebrow numeric),
+//     "Siguiente →" (link/disabled).
+//   - Estado disabled = foreground/30 + cursor-not-allowed (sin chrome extra).
+//   - Hover en links = foreground/100 con underline subtle.
+//   - Mantiene API previa: preguntas[], activeIndex, onChange — la marca de
+//     respondida ya vive en el chip "Respondida" del HeroPregunta + en stepper
+//     superior, no necesitamos re-comunicarla acá.
 
-import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 interface DotMeta {
@@ -27,83 +30,63 @@ export function BatchNav({ preguntas, activeIndex, onChange }: Props) {
   const canPrev = activeIndex > 0;
   const canNext = activeIndex < total - 1;
 
+  const respondidas = preguntas.filter((p) => p.marcada).length;
+
   return (
     <nav
       aria-label="Navegación entre preguntas del turno"
-      className="flex items-center gap-3"
+      className="flex items-center justify-between gap-4 text-[13px]"
     >
+      {/* ← Anterior — link minimal, disabled cuando no hay prev */}
       <button
         type="button"
         onClick={() => canPrev && onChange(activeIndex - 1)}
         disabled={!canPrev}
         aria-label="Pregunta anterior"
         className={cn(
-          'inline-flex size-10 items-center justify-center rounded-full ring-1 transition-all',
+          'inline-flex items-center gap-1.5 font-medium tracking-tight transition-colors duration-200',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--gold)]/30 rounded',
           canPrev
-            ? 'bg-cream-pure text-foreground ring-ink/15 hover:bg-ink/[0.04] active:scale-95'
-            : 'bg-cream-pure/40 text-foreground/35 ring-ink/8 cursor-not-allowed'
+            ? 'text-foreground/65 hover:text-foreground'
+            : 'text-foreground/25 cursor-not-allowed'
         )}
       >
-        <ChevronLeft className="size-4" />
+        <ChevronLeft className="size-4" strokeWidth={2} />
+        Anterior
       </button>
 
-      <ol className="flex items-center gap-1.5 rounded-full bg-cream-pure px-3 py-2 ring-1 ring-ink/10">
-        {preguntas.map((p, i) => {
-          const esActivo = i === activeIndex;
-          const respondida = p.marcada;
+      {/* Counter central — "X / N" + chip "respondidas" sutil */}
+      <div className="flex items-center gap-2.5 text-foreground/55">
+        <span className="numeric font-medium text-foreground/85">
+          {activeIndex + 1}
+        </span>
+        <span aria-hidden className="text-foreground/30">
+          /
+        </span>
+        <span className="numeric text-foreground/55">{total}</span>
+        {respondidas > 0 && (
+          <span className="ml-2 text-eyebrow text-gold-deep">
+            {respondidas} marcada{respondidas === 1 ? '' : 's'}
+          </span>
+        )}
+      </div>
 
-          return (
-            <li key={p.id}>
-              <button
-                type="button"
-                onClick={() => onChange(i)}
-                aria-current={esActivo ? 'step' : undefined}
-                aria-label={`Ir a pregunta ${i + 1}${respondida ? ' (respondida)' : ''}`}
-                className={cn(
-                  'group/dot inline-flex items-center gap-1.5 rounded-full transition-all duration-200 ease-out',
-                  esActivo ? 'px-3 py-1' : 'px-1 py-1'
-                )}
-              >
-                <span
-                  className={cn(
-                    'inline-flex items-center justify-center rounded-full text-[10px] font-semibold tabular-nums transition-all',
-                    esActivo
-                      ? 'size-6 bg-ink text-gold ring-1 ring-gold/35'
-                      : respondida
-                      ? 'size-6 bg-ink text-cream-pure'
-                      : 'size-6 bg-ink/[0.04] text-foreground/55 ring-1 ring-ink/10 group-hover/dot:bg-ink/[0.08]'
-                  )}
-                >
-                  {respondida && !esActivo ? (
-                    <Check className="size-3 text-gold" strokeWidth={2.8} />
-                  ) : (
-                    i + 1
-                  )}
-                </span>
-                {esActivo && (
-                  <span className="font-mono text-[11px] font-semibold tracking-tight text-foreground">
-                    P{(i + 1).toString().padStart(2, '0')}
-                  </span>
-                )}
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-
+      {/* Siguiente → — link minimal, disabled cuando no hay next */}
       <button
         type="button"
         onClick={() => canNext && onChange(activeIndex + 1)}
         disabled={!canNext}
         aria-label="Siguiente pregunta"
         className={cn(
-          'inline-flex size-10 items-center justify-center rounded-full ring-1 transition-all',
+          'inline-flex items-center gap-1.5 font-medium tracking-tight transition-colors duration-200',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--gold)]/30 rounded',
           canNext
-            ? 'bg-cream-pure text-foreground ring-ink/15 hover:bg-ink/[0.04] active:scale-95'
-            : 'bg-cream-pure/40 text-foreground/35 ring-ink/8 cursor-not-allowed'
+            ? 'text-foreground/65 hover:text-foreground'
+            : 'text-foreground/25 cursor-not-allowed'
         )}
       >
-        <ChevronRight className="size-4" />
+        Siguiente
+        <ChevronRight className="size-4" strokeWidth={2} />
       </button>
     </nav>
   );
