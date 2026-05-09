@@ -72,6 +72,10 @@
   --color-survey-hairline: var(--survey-hairline);
   --color-survey-hairline-strong: var(--survey-hairline-strong);
   --color-survey-hover: var(--survey-hover);
+  /* 2 cards diferenciadas por tono — card-1 (brand+stepper) cream warm,
+     card-2 (workspace) white pure. Conversación tonal entre piezas. */
+  --color-survey-card-1: var(--survey-card-1);
+  --color-survey-card-2: var(--survey-card-2);
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -154,6 +158,8 @@
      Scope: /entrevista/* y /preview/ui. Uso fuera de ese scope = bug. */
   --survey-bg: #FAF8F4;                  /* off-white page background */
   --survey-surface: #FFFFFF;             /* textarea, modals, white surfaces */
+  --survey-card-1: #FBF6EE;              /* card brand+stepper — cream warm */
+  --survey-card-2: #FFFFFF;              /* card workspace — white pure */
   --survey-text: var(--ink);
   --survey-text-72: rgb(10 15 28 / 0.72);
   --survey-text-65: rgb(10 15 28 / 0.65);
