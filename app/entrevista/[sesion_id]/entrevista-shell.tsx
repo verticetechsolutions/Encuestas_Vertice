@@ -24,14 +24,13 @@ import Image from 'next/image';
 import { useEffect, useMemo, useState } from 'react';
 import { HeroPregunta } from '@/components/entrevista/HeroPregunta';
 import { BatchNav } from '@/components/entrevista/BatchNav';
-import { PanelProgreso } from '@/components/entrevista/PanelProgreso';
+import { RightRail } from '@/components/entrevista/RightRail';
 import { Stepper } from '@/components/entrevista/Stepper';
 import { BrandSuccessGlyph } from '@/components/landing/BrandSuccessGlyph';
 import { useEntrevistaStore } from '@/lib/state/entrevista';
 import { GrupoUISchema, getCajaAny, type GrupoUI } from '@/lib/schemas/cajas';
 import { cn } from '@/lib/utils';
 import {
-  ArrowUpRight,
   Loader2,
   AlertCircle,
   CheckCircle2,
@@ -327,125 +326,24 @@ export function EntrevistaShell({
             )}
           </div>
 
-          {/* Columna derecha — sidebar de control: turno, contexto, progreso */}
-          {!sesionCerrada && (
-            <aside className="space-y-4 md:space-y-5 lg:col-span-4">
-              {/* Card 1 — Estado del turno + CTA Enviar */}
-              {batch && (
-                <div
-                  className={cn(
-                    'rounded-2xl bg-cream-pure p-5 ring-1 ring-ink/8 shadow-sm transition-all duration-500',
-                    todasMarcadas && !enError && 'ring-gold/45 bg-gold/[0.06]'
-                  )}
-                >
-                  <p className="text-eyebrow text-foreground/45">Turno actual</p>
-                  <p className="mt-3 text-display text-[26px] leading-[1.05] tracking-[-0.025em] text-foreground">
-                    {(() => {
-                      const pendientes = batch.preguntas.filter(
-                        (p) => !marcadas[p.id]
-                      ).length;
-                      if (todasMarcadas) return '¡Listo!';
-                      return `${pendientes} sin marcar`;
-                    })()}
-                  </p>
-                  <p className="mt-2 text-[12.5px] leading-relaxed text-foreground/55">
-                    {todasMarcadas
-                      ? 'La IA generará las próximas preguntas con base en tus respuestas.'
-                      : 'Marca cada respuesta para habilitar el envío.'}
-                  </p>
-                  <button
-                    type="button"
-                    onClick={() => void enviarBatch()}
-                    disabled={!todasMarcadas || enviando}
-                    className={cn(
-                      'group/send relative mt-5 inline-flex h-12 w-full items-center justify-between gap-2 rounded-full pl-6 pr-2 text-[13.5px] font-medium tracking-tight transition-all',
-                      'will-change-transform active:scale-[0.99] disabled:cursor-not-allowed',
-                      todasMarcadas && !enError
-                        ? [
-                            'bg-cream-pure text-ink ring-1 ring-ink/8',
-                            'shadow-[0_30px_70px_-20px_rgb(200_168_100_/_0.45)]',
-                            'hover:bg-white',
-                            !enviando && 'animate-pulse-ring',
-                          ]
-                        : ['bg-ink text-cream-pure hover:bg-ink-raised disabled:opacity-50']
-                    )}
-                  >
-                    {status === 'enviando' || status === 'procesando' ? (
-                      <>
-                        <span className="inline-flex items-center gap-2">
-                          <Loader2 className="size-4 animate-spin" />
-                          {status === 'enviando' ? 'Enviando…' : 'Procesando…'}
-                        </span>
-                        <span
-                          aria-hidden
-                          className="inline-flex size-9 items-center justify-center rounded-full bg-gold/20 text-gold-bright"
-                        >
-                          <ArrowUpRight className="size-4" strokeWidth={2.5} />
-                        </span>
-                      </>
-                    ) : enError ? (
-                      <>
-                        Reintentar envío
-                        <span
-                          aria-hidden
-                          className="inline-flex size-9 items-center justify-center rounded-full bg-ink text-gold transition-transform group-hover/send:rotate-45"
-                        >
-                          <ArrowUpRight className="size-4" strokeWidth={2.5} />
-                        </span>
-                      </>
-                    ) : (
-                      <>
-                        Enviar turno
-                        <span
-                          aria-hidden
-                          className={cn(
-                            'inline-flex size-9 items-center justify-center rounded-full transition-transform group-hover/send:rotate-45',
-                            todasMarcadas ? 'bg-ink text-gold' : 'bg-cream-pure/15 text-cream-pure/55'
-                          )}
-                        >
-                          <ArrowUpRight className="size-4" strokeWidth={2.5} />
-                        </span>
-                      </>
-                    )}
-                  </button>
-                </div>
-              )}
-
-              {/* Card 2 — Cajas que cubre la pregunta activa */}
-              {activePregunta && activePregunta.cajas_objetivo.length > 0 && (
-                <div className="rounded-2xl bg-cream-pure p-5 ring-1 ring-ink/8 shadow-sm">
-                  <p className="text-eyebrow text-foreground/45">
-                    Esta pregunta cubre
-                  </p>
-                  <ul className="mt-4 space-y-2">
-                    {activePregunta.cajas_objetivo.map((c) => (
-                      <li key={c} className="flex items-center gap-2.5">
-                        <span
-                          aria-hidden
-                          className="size-1.5 shrink-0 rounded-full bg-gold"
-                        />
-                        <code className="font-mono text-[12px] tracking-tight text-foreground/75">
-                          {c}
-                        </code>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              )}
-
-              {/* Card 3 — Progreso por sección, siempre visible */}
-              <div className="rounded-2xl bg-cream-pure p-5 ring-1 ring-ink/8 shadow-sm">
-                <p className="text-eyebrow text-foreground/45">
-                  Progreso por sección
-                </p>
-                <div className="mt-4">
-                  <PanelProgreso
-                    porGrupo={cajas_llenas_por_grupo}
-                    grupoActivo={grupoActivo}
-                  />
-                </div>
-              </div>
-            </aside>
+          {/* Columna derecha — RightRail unificado: 2 secciones hairline
+              (Turno + Progreso) en lugar de 3 cards apiladas. */}
+          {!sesionCerrada && batch && activePregunta && (
+            <div className="lg:col-span-4">
+              <RightRail
+                pendientes={batch.preguntas.filter((p) => !marcadas[p.id]).length}
+                total={total}
+                todasMarcadas={todasMarcadas}
+                enviando={enviando}
+                enError={enError}
+                status={status}
+                cajasObjetivo={activePregunta.cajas_objetivo}
+                cajasGlobal={cajasGlobal}
+                cajasPorGrupo={cajas_llenas_por_grupo}
+                grupoActivo={grupoActivo}
+                onEnviarBatch={() => void enviarBatch()}
+              />
+            </div>
           )}
         </div>
       </main>
