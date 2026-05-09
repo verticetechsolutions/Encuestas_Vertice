@@ -4,12 +4,12 @@
 //   - Card cream con esquinas rounded-3xl, sombra suave
 //   - Header con número grande (display) + subtítulo
 //   - Lista de 6 grupos con barra mini, conteo y % alineados a la derecha
-//   - Highlight para el grupo activo (chip lime + ring sutil)
+//   - Highlight para el grupo activo (chip gold-bright tint + ring sutil)
 //   - Microanimación: barras se animan con CSS transition cuando cambia llenas
 //   - Celebración de cierre: cuando llenas_por_grupo[g] incrementa, el chip
-//     del grupo dispara un pulse-ring lime de 900ms (animate-cierre-caja).
-//     Esto cierra el TODO de Fase 7 "animación de campos en verde al cerrar
-//     caja". Funciona contra el state real (Sonnet incrementa via tool result)
+//     del grupo dispara un pulse-ring gold-bright de 900ms (animate-cierre-caja).
+//     Esto cierra el TODO de Fase 7 "animación de campos al cerrar caja".
+//     Funciona contra el state real (Sonnet incrementa via tool result)
 //     y contra el state simulado en /preview/ui.
 
 import { useEffect, useRef, useState } from 'react';
@@ -91,7 +91,7 @@ export function PanelProgreso({ porGrupo, grupoActivo }: Props) {
           Progreso
         </p>
         <div className="mt-2 flex items-baseline gap-2">
-          <span className="text-display text-[44px] tabular-nums leading-none text-foreground">
+          <span className="text-display text-[44px] numeric leading-none text-foreground">
             {pctTotal}
           </span>
           <span className="text-display text-2xl text-muted-foreground/70">%</span>
@@ -100,9 +100,9 @@ export function PanelProgreso({ porGrupo, grupoActivo }: Props) {
           {totales.llenas} de {totales.total} cajas resueltas
         </p>
 
-        <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-muted">
+        <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-ink/8">
           <div
-            className="h-full rounded-full bg-forest transition-all duration-700 ease-out"
+            className="h-full rounded-full bg-gold-deep transition-all duration-700 ease-out"
             style={{ width: `${pctTotal}%` }}
             aria-hidden
           />
@@ -123,8 +123,8 @@ export function PanelProgreso({ porGrupo, grupoActivo }: Props) {
               className={cn(
                 'rounded-2xl px-3 py-2.5 transition-all duration-300',
                 esActivo
-                  ? 'bg-lime/35 ring-1 ring-lime/40'
-                  : 'hover:bg-muted/40',
+                  ? 'bg-gold-bright/15 ring-1 ring-gold/40'
+                  : 'hover:bg-ink/[0.04]',
                 celebrando && 'animate-cierre-caja'
               )}
             >
@@ -137,7 +137,7 @@ export function PanelProgreso({ porGrupo, grupoActivo }: Props) {
                 >
                   {GRUPO_LABELS[g]}
                 </span>
-                <span className="text-[10px] tabular-nums font-medium text-muted-foreground">
+                <span className="numeric text-[10px] font-medium text-muted-foreground">
                   {llenas}/{total}
                 </span>
               </div>
@@ -147,12 +147,12 @@ export function PanelProgreso({ porGrupo, grupoActivo }: Props) {
                 aria-valuemin={0}
                 aria-valuemax={total > 0 ? total : 1}
                 aria-valuenow={llenas}
-                className="h-1 w-full overflow-hidden rounded-full bg-foreground/8"
+                className="h-1 w-full overflow-hidden rounded-full bg-ink/8"
               >
                 <div
                   className={cn(
                     'h-full rounded-full transition-all duration-700 ease-out',
-                    esActivo ? 'bg-forest' : 'bg-forest/55'
+                    esActivo ? 'bg-gold-deep' : 'bg-gold/55'
                   )}
                   style={{ width: `${pct}%` }}
                   aria-hidden
