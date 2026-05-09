@@ -34,7 +34,6 @@ import {
   Loader2,
   AlertCircle,
   CheckCircle2,
-  Sparkles,
 } from 'lucide-react';
 
 interface Props {
@@ -200,19 +199,11 @@ export function EntrevistaShell({
           </div>
         </div>
 
-        {/* Card stepper — barra de secciones full width sobre el grid 2 cols */}
+        {/* Card stepper — barra de secciones full width.
+            User-facing: NO chip de counts absolutos (eran "0/54 cajas",
+            término interno). El % global vive en RightRail. */}
         <div className="gold-seam rounded-3xl bg-cream-pure p-4 shadow-sm md:p-5">
-          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
-            <Stepper porGrupo={cajas_llenas_por_grupo} activo={grupoActivo} />
-            <div className="flex items-center gap-2.5 self-start rounded-full bg-canvas/40 px-3 py-1.5 ring-1 ring-ink/10 lg:self-center">
-              <Sparkles className="size-3 text-gold-deep" />
-              <span className="font-mono text-[11px] tabular-nums tracking-tight text-foreground/85">
-                {cajasGlobal.llenas}
-                <span className="text-foreground/45">/{cajasGlobal.total}</span>
-              </span>
-              <span className="text-eyebrow text-foreground/45">cajas</span>
-            </div>
-          </div>
+          <Stepper porGrupo={cajas_llenas_por_grupo} activo={grupoActivo} />
         </div>
 
         {/* Grid 2 columnas: hero pregunta (lg:col-span-8) + sidebar (lg:col-span-4) */}

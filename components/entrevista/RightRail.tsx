@@ -1,13 +1,16 @@
 'use client';
 
-// RightRail — sidebar derecho unificado de la encuesta. Reemplaza las 3 cards
-// apiladas (Estado del turno + Esta pregunta cubre + Progreso por sección) con
-// 2 secciones tipográficas separadas por hairline. Pattern editorial 2026:
-// hairlines > shadows, bloques semánticos en lugar de containers visuales.
+// RightRail — sidebar derecho unificado de la encuesta. 2 secciones tipográficas
+// separadas por hairline: Turno actual (con Tema + CTA) y Progreso (% global +
+// % por sección con barras mini). Pattern editorial 2026: hairlines > shadows,
+// bloques semánticos en lugar de containers visuales.
 //
-// Decisión 2026-05-09: el spec de refactor cementa "X pendientes" como framing
-// positivo (vs "X sin marcar" anterior). Counter "(respondidas/total)" inline
-// en el CTA "Enviar turno" para feedback contextual sin rebrand.
+// Vocabulario user-facing: NUNCA mencionar "cajas" (término interno del motor).
+// Decisiones 2026-05-09 con founder:
+//   - Progreso global y por sección como % + barras, sin counts absolutos.
+//   - "Esta pregunta cubre" → "Tema" para evitar sugerir "campos a llenar".
+//   - CTA "Enviar turno (X de N)" en lugar de "X/N" (claridad cero ambigüedad).
+//   - "X pendientes" como framing positivo (vs "X sin marcar" anterior).
 
 import { ArrowUpRight, Loader2 } from 'lucide-react';
 import { GrupoUISchema, type GrupoUI } from '@/lib/schemas/cajas';
@@ -54,6 +57,13 @@ export function RightRail({
   const grupos = GrupoUISchema.options;
   const respondidas = total - pendientes;
 
+  // Progreso global como porcentaje. Internamente cajasGlobal trackea cajas
+  // (term dev), pero al usuario solo le mostramos el %.
+  const pctGlobal =
+    cajasGlobal.total > 0
+      ? Math.round((cajasGlobal.llenas / cajasGlobal.total) * 100)
+      : 0;
+
   return (
     <aside className="sticky top-24 space-y-10">
       {/* Sección 1 — Turno actual + cajas que cubre + CTA Enviar */}
@@ -70,9 +80,7 @@ export function RightRail({
 
         {cajasObjetivo.length > 0 && (
           <>
-            <p className="mt-8 text-eyebrow text-foreground/45">
-              Esta pregunta cubre
-            </p>
+            <p className="mt-8 text-eyebrow text-foreground/45">Tema</p>
             <ul className="mt-3 space-y-1.5">
               {cajasObjetivo.map((c) => (
                 <li key={c} className="flex items-start gap-2.5">
@@ -133,8 +141,13 @@ export function RightRail({
             <>
               <span className="inline-flex items-center gap-2">
                 Enviar turno
-                <span className={cn('numeric', todasMarcadas ? 'text-ink/55' : 'text-cream-pure/55')}>
-                  {respondidas}/{total}
+                <span
+                  className={cn(
+                    'numeric text-[12.5px]',
+                    todasMarcadas ? 'text-ink/55' : 'text-cream-pure/55'
+                  )}
+                >
+                  {respondidas} de {total}
                 </span>
               </span>
               <span
@@ -151,37 +164,80 @@ export function RightRail({
         </button>
       </section>
 
-      {/* Sección 2 — Progreso por sección con divisores hairline + número-display Pitchfork */}
+      {/* Sección 2 — Progreso global y por sección como % + barras.
+          User-facing: NUNCA mostrar counts absolutos (que son cajas, term dev). */}
       <section className="border-t border-ink/8 pt-6">
         <p className="text-eyebrow text-foreground/45">Progreso</p>
-        <p className="mt-3 text-display text-[36px] leading-[1.0] tracking-[-0.025em] text-foreground numeric">
-          {cajasGlobal.llenas}
-          <span className="text-foreground/42">/{cajasGlobal.total}</span>
-        </p>
-        <ul className="mt-6 divide-y divide-ink/8">
+        <div className="mt-3 flex items-baseline gap-1.5">
+          <span className="text-display text-[36px] leading-none tracking-[-0.025em] text-foreground numeric">
+            {pctGlobal}
+          </span>
+          <span className="text-display text-[20px] leading-none text-foreground/45">
+            %
+          </span>
+          <span className="ml-1 text-[13px] text-foreground/55">
+            completado
+          </span>
+        </div>
+        <div
+          role="progressbar"
+          aria-label="Progreso global de la entrevista"
+          aria-valuemin={0}
+          aria-valuemax={100}
+          aria-valuenow={pctGlobal}
+          className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-ink/8"
+        >
+          <div
+            className="h-full rounded-full bg-gold-deep transition-all duration-700 ease-out"
+            style={{ width: `${pctGlobal}%` }}
+            aria-hidden
+          />
+        </div>
+
+        <ul className="mt-6 space-y-4">
           {grupos.map((g) => {
             const { llenas, total: tot } = cajasPorGrupo[g];
+            const pctGrupo = tot > 0 ? Math.round((llenas / tot) * 100) : 0;
             const esActivo = g === grupoActivo;
             return (
-              <li
-                key={g}
-                className={cn(
-                  'flex items-center justify-between py-3 text-[14.5px] tracking-tight transition-colors',
-                  esActivo
-                    ? 'font-medium text-foreground'
-                    : 'text-foreground/72'
-                )}
-              >
-                <span>{GRUPO_LABELS[g]}</span>
-                <span
-                  className={cn(
-                    'numeric text-[13px]',
-                    esActivo ? 'text-foreground/85' : 'text-foreground/55'
-                  )}
+              <li key={g}>
+                <div className="mb-1.5 flex items-baseline justify-between gap-2">
+                  <span
+                    className={cn(
+                      'text-[14px] tracking-tight transition-colors',
+                      esActivo
+                        ? 'font-medium text-foreground'
+                        : 'text-foreground/72'
+                    )}
+                  >
+                    {GRUPO_LABELS[g]}
+                  </span>
+                  <span
+                    className={cn(
+                      'numeric text-[12px]',
+                      esActivo ? 'text-foreground/75' : 'text-foreground/45'
+                    )}
+                  >
+                    {pctGrupo}%
+                  </span>
+                </div>
+                <div
+                  role="progressbar"
+                  aria-label={`Progreso de ${GRUPO_LABELS[g]}`}
+                  aria-valuemin={0}
+                  aria-valuemax={100}
+                  aria-valuenow={pctGrupo}
+                  className="h-1 w-full overflow-hidden rounded-full bg-ink/8"
                 >
-                  {llenas}
-                  <span className="text-foreground/35">/{tot}</span>
-                </span>
+                  <div
+                    className={cn(
+                      'h-full rounded-full transition-all duration-700 ease-out',
+                      esActivo ? 'bg-gold-deep' : 'bg-gold/55'
+                    )}
+                    style={{ width: `${pctGrupo}%` }}
+                    aria-hidden
+                  />
+                </div>
               </li>
             );
           })}
