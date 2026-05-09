@@ -278,16 +278,11 @@ export function EntrevistaShell({
               </div>
             )}
 
-            {/* BatchNav inferior — navegación clara entre preguntas del turno */}
+            {/* BatchNav inferior — navegación clara entre preguntas del turno.
+                Eliminada la redundancia "Pregunta X / Y" (el dot activo ya
+                comunica posición vía label P0X embedded). */}
             {!sesionCerrada && batch && total > 0 && (
-              <div className="flex items-center justify-between gap-4 rounded-2xl bg-cream-pure px-4 py-2.5 ring-1 ring-ink/8 shadow-sm md:px-5">
-                <p className="text-eyebrow text-foreground/55">
-                  Pregunta{' '}
-                  <span className="tabular-nums text-foreground">
-                    {pregIndex + 1}
-                  </span>
-                  <span className="text-foreground/35"> / {total}</span>
-                </p>
+              <div className="flex items-center justify-end rounded-2xl bg-cream-pure px-4 py-2.5 ring-1 ring-ink/8 shadow-sm md:px-5">
                 <BatchNav
                   preguntas={batch.preguntas.map((p) => ({
                     id: p.id,

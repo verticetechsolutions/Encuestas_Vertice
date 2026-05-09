@@ -271,7 +271,9 @@ export function HeroPregunta({
               />
             ) : (
               // Preview / dev (sin cookie). /api/stt/token devolvería 401 —
-              // mejor mostrar disabled con tooltip claro.
+              // mejor mostrar disabled con tooltip claro. Pill inline (no
+              // circle) para alinear con el lenguaje de pares Mic + Marcar
+              // respondida del footer (ambos rounded-full pill, no shape mismatch).
               <div className="relative">
                 <button
                   type="button"
@@ -281,10 +283,10 @@ export function HeroPregunta({
                   onFocus={() => setShowMicTooltip(true)}
                   onBlur={() => setShowMicTooltip(false)}
                   aria-describedby={`mic-tip-${pregunta.id}`}
-                  className="inline-flex size-11 items-center justify-center rounded-full bg-ink/[0.04] text-foreground/45 ring-1 ring-ink/10 transition-all cursor-not-allowed opacity-70"
+                  className="inline-flex h-11 items-center gap-2 rounded-full px-4 text-sm font-medium tracking-tight text-foreground/55 ring-1 ring-ink/10 transition-colors hover:text-foreground hover:bg-ink/[0.04] disabled:cursor-not-allowed disabled:opacity-70"
                 >
                   <Mic className="size-4" />
-                  <span className="sr-only">Activar micrófono</span>
+                  Dictar respuesta
                 </button>
                 {showMicTooltip && (
                   <div
