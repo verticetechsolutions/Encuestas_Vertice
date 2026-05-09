@@ -171,14 +171,10 @@ export function EntrevistaShell({
   }, [cajas_llenas_por_grupo]);
 
   return (
-    <div className="relative min-h-screen overflow-x-clip bg-canvas">
-      {/* Atmosphere overlay — solo radial gold a 50% para light surface (cream).
-          El noise que usa el landing no aplica en light: agrega ruido visible
-          que compite con la legibilidad de la pregunta-héroe (12 min de lectura). */}
-      <div
-        aria-hidden
-        className="pointer-events-none absolute inset-0 atmosphere-radial-gold opacity-50"
-      />
+    <div className="relative min-h-screen overflow-x-clip bg-survey-bg">
+      {/* Paleta A (2026-05-09): off-white pure como canvas, sin atmosphere overlay.
+          El radial gold y el noise SVG distraen en una lectura de 12 min con un
+          único punto de foco (la pregunta). Hairlines + tipografía hacen el resto. */}
 
       {/* BrandSuccessGlyph overlay — celebración editorial al cierre exitoso de
           turno. Refuerzo de progreso cinemático cada ~3 preguntas. ~2.2s. */}
