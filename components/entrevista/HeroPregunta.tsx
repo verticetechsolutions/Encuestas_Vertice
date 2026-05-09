@@ -13,7 +13,7 @@
 // renderiza disabled con tooltip — /api/stt/token requiere cookie real.
 
 import { useEffect, useRef, useState } from 'react';
-import { Check, CircleDashed, Mic } from 'lucide-react';
+import { Check, RotateCcw, Mic } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { Button } from '@/components/ui/button';
 import { MicButton } from '@/components/stt/MicButton';
@@ -45,19 +45,30 @@ interface AutosaveMeta {
   pulsing: boolean;
 }
 
-// Separa la pregunta canónica de su microcopy "Por ejemplo: ..." cuando existe.
-// Solo divide si Sonnet (o el fixture) usa el separador exacto " Por ejemplo:" — no
-// inventamos splits para preguntas con "Mencionar...", "Es decir..." u otras formas
-// porque ahí el clarificador es parte legítima de la pregunta.
-function splitPreguntaYEjemplo(texto: string): {
+// Separa la pregunta canónica de su clarificador secundario. Soporta 2 patrones:
+//   1. "...pregunta? Por ejemplo: ..." — microcopy clásico del fixture/IA
+//   2. "...pregunta1? Y/Si/¿pregunta2?" — pregunta compuesta (la 2da clausula
+//      es secundaria, debe bajar de jerarquía visual sin perder contexto).
+// El "auxiliar" se renderiza con jerarquía menor (foreground/40, 14.5px,
+// regular) sin importar si es ejemplo o pregunta secundaria — el usuario
+// distingue principal vs auxiliar, no la taxonomía del clarificador.
+function splitPreguntaYAuxiliar(texto: string): {
   pregunta: string;
-  ejemplo: string | null;
+  auxiliar: string | null;
 } {
-  const match = texto.match(/^(.+?)(\s+Por ejemplo:.*)$/);
+  // Patrón 1: "Por ejemplo:" microcopy clásico
+  let match = texto.match(/^(.+?)(\s+Por ejemplo:.*)$/);
   if (match) {
-    return { pregunta: match[1].trim(), ejemplo: match[2].trim() };
+    return { pregunta: match[1].trim(), auxiliar: match[2].trim() };
   }
-  return { pregunta: texto, ejemplo: null };
+  // Patrón 2: pregunta compuesta — primer "?" cierra la principal, le sigue
+  // un conector (Y / Si / ¿) que abre la secundaria. Ej:
+  //   "¿Cuál es el monto mínimo? Y si tienen un ticket ideal, ¿cuál sería?"
+  match = texto.match(/^(.+?\?)\s+([YS¿].+\?)\s*$/);
+  if (match) {
+    return { pregunta: match[1].trim(), auxiliar: match[2].trim() };
+  }
+  return { pregunta: texto, auxiliar: null };
 }
 
 function autosaveMeta(status: AutosaveStatus): AutosaveMeta {
@@ -121,7 +132,7 @@ export function HeroPregunta({
     onChangeTexto(previo + sep + fragmento);
   }, [stt.transcripts.history.length, onChangeTexto]);
 
-  const { pregunta: q, ejemplo } = splitPreguntaYEjemplo(pregunta.texto_pregunta);
+  const { pregunta: q, auxiliar } = splitPreguntaYAuxiliar(pregunta.texto_pregunta);
 
   // Tema inline: cajasObjetivo → labels humanos, joined por " · ".
   const temaLabel =
@@ -161,10 +172,12 @@ export function HeroPregunta({
         {q}
       </h2>
 
-      {/* Helper "Por ejemplo:" — sutil, no compite con la pregunta */}
-      {ejemplo && (
-        <p className="mt-4 max-w-[58ch] text-[14.5px] leading-relaxed text-foreground/40">
-          {ejemplo}
+      {/* Auxiliar (ejemplo o pregunta secundaria) — jerarquía bajada para que
+          la pregunta principal mantenga el peso hero. Mismo styling para
+          ambos tipos: el usuario distingue principal vs auxiliar, no taxonomía. */}
+      {auxiliar && (
+        <p className="mt-4 max-w-[60ch] text-[14.5px] leading-relaxed text-foreground/40">
+          {auxiliar}
         </p>
       )}
 
@@ -257,7 +270,7 @@ export function HeroPregunta({
                 onFocus={() => setShowMicTooltip(true)}
                 onBlur={() => setShowMicTooltip(false)}
                 aria-describedby={`mic-tip-${pregunta.id}`}
-                className="inline-flex h-11 items-center gap-2 rounded-full border border-[color:var(--survey-hairline-strong)] bg-transparent px-4 text-sm font-medium tracking-tight text-foreground/55 transition-colors hover:bg-[color:var(--survey-hover)] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-70"
+                className="inline-flex h-11 items-center gap-2 rounded-full border border-[color:var(--survey-hairline-strong)] bg-transparent px-5 text-sm font-medium tracking-tight text-foreground/55 transition-colors hover:bg-[color:var(--survey-hover)] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-70"
               >
                 <Mic className="size-4" />
                 Dictar respuesta
@@ -288,7 +301,7 @@ export function HeroPregunta({
           >
             {marcada ? (
               <>
-                <CircleDashed className="size-4" />
+                <RotateCcw className="size-4" strokeWidth={2.25} />
                 Desmarcar
               </>
             ) : (

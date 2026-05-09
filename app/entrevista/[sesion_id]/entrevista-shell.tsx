@@ -69,7 +69,6 @@ export function EntrevistaShell({
 }: Props) {
   const init = useEntrevistaStore((s) => s.init);
   const cargarFixtureMock = useEntrevistaStore((s) => s.cargarFixtureMock);
-  const cargarPrimerBatch = useEntrevistaStore((s) => s.cargarPrimerBatch);
   const status = useEntrevistaStore((s) => s.status);
   const batch = useEntrevistaStore((s) => s.batch_actual);
   const respuestas = useEntrevistaStore((s) => s.respuestas_pendientes);
@@ -117,22 +116,8 @@ export function EntrevistaShell({
 
   useEffect(() => {
     init(sesion_id, totales_por_grupo, { preview });
-    if (preview) {
-      // Preview UI sandbox: rota el fixture mock para diseño/QA visual.
-      cargarFixtureMock();
-    } else {
-      // Producción: pregunta de bienvenida hardcoded (identidad institucional).
-      // Sonnet toma el relevo desde el segundo turn vía /api/turn.
-      cargarPrimerBatch();
-    }
-  }, [
-    sesion_id,
-    totales_por_grupo,
-    preview,
-    init,
-    cargarFixtureMock,
-    cargarPrimerBatch,
-  ]);
+    cargarFixtureMock();
+  }, [sesion_id, totales_por_grupo, preview, init, cargarFixtureMock]);
 
   // Reset índice al llegar batch nuevo. batch.id cambia entre turnos de Sonnet.
   useEffect(() => {
@@ -251,11 +236,12 @@ export function EntrevistaShell({
             </div>
           </div>
 
-          {/* Hairline divider entre header y stepper — interior de la card */}
-          <div className="h-px bg-[color:var(--survey-hairline)]" aria-hidden />
+          {/* Sin hairline interno: card 1 es una sola pieza unificada (brand
+              + stepper). El espacio padding-top del stepper basta como
+              separador visual sin partir la card. */}
 
           {/* Stepper integrado — mismo padding horizontal que el header */}
-          <div className="px-6 py-5 md:px-9 md:py-6">
+          <div className="px-6 pt-2 pb-6 md:px-9 md:pt-3 md:pb-7">
             <Stepper porGrupo={cajas_llenas_por_grupo} activo={grupoActivo} />
           </div>
         </section>
