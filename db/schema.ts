@@ -108,6 +108,7 @@ export const magic_tokens = pgTable('magic_tokens', {
     .notNull(),
   expires_at: timestamp('expires_at', { withTimezone: true }).notNull(),
   consumed_at: timestamp('consumed_at', { withTimezone: true }),
+  revoked_at: timestamp('revoked_at', { withTimezone: true }),
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
 });
 
