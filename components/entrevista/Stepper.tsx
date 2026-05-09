@@ -1,13 +1,14 @@
 'use client';
 
-// Stepper horizontal de los 6 grupos UI. Cada chip es un pill que cambia
-// según estado: pendiente (cream/outline), activo (cream-pure + ring gold),
-// completado (ink sólido + checkmark gold). Microanimación: hover scale leve,
-// focus ring gold, chip activo pulsa una vez al cambiar.
+// Stepper minimalista (Paleta A, 2026-05-09 refactor).
+//   - Sin outer pill wrapper. Vive directo en el canvas.
+//   - Cada step = dot + label debajo. Hairlines 1px conectan dots.
+//   - 3 estados claros: completed (filled gold + check), active (filled ink),
+//     pending (outline hairline).
+//   - Mobile: fallback a "Sección X de N" + barra lineal (sin scroll horizontal).
 //
-// Decisión: en móvil colapsa a "Sección X de 6 — <nombre>" con barra
-// progress lineal abajo, no scroll horizontal de chips (genera fricción
-// para ver dónde estás).
+// Decisión: este stepper es la ÚNICA fuente de progreso en pantalla. La lista
+// de progreso por sección del antiguo RightRail fue eliminada (info duplicada).
 
 import { Check } from 'lucide-react';
 import { GrupoUISchema, type GrupoUI } from '@/lib/schemas/cajas';
@@ -28,71 +29,86 @@ interface Props {
   activo: GrupoUI;
 }
 
+type Estado = 'done' | 'active' | 'pending';
+
 export function Stepper({ porGrupo, activo }: Props) {
   const grupos = GrupoUISchema.options;
   const idxActivo = grupos.indexOf(activo);
 
-  // Total y completados para la barra móvil.
   const total = grupos.reduce((s, g) => s + porGrupo[g].total, 0);
   const llenas = grupos.reduce((s, g) => s + porGrupo[g].llenas, 0);
   const pct = total > 0 ? Math.round((llenas / total) * 100) : 0;
 
   return (
     <>
-      {/* Desktop / tablet: chips horizontales con paleta ink/gold landing. */}
+      {/* Desktop / tablet: dots + hairlines + labels debajo */}
       <nav aria-label="Progreso de la entrevista" className="hidden md:block">
-        <ol className="flex items-center gap-1 rounded-full bg-cream-pure p-1.5 ring-1 ring-ink/8 shadow-sm">
+        <ol className="flex items-start">
           {grupos.map((g, i) => {
             const grupoCount = porGrupo[g];
             const completo =
               grupoCount.total > 0 && grupoCount.llenas >= grupoCount.total;
-            const esActivo = g === activo;
             const yaPasado = i < idxActivo;
+            const esActivo = g === activo;
 
-            const estado =
+            const estado: Estado =
               completo || yaPasado ? 'done' : esActivo ? 'active' : 'pending';
 
+            const isLast = i === grupos.length - 1;
+
             return (
-              <li key={g} className="flex items-center gap-1">
-                <div
-                  className={cn(
-                    'flex items-center gap-1.5 rounded-full px-2 py-1.5 text-xs font-medium tracking-tight transition-all duration-300 ease-out lg:px-3 lg:text-sm',
-                    estado === 'done' && 'bg-ink text-cream-pure shadow-sm',
-                    estado === 'active' &&
-                      'bg-cream-pure text-ink shadow-sm ring-1 ring-gold/40 scale-[1.02]',
-                    estado === 'pending' && 'text-foreground/45 hover:text-foreground'
-                  )}
-                  aria-current={esActivo ? 'step' : undefined}
-                >
+              <li
+                key={g}
+                className={cn('flex items-start', !isLast && 'flex-1')}
+              >
+                <div className="flex flex-col items-center gap-2.5">
+                  {/* Dot */}
                   <span
+                    aria-current={esActivo ? 'step' : undefined}
                     className={cn(
-                      'inline-flex size-5 items-center justify-center rounded-full text-[10px] font-semibold tabular-nums transition-colors',
-                      estado === 'done' && 'bg-gold text-ink',
-                      estado === 'active' && 'bg-ink text-gold',
+                      'inline-flex size-5 shrink-0 items-center justify-center rounded-full transition-all duration-300 ease-out',
+                      estado === 'done' &&
+                        'bg-[var(--gold-deep)] text-[color:var(--survey-bg)]',
+                      estado === 'active' &&
+                        'bg-[color:var(--ink)] text-[color:var(--survey-bg)] ring-4 ring-[color:var(--gold)]/15',
                       estado === 'pending' &&
-                        'bg-ink/[0.04] text-foreground/55 ring-1 ring-ink/10'
+                        'bg-transparent ring-1 ring-inset ring-[color:var(--survey-hairline-strong)]'
                     )}
                   >
-                    {estado === 'done' ? <Check className="size-3" /> : i + 1}
+                    {estado === 'done' ? (
+                      <Check className="size-3" strokeWidth={3} />
+                    ) : estado === 'active' ? (
+                      <span className="size-1.5 rounded-full bg-[color:var(--gold)]" aria-hidden />
+                    ) : null}
                   </span>
-                  {/* Label visible en lg+ siempre. En md sólo el activo
-                      muestra label para conservar contexto sin desbordar. */}
+
+                  {/* Label */}
                   <span
                     className={cn(
-                      'whitespace-nowrap',
-                      esActivo ? 'inline' : 'hidden lg:inline'
+                      'text-[11.5px] font-medium tracking-tight transition-colors',
+                      estado === 'done' &&
+                        'text-[color:var(--ink)]/55',
+                      estado === 'active' &&
+                        'text-[color:var(--ink)]',
+                      estado === 'pending' &&
+                        'text-[color:var(--ink)]/35'
                     )}
                   >
                     {GRUPO_LABEL[g]}
                   </span>
                 </div>
-                {i < grupos.length - 1 && (
+
+                {/* Hairline conector entre dots — vive entre dot y siguiente li.
+                    Gold para tramos ya completados, neutro para upcoming. */}
+                {!isLast && (
                   <span
-                    className={cn(
-                      'h-px w-2 transition-colors duration-300 lg:w-3',
-                      i < idxActivo ? 'bg-gold/45' : 'bg-ink/12'
-                    )}
                     aria-hidden
+                    className={cn(
+                      'mt-2.5 h-px flex-1 mx-2 transition-colors duration-300',
+                      i < idxActivo
+                        ? 'bg-[color:var(--gold)]/40'
+                        : 'bg-[color:var(--survey-hairline)]'
+                    )}
                   />
                 )}
               </li>
@@ -104,17 +120,19 @@ export function Stepper({ porGrupo, activo }: Props) {
       {/* Mobile: label + barra lineal */}
       <div className="md:hidden">
         <div className="flex items-baseline justify-between gap-3">
-          <p className="text-eyebrow text-foreground/45">
+          <p className="text-eyebrow text-[color:var(--ink)]/45">
             Sección {idxActivo + 1} de {grupos.length}
           </p>
-          <p className="text-xs tabular-nums text-foreground/55">
+          <p className="numeric text-xs text-[color:var(--ink)]/55">
             {pct}% completado
           </p>
         </div>
-        <h2 className="mt-1 text-display text-lg">{GRUPO_LABEL[activo]}</h2>
-        <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-ink/8">
+        <h2 className="mt-1 text-display text-lg text-[color:var(--ink)]">
+          {GRUPO_LABEL[activo]}
+        </h2>
+        <div className="mt-3 h-px w-full bg-[color:var(--survey-hairline)]">
           <div
-            className="h-full bg-gold transition-all duration-500 ease-out"
+            className="h-full bg-[color:var(--gold-deep)] transition-all duration-500 ease-out"
             style={{ width: `${pct}%` }}
             aria-hidden
           />
