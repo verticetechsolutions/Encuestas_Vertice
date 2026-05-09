@@ -154,12 +154,21 @@ export function HeroPregunta({
       />
 
       <div className="relative px-6 py-8 md:px-10 md:py-10">
-        {/* Top row — número de pregunta + chip respondida. Sin sección
-            duplicada (vive en eyebrow del shell M0X). */}
+        {/* Top row — número de pregunta + sección actual (eyebrow secundario
+            sutil) + chip respondida. La sección vive aquí ahora (no en eyebrow
+            duplicado del shell), reduciendo ruido visual. */}
         <div className="flex flex-wrap items-center gap-2.5">
           <span className="text-eyebrow tabular-nums text-gold-deep">
             P{numero.toString().padStart(2, '0')}
           </span>
+          {seccionLabel && (
+            <>
+              <span aria-hidden className="size-1 rounded-full bg-foreground/25" />
+              <span className="text-eyebrow text-foreground/45">
+                {seccionLabel}
+              </span>
+            </>
+          )}
           {marcada && (
             <span className="ml-auto inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-eyebrow text-gold-deep ring-1 ring-gold/40 animate-fade-up">
               <Check className="size-3" strokeWidth={2.5} />

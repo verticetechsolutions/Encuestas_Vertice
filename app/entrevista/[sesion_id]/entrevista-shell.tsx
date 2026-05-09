@@ -208,23 +208,10 @@ export function EntrevistaShell({
 
         {/* Grid 2 columnas: hero pregunta (lg:col-span-8) + sidebar (lg:col-span-4) */}
         <div className="grid gap-4 md:gap-5 lg:grid-cols-12">
-          {/* Columna izquierda — pregunta protagonista */}
+          {/* Columna izquierda — pregunta protagonista. El contexto de
+              sección vive en el Stepper arriba + en el header del HeroPregunta
+              (vía seccionLabel). Eliminado eyebrow M0X redundante. */}
           <div className="space-y-4 md:space-y-5 lg:col-span-8">
-            {/* Eyebrow contextual M0X · sección */}
-            {!sesionCerrada && (
-              <div className="flex items-center justify-between gap-4">
-                <p className="text-eyebrow flex items-center gap-2.5 text-foreground/55">
-                  <span className="tabular-nums text-gold-deep">
-                    M{(GrupoUISchema.options.indexOf(grupoActivo) + 1)
-                      .toString()
-                      .padStart(2, '0')}
-                  </span>
-                  <span className="size-1 rounded-full bg-gold/55" aria-hidden />
-                  <span>{GRUPO_LABEL[grupoActivo]}</span>
-                </p>
-              </div>
-            )}
-
             {/* Hero pregunta, loader, o pantalla de cierre */}
             {sesionCerrada ? (
               <div className="gold-seam rounded-3xl bg-cream-pure px-6 py-16 text-center shadow-sm animate-fade-up md:px-10 md:py-20">
