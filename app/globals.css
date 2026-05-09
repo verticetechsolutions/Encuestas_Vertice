@@ -65,6 +65,14 @@
   --color-lime-soft: var(--lime-soft);
   --color-lime-foreground: var(--lime-foreground);
 
+  /* Paleta A — entrevista off-white + accent oro hairline (2026-05-09).
+     Scope: solo /entrevista/* y /preview/ui. NO usar en landing/admin. */
+  --color-survey-bg: var(--survey-bg);
+  --color-survey-surface: var(--survey-surface);
+  --color-survey-hairline: var(--survey-hairline);
+  --color-survey-hairline-strong: var(--survey-hairline-strong);
+  --color-survey-hover: var(--survey-hover);
+
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
   --radius-lg: var(--radius);
@@ -141,17 +149,19 @@
   /* Tipografía display — General Sans (Fontshare). */
   --font-display: 'General Sans', 'Satoshi', ui-sans-serif, sans-serif;
 
-  /* Survey surface tokens (light) — encuesta usa cream/ink invertido al landing.
-     Prefix --survey-* para futuros ajustes globales sin tocar 30 componentes. */
-  --survey-bg: var(--cream-pure);
+  /* Survey surface tokens — Paleta A (2026-05-09 refactor).
+     Off-white pure + hairlines finísimos + accent oro solo en 1px lines.
+     Scope: /entrevista/* y /preview/ui. Uso fuera de ese scope = bug. */
+  --survey-bg: #FAF8F4;                  /* off-white page background */
+  --survey-surface: #FFFFFF;             /* textarea, modals, white surfaces */
   --survey-text: var(--ink);
   --survey-text-72: rgb(10 15 28 / 0.72);
   --survey-text-65: rgb(10 15 28 / 0.65);
   --survey-text-45: rgb(10 15 28 / 0.45);
-  --survey-hairline: rgb(10 15 28 / 0.08);
-  --survey-hairline-strong: rgb(10 15 28 / 0.12);
-  --survey-hover: rgb(10 15 28 / 0.04);
-  --survey-active-bg: rgb(200 168 100 / 0.10);
+  --survey-hairline: rgb(10 15 28 / 0.06);        /* default hairline (más fino que antes) */
+  --survey-hairline-strong: rgb(10 15 28 / 0.10); /* hover/focus hairline */
+  --survey-hover: rgb(10 15 28 / 0.03);
+  --survey-active-bg: rgb(200 168 100 / 0.08);
 }
 
 .dark {
