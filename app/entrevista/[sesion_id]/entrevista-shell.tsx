@@ -24,13 +24,11 @@ import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { HeroPregunta } from '@/components/entrevista/HeroPregunta';
 import { BatchNav } from '@/components/entrevista/BatchNav';
-import { RightRail } from '@/components/entrevista/RightRail';
 import { Stepper } from '@/components/entrevista/Stepper';
 import { BrandSuccessGlyph } from '@/components/landing/BrandSuccessGlyph';
 import { useEntrevistaStore } from '@/lib/state/entrevista';
 import { withViewTransition } from '@/lib/view-transitions';
-import { GrupoUISchema, getCajaAny, type GrupoUI } from '@/lib/schemas/cajas';
-import { cn } from '@/lib/utils';
+import { getCajaAny, type GrupoUI } from '@/lib/schemas/cajas';
 import {
   Loader2,
   AlertCircle,
@@ -157,19 +155,6 @@ export function EntrevistaShell({
     grupoAnteriorRef.current = grupoActivo;
   }, [grupoActivo]);
 
-  // Total cajas llenas global — chip discreto arriba.
-  const cajasGlobal = useMemo(() => {
-    const grupos = GrupoUISchema.options;
-    return grupos.reduce(
-      (acc, g) => {
-        acc.llenas += cajas_llenas_por_grupo[g].llenas;
-        acc.total += cajas_llenas_por_grupo[g].total;
-        return acc;
-      },
-      { llenas: 0, total: 0 }
-    );
-  }, [cajas_llenas_por_grupo]);
-
   return (
     <div className="relative min-h-screen overflow-x-clip bg-survey-bg">
       {/* Paleta A (2026-05-09): off-white pure como canvas, sin atmosphere overlay.
@@ -177,207 +162,159 @@ export function EntrevistaShell({
           único punto de foco (la pregunta). Hairlines + tipografía hacen el resto. */}
 
       {/* BrandSuccessGlyph overlay — celebración editorial al cierre exitoso de
-          turno. Refuerzo de progreso cinemático cada ~3 preguntas. ~2.2s. */}
+          turno. ~2.2s. */}
       {mostrandoGlyphTurno && (
         <div
           aria-live="polite"
           className="fixed inset-0 z-40 flex items-center justify-center pointer-events-none animate-fade-up"
         >
-          <div className="flex flex-col items-center gap-5 rounded-3xl bg-cream-pure/95 px-14 py-12 backdrop-blur-md shadow-2xl shadow-ink/25 ring-1 ring-ink/8">
+          <div className="flex flex-col items-center gap-5 rounded-3xl bg-survey-surface/95 px-14 py-12 backdrop-blur-md shadow-2xl shadow-ink/15 ring-1 ring-survey-hairline">
             <BrandSuccessGlyph size={72} />
             <p className="text-eyebrow text-gold-deep">Turno completado</p>
           </div>
         </div>
       )}
 
-      {/* Container — todo en cards apiladas sobre el mismo canvas, sin bandas
-          full-width. Header navy se vuelve un card más, no una sección aparte. */}
-      <main className="relative z-10 mx-auto max-w-6xl space-y-4 px-4 py-6 md:space-y-5 md:px-8 md:py-8">
-        {/* Card navy — VertexMark + brand + status + avatar */}
-        <div className="relative overflow-hidden rounded-3xl bg-ink text-cream-pure shadow-xl shadow-ink/30 ring-1 ring-ink/40">
-          <div
-            aria-hidden
-            className="atmosphere-radial-gold pointer-events-none absolute inset-0"
-          />
-          <div
-            aria-hidden
-            className="atmosphere-noise pointer-events-none absolute inset-0"
-          />
-          <div className="relative flex items-center justify-between gap-4 px-5 py-3.5 md:px-7">
-            <div className="flex items-center gap-4">
-              <Image
-                src="/Logo_white.svg"
-                alt="Vértice"
-                width={7095}
-                height={2369}
-                priority
-                className="h-6 w-auto select-none md:h-7"
-              />
-              <span aria-hidden className="hidden h-7 w-px bg-cream-pure/15 md:block" />
-              <p className="hidden text-eyebrow text-cream-pure/55 md:block">
-                Entrevista de criterios
-              </p>
-            </div>
-            <div className="hidden items-center md:flex">
-              {preview ? (
-                <span className="inline-flex items-center gap-2 rounded-full px-3 py-1.5 text-eyebrow text-gold-bright ring-1 ring-gold/35">
-                  <span
-                    className="size-1.5 rounded-full bg-gold-bright animate-pulse-ring"
-                    aria-hidden
-                  />
-                  Preview UI
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-2 text-eyebrow text-cream-pure/55">
-                  <span
-                    className="size-1.5 rounded-full bg-gold animate-pulse-ring"
-                    aria-hidden
-                  />
-                  Borrador autoguardado
-                </span>
-              )}
-            </div>
-            <div className="flex items-center gap-2.5 rounded-full bg-cream-pure/[0.06] px-2.5 py-1.5 ring-1 ring-cream-pure/15 transition-colors hover:ring-cream-pure/25">
-              <div className="flex size-7 items-center justify-center rounded-full bg-gold text-ink text-xs font-semibold">
-                {nombre_institucion.charAt(0)}
-              </div>
-              <span className="hidden pr-1 text-sm font-medium tracking-tight text-cream-pure md:inline">
-                {nombre_institucion}
+      {/* Header — full bleed, hairline bottom. F6 lo simplifica completo.
+          Por ahora conservamos el card dark a max-w del contenedor único. */}
+      <header className="relative z-10 border-b border-[color:var(--survey-hairline)] bg-survey-bg">
+        <div className="mx-auto flex max-w-[720px] items-center justify-between gap-4 px-6 py-4 md:px-8">
+          <div className="flex items-center gap-3">
+            <Image
+              src="/Logo_blue.svg"
+              alt="Vértice"
+              width={7095}
+              height={2369}
+              priority
+              className="h-6 w-auto select-none"
+            />
+            <span aria-hidden className="hidden h-5 w-px bg-[color:var(--survey-hairline-strong)] md:block" />
+            <p className="hidden text-eyebrow text-[color:var(--ink)]/45 md:block">
+              Entrevista de criterios
+            </p>
+          </div>
+          <div className="flex items-center gap-3">
+            {preview && (
+              <span className="hidden items-center gap-2 text-eyebrow text-gold-deep md:inline-flex">
+                <span
+                  className="size-1.5 rounded-full bg-gold animate-pulse-ring"
+                  aria-hidden
+                />
+                Preview UI
+              </span>
+            )}
+            <span className="text-sm font-medium tracking-tight text-[color:var(--ink)]/85">
+              {nombre_institucion}
+            </span>
+          </div>
+        </div>
+      </header>
+
+      {/* Container único centrado. Single column max-w-720px, generous padding.
+          Everything (stepper, pregunta, nav, banners) vive en este eje. */}
+      <main className="relative z-10 mx-auto max-w-[720px] px-6 pt-10 pb-16 md:px-8 md:pt-14 md:pb-24">
+        {/* Stepper minimalista — sin pill wrapper. Vive directo sobre canvas. */}
+        <Stepper porGrupo={cajas_llenas_por_grupo} activo={grupoActivo} />
+
+        {/* Espacio entre stepper y pregunta — generoso para Typeform-feel */}
+        <div className="mt-12 space-y-8 md:mt-16">
+          {/* Glyph divider editorial entre secciones — marca el cambio
+              tipográficamente sin texto adicional (estilo Stratechery * * *). */}
+          {mostrandoDividerSeccion && (
+            <div className="flex justify-center py-2 animate-fade-up">
+              <span
+                aria-hidden
+                className="text-display text-gold text-[24px] tracking-[1em]"
+              >
+                ✦
               </span>
             </div>
-          </div>
-        </div>
+          )}
 
-        {/* Card stepper — barra de secciones full width.
-            User-facing: NO chip de counts absolutos (eran "0/54 cajas",
-            término interno). El % global vive en RightRail. */}
-        <div className="gold-seam rounded-3xl bg-cream-pure p-4 shadow-sm md:p-5">
-          <Stepper porGrupo={cajas_llenas_por_grupo} activo={grupoActivo} />
-        </div>
-
-        {/* Grid 2 columnas: hero pregunta (lg:col-span-8) + sidebar (lg:col-span-4) */}
-        <div className="grid gap-4 md:gap-5 lg:grid-cols-12">
-          {/* Columna izquierda — pregunta protagonista. El contexto de
-              sección vive en el Stepper arriba + en el header del HeroPregunta
-              (vía seccionLabel). Eliminado eyebrow M0X redundante. */}
-          <div className="space-y-4 md:space-y-5 lg:col-span-8">
-            {/* Glyph divider editorial entre secciones — marca el cambio
-                tipográficamente sin texto adicional (estilo Stratechery * * *). */}
-            {mostrandoDividerSeccion && (
-              <div className="flex justify-center py-6 animate-fade-up">
-                <span
-                  aria-hidden
-                  className="text-display text-gold text-[28px] tracking-[1em]"
-                >
-                  ✦
-                </span>
+          {/* Hero pregunta, loader, o pantalla de cierre.
+              Sin card wrapper — la pregunta vive directo en canvas. */}
+          {sesionCerrada ? (
+            <div className="px-2 py-12 text-center animate-fade-up md:py-16">
+              <div className="flex justify-center">
+                <BrandSuccessGlyph size={72} />
               </div>
-            )}
+              <p className="text-eyebrow mt-9 text-gold-deep">Sesión cerrada</p>
+              <h2 className="mt-5 text-display text-[28px] leading-[1.05] tracking-[-0.025em] text-foreground md:text-[36px]">
+                Entrevista completada.
+              </h2>
+              <span aria-hidden className="gold-hairline mx-auto mt-6 block w-12" />
+              <p className="mx-auto mt-6 max-w-md text-sm leading-relaxed text-foreground/55">
+                {mensaje_estado ??
+                  'Estamos generando la síntesis del perfil. Recibirás el resultado por correo cuando esté listo.'}
+              </p>
+            </div>
+          ) : activePregunta ? (
+            <HeroPregunta
+              pregunta={activePregunta}
+              numero={pregIndex + 1}
+              total={total}
+              seccionLabel={GRUPO_LABEL[grupoActivo]}
+              cajasObjetivo={activePregunta.cajas_objetivo}
+              texto={respuestas[activePregunta.id] ?? ''}
+              marcada={marcadas[activePregunta.id] === true}
+              autosave={autosave[activePregunta.id] ?? 'idle'}
+              onChangeTexto={(t) => setRespuesta(activePregunta.id, t)}
+              onToggleMarcada={(m) => marcarRespondida(activePregunta.id, m)}
+              sttEnabled={!preview}
+            />
+          ) : enviando ? (
+            <div className="flex items-center justify-center gap-3 py-20">
+              <Loader2 className="size-5 animate-spin text-gold-deep" />
+              <p className="text-sm text-foreground/65">
+                {status === 'enviando'
+                  ? 'Enviando tus respuestas al motor…'
+                  : 'Generando las próximas preguntas…'}
+              </p>
+            </div>
+          ) : (
+            <div className="py-20 text-center">
+              <p className="text-sm text-foreground/55">Cargando preguntas…</p>
+            </div>
+          )}
 
-            {/* Hero pregunta, loader, o pantalla de cierre */}
-            {sesionCerrada ? (
-              <div className="gold-seam rounded-3xl bg-cream-pure px-6 py-16 text-center shadow-sm animate-fade-up md:px-10 md:py-20">
-                <div className="flex justify-center">
-                  <BrandSuccessGlyph size={72} />
-                </div>
-                <p className="text-eyebrow mt-9 text-gold-deep">Sesión cerrada</p>
-                <h2 className="mt-5 text-display text-[28px] leading-[1.05] tracking-[-0.025em] text-foreground md:text-[36px]">
-                  Entrevista completada.
-                </h2>
-                <span aria-hidden className="gold-hairline mx-auto mt-6 block w-12" />
-                <p className="mx-auto mt-6 max-w-md text-sm leading-relaxed text-foreground/55">
-                  {mensaje_estado ??
-                    'Estamos generando la síntesis del perfil. Recibirás el resultado por correo cuando esté listo.'}
-                </p>
-              </div>
-            ) : activePregunta ? (
-              <HeroPregunta
-                pregunta={activePregunta}
-                numero={pregIndex + 1}
-                total={total}
-                seccionLabel={GRUPO_LABEL[grupoActivo]}
-                texto={respuestas[activePregunta.id] ?? ''}
-                marcada={marcadas[activePregunta.id] === true}
-                autosave={autosave[activePregunta.id] ?? 'idle'}
-                onChangeTexto={(t) => setRespuesta(activePregunta.id, t)}
-                onToggleMarcada={(m) => marcarRespondida(activePregunta.id, m)}
-                sttEnabled={!preview}
+          {/* BatchNav minimal — sin pill wrapper, alineado al center bajo la pregunta.
+              F5 lo redibuja a "← Anterior · 1 / 3 ·" minimalista. */}
+          {!sesionCerrada && batch && total > 0 && (
+            <div className="flex items-center justify-center pt-4">
+              <BatchNav
+                preguntas={batch.preguntas.map((p) => ({
+                  id: p.id,
+                  marcada: marcadas[p.id] === true,
+                }))}
+                activeIndex={pregIndex}
+                onChange={navegarAPregunta}
               />
-            ) : enviando ? (
-              <div className="gold-seam flex items-center justify-center gap-3 rounded-3xl bg-cream-pure py-20 shadow-sm">
-                <Loader2 className="size-5 animate-spin text-gold-deep" />
-                <p className="text-sm text-foreground">
-                  {status === 'enviando'
-                    ? 'Enviando tus respuestas al motor…'
-                    : 'Generando las próximas preguntas…'}
+            </div>
+          )}
+
+          {/* Banner informativo (cierre de sección, transición) */}
+          {!sesionCerrada && mensaje_estado && (
+            <div className="flex items-start gap-3 rounded-xl border border-[color:var(--gold)]/25 bg-[color:var(--gold)]/[0.06] p-4 animate-fade-up">
+              <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-gold-deep" />
+              <p className="text-sm leading-relaxed text-foreground/85">
+                {mensaje_estado}
+              </p>
+            </div>
+          )}
+
+          {/* Error banner */}
+          {enError && (
+            <div className="flex items-start gap-3 rounded-xl border border-amber-200/70 bg-amber-50 p-4 animate-fade-up">
+              <AlertCircle className="mt-0.5 size-5 shrink-0 text-amber-600" />
+              <div className="text-sm leading-relaxed text-amber-900">
+                <p className="font-medium">No se pudo continuar el turno.</p>
+                <p className="mt-0.5 text-amber-900/80">
+                  {ultimo_error_turn ?? 'Error desconocido.'}
+                </p>
+                <p className="mt-1.5 text-xs text-amber-900/70">
+                  Tus respuestas se conservaron. Reintenta cuando quieras.
                 </p>
               </div>
-            ) : (
-              <div className="gold-seam rounded-3xl bg-cream-pure py-20 text-center shadow-sm">
-                <p className="text-sm text-foreground/55">Cargando preguntas…</p>
-              </div>
-            )}
-
-            {/* BatchNav inferior — navegación clara entre preguntas del turno.
-                Eliminada la redundancia "Pregunta X / Y" (el dot activo ya
-                comunica posición vía label P0X embedded). */}
-            {!sesionCerrada && batch && total > 0 && (
-              <div className="flex items-center justify-end rounded-2xl bg-cream-pure px-4 py-2.5 ring-1 ring-ink/8 shadow-sm md:px-5">
-                <BatchNav
-                  preguntas={batch.preguntas.map((p) => ({
-                    id: p.id,
-                    marcada: marcadas[p.id] === true,
-                  }))}
-                  activeIndex={pregIndex}
-                  onChange={navegarAPregunta}
-                />
-              </div>
-            )}
-
-            {/* Banner informativo (cierre de sección, transición) */}
-            {!sesionCerrada && mensaje_estado && (
-              <div className="flex items-start gap-3 rounded-2xl bg-gold/8 p-4 ring-1 ring-gold/30 animate-fade-up">
-                <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-gold-deep" />
-                <p className="text-sm leading-relaxed text-foreground/85">
-                  {mensaje_estado}
-                </p>
-              </div>
-            )}
-
-            {/* Error banner */}
-            {enError && (
-              <div className="flex items-start gap-3 rounded-2xl bg-amber-50 p-4 ring-1 ring-amber-200/70 animate-fade-up">
-                <AlertCircle className="mt-0.5 size-5 shrink-0 text-amber-600" />
-                <div className="text-sm leading-relaxed text-amber-900">
-                  <p className="font-medium">No se pudo continuar el turno.</p>
-                  <p className="mt-0.5 text-amber-900/80">
-                    {ultimo_error_turn ?? 'Error desconocido.'}
-                  </p>
-                  <p className="mt-1.5 text-xs text-amber-900/70">
-                    Tus respuestas se conservaron. Reintenta cuando quieras.
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Columna derecha — RightRail unificado: 2 secciones hairline
-              (Turno + Progreso) en lugar de 3 cards apiladas. */}
-          {!sesionCerrada && batch && activePregunta && (
-            <div className="lg:col-span-4">
-              <RightRail
-                pendientes={batch.preguntas.filter((p) => !marcadas[p.id]).length}
-                total={total}
-                todasMarcadas={todasMarcadas}
-                enviando={enviando}
-                enError={enError}
-                status={status}
-                cajasObjetivo={activePregunta.cajas_objetivo}
-                cajasGlobal={cajasGlobal}
-                cajasPorGrupo={cajas_llenas_por_grupo}
-                grupoActivo={grupoActivo}
-                onEnviarBatch={() => void enviarBatch()}
-              />
             </div>
           )}
         </div>
