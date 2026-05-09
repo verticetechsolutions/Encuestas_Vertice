@@ -47,6 +47,7 @@ export default async function AdminLayout({
             <nav className="ml-6 hidden items-center gap-1 md:flex">
               <NavLink href="/admin">Resumen</NavLink>
               <NavLink href="/admin/sesiones">Sesiones</NavLink>
+              <NavLink href="/admin/magic-links">Magic links</NavLink>
               <NavLink href="/admin/instituciones">Instituciones</NavLink>
               <NavLink href="/admin/instituciones/nueva">
                 Nueva institución
