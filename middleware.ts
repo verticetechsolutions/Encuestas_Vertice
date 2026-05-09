@@ -14,7 +14,21 @@ export function middleware(req: NextRequest) {
   // Admin gate: presencia de la cookie. La validación contra ADMIN_PANEL_TOKEN
   // ocurre en `requireAdmin()` server-side — el middleware sólo evita que
   // tráfico sin cookie llegue a las páginas admin.
-  if (path.startsWith('/admin') && path !== '/admin/login') {
+  //
+  // El header `x-pathname` se inyecta en TODA request /admin/* para que el
+  // layout pueda detectar si está renderizando /admin/login (página pública)
+  // y omitir `requireAdmin()` — sin esto, el layout aplicaría a /admin/login
+  // y crearía un bucle de redirect infinito.
+  if (path.startsWith('/admin')) {
+    const requestHeaders = new Headers(req.headers);
+    requestHeaders.set('x-pathname', path);
+    // /admin/login y /admin/api/* nunca se redirigen aquí. El form de login
+    // necesita ser público; los route handlers manejan auth ellos mismos vía
+    // `adminGuardOrThrow()` y devuelven 401 JSON — un redirect 307→HTML rompe
+    // a clientes fetch que esperan JSON (e.g. el command palette).
+    if (path === '/admin/login' || path.startsWith('/admin/api/')) {
+      return NextResponse.next({ request: { headers: requestHeaders } });
+    }
     const adminCookie = req.cookies.get(ADMIN_COOKIE);
     if (!adminCookie) {
       const url = req.nextUrl.clone();
@@ -22,7 +36,7 @@ export function middleware(req: NextRequest) {
       url.searchParams.set('next', path);
       return NextResponse.redirect(url);
     }
-    return NextResponse.next();
+    return NextResponse.next({ request: { headers: requestHeaders } });
   }
 
   // Entrevista gate (preexistente).

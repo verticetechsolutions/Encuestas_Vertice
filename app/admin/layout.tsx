@@ -1,10 +1,15 @@
-// Admin layout. Protege todas las rutas `/admin/*` (excepto /admin/login que
-// está fuera del segmento — su page.tsx renderiza el form sin guard).
+// Admin layout. Protege todas las rutas `/admin/*` excepto `/admin/login`.
+//
+// `/admin/login` SÍ vive bajo este segmento (`app/admin/login/page.tsx`), así
+// que el layout también lo envuelve. Para evitar bucle de redirect, leemos el
+// header `x-pathname` (inyectado por `middleware.ts`) y, si es `/admin/login`,
+// renderizamos el form sin guard ni chrome admin.
 //
 // El header repite el branding del producto pero con un ribbon visible que
 // recuerda al operador que está en panel administrativo (evita confusión
 // entre admin y entrevistado vista).
 
+import { headers } from 'next/headers';
 import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth/admin';
 import { logoutAdmin } from '@/app/actions/adminAuth';
@@ -15,6 +20,10 @@ export default async function AdminLayout({
 }: {
   children: React.ReactNode;
 }) {
+  const h = await headers();
+  if (h.get('x-pathname') === '/admin/login') {
+    return <>{children}</>;
+  }
   await requireAdmin();
 
   return (
