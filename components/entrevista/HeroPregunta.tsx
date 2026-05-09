@@ -47,6 +47,22 @@ interface AutosaveMeta {
   pulsing: boolean;
 }
 
+// Separa la pregunta canónica de su microcopy "Por ejemplo: ..." cuando existe.
+// Solo divide si Sonnet (o el fixture) usa el separador exacto " Por ejemplo:" — no
+// inventamos splits para preguntas con "Mencionar...", "Es decir..." u otras formas
+// porque ahí el clarificador es parte legítima de la pregunta. Conservador por
+// diseño: si el fixture cambia, sigue renderizando completo, no se rompe nada.
+function splitPreguntaYEjemplo(texto: string): {
+  pregunta: string;
+  ejemplo: string | null;
+} {
+  const match = texto.match(/^(.+?)(\s+Por ejemplo:.*)$/);
+  if (match) {
+    return { pregunta: match[1].trim(), ejemplo: match[2].trim() };
+  }
+  return { pregunta: texto, ejemplo: null };
+}
+
 function autosaveMeta(status: AutosaveStatus): AutosaveMeta {
   switch (status) {
     case 'pending':
@@ -152,13 +168,30 @@ export function HeroPregunta({
           )}
         </div>
 
-        {/* Pregunta hero — display tracking apretado, ritmo landing */}
-        <h2 className="mt-5 text-display text-[28px] leading-[1.05] tracking-[-0.025em] text-foreground md:text-[36px] xl:text-[40px]">
-          {pregunta.texto_pregunta}
-        </h2>
+        {(() => {
+          const { pregunta: q, ejemplo } = splitPreguntaYEjemplo(
+            pregunta.texto_pregunta
+          );
+          return (
+            <>
+              {/* Pregunta hero — display tracking apretado, ritmo landing */}
+              <h2 className="mt-5 text-display text-[28px] leading-[1.05] tracking-[-0.025em] text-foreground md:text-[36px] xl:text-[40px]">
+                {q}
+              </h2>
 
-        {/* Hairline gold — sello editorial debajo del título */}
-        <span aria-hidden className="gold-hairline mt-6 block w-12" />
+              {/* Microcopy "Por ejemplo:..." — italic más pequeño debajo,
+                  jerarquía clara vs título. Solo cuando el fixture/IA lo trae. */}
+              {ejemplo && (
+                <p className="mt-4 max-w-[52ch] text-[15px] leading-relaxed text-foreground/55 italic md:text-base">
+                  {ejemplo}
+                </p>
+              )}
+
+              {/* Hairline gold — sello editorial debajo del título */}
+              <span aria-hidden className="gold-hairline mt-6 block w-12" />
+            </>
+          );
+        })()}
 
         {/* Textarea grande — filled inset estilo landing FormField, focus gold */}
         <div className="mt-8 md:mt-10">
