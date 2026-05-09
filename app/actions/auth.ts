@@ -5,17 +5,17 @@ import { magic_tokens, instituciones } from '@/db/schema';
 import { generateMagicToken, hashToken, magicTokenExpiry } from '@/lib/auth/tokens';
 import { sendMagicLink } from '@/lib/email/resend';
 import { crearOReanudarSesion } from '@/app/actions/sesiones';
-import { eq } from 'drizzle-orm';
+import { eq, and, isNull } from 'drizzle-orm';
 import type {
   EmitirMagicLinkOptions,
   EmitirMagicLinkResult,
   VerificarMagicLinkOutcome,
 } from '@/lib/auth/contracts';
 
-// Emite token plain (vive solo en la URL del email) + guarda hash en DB. Idempotente:
-// si la institución ya tiene un token vigente, emite uno nuevo igualmente — el
-// anterior queda válido hasta que expire o sea consumido. No invalidamos para evitar
-// race conditions con correos en tránsito.
+// Emite token plain (vive solo en la URL del email) + guarda hash en DB. Cada
+// emisión ejecuta auto-revoke transaccional de tokens previos no consumidos y
+// no revocados para esta institución, garantizando "máximo un token vigente
+// por institución". Admin maneja explícitamente la reemisión vía paquete 2.
 export async function emitirMagicLink(
   institucion_id: string,
   opts: EmitirMagicLinkOptions = {}
@@ -34,17 +34,34 @@ export async function emitirMagicLink(
   const plain = generateMagicToken();
   const token_hash = hashToken(plain);
   const expires_at = magicTokenExpiry();
-  await db.insert(magic_tokens).values({
-    token_hash,
-    institucion_id,
-    expires_at,
+
+  // Auto-revoke + insert atómico. Cualquier token previo no consumido y no
+  // revocado para esta institución queda revocado en el mismo statement antes
+  // de insertar el nuevo. Garantiza la invariante "máximo un token vigente
+  // por institución" que asume `verificarMagicLink` y la UI admin.
+  await db.transaction(async (tx) => {
+    await tx
+      .update(magic_tokens)
+      .set({ revoked_at: new Date() })
+      .where(
+        and(
+          eq(magic_tokens.institucion_id, institucion_id),
+          isNull(magic_tokens.consumed_at),
+          isNull(magic_tokens.revoked_at)
+        )
+      );
+    await tx.insert(magic_tokens).values({
+      token_hash,
+      institucion_id,
+      expires_at,
+    });
   });
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
   const url = `${baseUrl}/acceso/${plain}`;
 
   if (opts.dryRun) {
-    return { url, enviado: false, expires_at };
+    return { url, enviado: false, expires_at, email_contacto: inst.email_contacto };
   }
 
   await sendMagicLink({
@@ -53,7 +70,7 @@ export async function emitirMagicLink(
     razon_social: inst.razon_social,
     expiresAt: expires_at,
   });
-  return { url, enviado: true, expires_at };
+  return { url, enviado: true, expires_at, email_contacto: inst.email_contacto };
 }
 
 // Verifica el token plain del URL contra el hash almacenado. Outcome explícito (no
@@ -68,6 +85,7 @@ export async function verificarMagicLink(plain: string): Promise<VerificarMagicL
       institucion_id: magic_tokens.institucion_id,
       expires_at: magic_tokens.expires_at,
       consumed_at: magic_tokens.consumed_at,
+      revoked_at: magic_tokens.revoked_at,
     })
     .from(magic_tokens)
     .where(eq(magic_tokens.token_hash, token_hash))
@@ -75,6 +93,7 @@ export async function verificarMagicLink(plain: string): Promise<VerificarMagicL
 
   if (!row) return { ok: false, razon: 'token_invalido' };
   if (row.consumed_at) return { ok: false, razon: 'consumido' };
+  if (row.revoked_at) return { ok: false, razon: 'revocado' };
   if (row.expires_at.getTime() < Date.now()) return { ok: false, razon: 'expirado' };
 
   // Marca consumido y crea/reanuda sesión. Si la creación de sesión falla, el token

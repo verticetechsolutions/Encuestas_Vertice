@@ -36,9 +36,12 @@ export interface EmitirMagicLinkResult {
   url: string;
   enviado: boolean;
   expires_at: Date;
+  // Email al que se envió (modo email) o se hubiera enviado (dry-run).
+  // Permite al caller mostrar "Enviado a contacto@x.com" sin re-query.
+  email_contacto: string;
 }
 
 // ---- verificarMagicLink -----------------------------------------------------
 export type VerificarMagicLinkOutcome =
   | { ok: true; sesion_id: string; reanudada: boolean }
-  | { ok: false; razon: 'token_invalido' | 'expirado' | 'consumido' | 'institucion_no_encontrada' };
+  | { ok: false; razon: 'token_invalido' | 'expirado' | 'consumido' | 'institucion_no_encontrada' | 'revocado' };
