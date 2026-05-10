@@ -52,6 +52,16 @@ const hoisted = vi.hoisted(() => {
 
 vi.mock('@/lib/db', () => ({ db: hoisted.db }));
 
+// `inngest.send` se silencia globalmente: dispatchSesionListaParaSintesis lo
+// llama solo cuando un grupo cierra como `siguiente_grupo_ui=null`. Los
+// tests de processSolicitarReview e2e abajo eligen escenarios que NO cierran
+// sesión (avanzar a un siguiente grupo no-null) para mantener el surface
+// reducido. El mock queda igual como red de seguridad — si un test futuro
+// gatilla cierre, no se cae todo el suite por falta de stub.
+vi.mock('@/lib/inngest/client', () => ({
+  inngest: { send: vi.fn(async () => ({ ids: ['mock-event-id'] })) },
+}));
+
 // Imports DESPUÉS del vi.mock — review.ts y test-db.ts importan @/lib/db de
 // forma transitiva, y el mock ya está activo.
 import { reviews_seccion, cajas_declinadas, sesiones } from '@/db/schema';
@@ -59,7 +69,9 @@ import {
   mergeSeccionCerrada,
   transicionarSesionASintetizando,
   declinarCaja,
+  processSolicitarReview,
 } from './review';
+import type { RespuestaOpus, SolicitarReviewSeccionInput } from '@/lib/schemas/review_seccion';
 import { resetReviewTables, seedSesion } from './test-db';
 
 // `db` y `client` apuntan al test branch. Si `url` es null, el describe se
@@ -392,6 +404,226 @@ describe.skipIf(!url)('review.ts integration (Postgres real)', () => {
       round: number;
     }>;
     expect(rows.map((r) => r.round).sort()).toEqual([1, 2]);
+  });
+
+  // ===========================================================================
+  // processSolicitarReview — full flow contra DB real (deuda §19 item 1)
+  // ===========================================================================
+  // El mock E2E (`review.e2e.test.ts`) cubre la lógica de orquestación con
+  // chainable thenable; este test cierra el loop verificando que TODOS los
+  // side-effects (insert reviews_seccion + UPDATE decision_opus + atomic
+  // merge secciones_cerradas) persisten contra Postgres real. opusCall se
+  // mockea con vi.fn — Opus real no se invoca.
+
+  it('processSolicitarReview full flow: avanzar limpio persiste reviews_seccion + secciones_cerradas + 0 declines', async () => {
+    const { sesion_id } = await seedSesion(db!);
+    const opusCall = vi.fn().mockResolvedValue({
+      decision: 'avanzar',
+      siguiente_grupo_ui: 'productos_y_mercado',
+    } satisfies RespuestaOpus);
+
+    const input: SolicitarReviewSeccionInput = {
+      grupo_ui_codigo: 'identificacion',
+      extracciones_snapshot: [
+        {
+          caja_codigo: 'id_razon_social',
+          valor: 'Banco Demo SA',
+          confianza: 0.92,
+          evidencia_textual: 'Somos Banco Demo SA fundado en 2010',
+          status: 'llena',
+          version: 1,
+        },
+      ],
+      cajas_no_clausuradas: [],
+      hipotesis_sonnet:
+        'Banco regional de tamaño medio enfocado en PyME del bajío con regulación CNBV',
+      turno_disparador: 5,
+    };
+
+    const result = await processSolicitarReview(input, { sesion_id, opusCall });
+
+    // 1. ProcessReviewResult shape correcto.
+    expect(result.estado).toBe('grupo_cerrado');
+    expect(result.siguiente_grupo_ui).toBe('productos_y_mercado');
+    expect(result.review_id).toBeDefined();
+    expect(opusCall).toHaveBeenCalledOnce();
+
+    // 2. reviews_seccion persistido con decisión Opus, round=1, decidio_at.
+    const reviewRows = (await db!
+      .select({
+        id: reviews_seccion.id,
+        decision_opus: reviews_seccion.decision_opus,
+        siguiente_grupo_ui: reviews_seccion.siguiente_grupo_ui,
+        round: reviews_seccion.round,
+        grupo_ui_codigo: reviews_seccion.grupo_ui_codigo,
+        decidio_at: reviews_seccion.decidio_at,
+      })
+      .from(reviews_seccion)
+      .where(eq(reviews_seccion.sesion_id, sesion_id))) as Array<{
+      id: string;
+      decision_opus: string | null;
+      siguiente_grupo_ui: string | null;
+      round: number;
+      grupo_ui_codigo: string;
+      decidio_at: Date | null;
+    }>;
+    expect(reviewRows).toHaveLength(1);
+    const review = reviewRows[0];
+    expect(review.id).toBe(result.review_id);
+    expect(review.decision_opus).toBe('avanzar');
+    expect(review.siguiente_grupo_ui).toBe('productos_y_mercado');
+    expect(review.round).toBe(1);
+    expect(review.grupo_ui_codigo).toBe('identificacion');
+    // decidio_at se setea cuando el motor procesa la respuesta de Opus.
+    expect(review.decidio_at).toBeInstanceOf(Date);
+
+    // 3. sesiones.secciones_cerradas tiene la key del grupo con shape correcto.
+    const [sesionRow] = await db!
+      .select({ secciones_cerradas: sesiones.secciones_cerradas })
+      .from(sesiones)
+      .where(eq(sesiones.id, sesion_id));
+    expect(sesionRow.secciones_cerradas).toEqual({
+      identificacion: {
+        cerrada_at: expect.any(String),
+        review_id: result.review_id,
+        declino_cajas: [],
+      },
+    });
+
+    // 4. cajas_declinadas vacía (no había cajas_no_clausuradas).
+    const declinedCount = (await db!.execute(
+      sql`SELECT count(*)::int AS n FROM cajas_declinadas WHERE sesion_id = ${sesion_id}`
+    )) as unknown as Array<{ n: number }>;
+    expect(declinedCount[0].n).toBe(0);
+  });
+
+  it('processSolicitarReview full flow: avanzar con cajas_no_clausuradas persiste declines en cajas_declinadas', async () => {
+    const { sesion_id } = await seedSesion(db!);
+    const opusCall = vi.fn().mockResolvedValue({
+      decision: 'avanzar',
+      siguiente_grupo_ui: 'productos_y_mercado',
+      anotacion_audit: 'Boundary aceptado pese a id_anios_operacion estancada',
+    } satisfies RespuestaOpus);
+
+    const input: SolicitarReviewSeccionInput = {
+      grupo_ui_codigo: 'identificacion',
+      extracciones_snapshot: [
+        {
+          caja_codigo: 'id_razon_social',
+          valor: 'Banco Demo SA',
+          confianza: 0.92,
+          evidencia_textual: 'Banco Demo SA',
+          status: 'llena',
+          version: 1,
+        },
+      ],
+      cajas_no_clausuradas: [
+        {
+          caja_codigo: 'id_anios_operacion',
+          razon: 'estancada',
+          detalle: 'Confianza estancada en 0.60 después de 3 turnos',
+          turnos_intentados: 3,
+        },
+      ],
+      hipotesis_sonnet:
+        'Banco regional con info parcial sobre antigüedad operativa, resto suficiente',
+      turno_disparador: 6,
+    };
+
+    const result = await processSolicitarReview(input, { sesion_id, opusCall });
+
+    expect(result.estado).toBe('grupo_cerrado');
+
+    // cajas_declinadas tiene 1 fila con razón aceptada_round_1 (round 1 + avanzar).
+    const declinedRows = (await db!
+      .select({
+        caja_codigo: cajas_declinadas.caja_codigo,
+        razon: cajas_declinadas.razon,
+        review_id_origen: cajas_declinadas.review_id_origen,
+      })
+      .from(cajas_declinadas)
+      .where(eq(cajas_declinadas.sesion_id, sesion_id))) as Array<{
+      caja_codigo: string;
+      razon: string;
+      review_id_origen: string;
+    }>;
+    expect(declinedRows).toHaveLength(1);
+    expect(declinedRows[0].caja_codigo).toBe('id_anios_operacion');
+    expect(declinedRows[0].razon).toBe('aceptada_round_1');
+    expect(declinedRows[0].review_id_origen).toBe(result.review_id);
+
+    // secciones_cerradas registra el decline en `declino_cajas`.
+    const [sesionRow] = await db!
+      .select({ secciones_cerradas: sesiones.secciones_cerradas })
+      .from(sesiones)
+      .where(eq(sesiones.id, sesion_id));
+    const stored = sesionRow.secciones_cerradas as Record<string, { declino_cajas: string[] }>;
+    expect(stored.identificacion.declino_cajas).toEqual(['id_anios_operacion']);
+  });
+
+  // ===========================================================================
+  // mergeSeccionCerrada N=10 stress concurrent (deuda §19 item 2)
+  // ===========================================================================
+  // El test de race a N=2 de arriba prueba el principio. Este sube el bar
+  // a N=10 para validar que el operador `||` jsonb mantiene la atomicidad
+  // bajo presión real con read-after-read scenarios. Si un merge se pierde,
+  // el assert final lo detecta por count y por keys faltantes.
+
+  it('mergeSeccionCerrada stress: 10 merges concurrentes coexisten todos en secciones_cerradas', async () => {
+    const { sesion_id } = await seedSesion(db!);
+    // Usamos los 6 grupos UI canónicos + 4 ficticios (el motor real solo emite
+    // para los 6, pero a nivel SQL el helper acepta cualquier string clave).
+    // Esto valida el principio jsonb || y no la lógica de motor.
+    const grupos: string[] = [
+      'identificacion',
+      'productos_y_mercado',
+      'numeros_del_negocio',
+      'operacion',
+      'pricing_y_criterio',
+      'contacto_y_especificos',
+      // ficticios para llegar a 10
+      'extra_a',
+      'extra_b',
+      'extra_c',
+      'extra_d',
+    ];
+    expect(grupos).toHaveLength(10);
+
+    const cerrada_at = new Date().toISOString();
+
+    // Disparar los 10 merges al mismo tick para máxima contención sobre la
+    // misma fila de sesiones. Promise.all colecta — si alguno falla con
+    // race condition, el await reject lo expone.
+    await Promise.all(
+      grupos.map((g, i) =>
+        mergeSeccionCerrada(sesion_id, g, {
+          cerrada_at,
+          review_id: `rev-${i}-${g}`,
+          declino_cajas: i % 3 === 0 ? [`stub_${i}`] : [],
+        })
+      )
+    );
+
+    // Aserción: las 10 keys aparecen en secciones_cerradas con shape correcto.
+    // Si el operador `||` perdiera escrituras por race, el count sería <10.
+    const [sesionRow] = await db!
+      .select({ secciones_cerradas: sesiones.secciones_cerradas })
+      .from(sesiones)
+      .where(eq(sesiones.id, sesion_id));
+    const stored = sesionRow.secciones_cerradas as Record<
+      string,
+      { cerrada_at: string; review_id: string; declino_cajas: string[] }
+    >;
+
+    expect(Object.keys(stored).sort()).toEqual([...grupos].sort());
+    // Spot-check: review_id de cada grupo coincide con el que generamos.
+    for (let i = 0; i < grupos.length; i++) {
+      const g = grupos[i];
+      expect(stored[g].review_id).toBe(`rev-${i}-${g}`);
+      expect(stored[g].cerrada_at).toBe(cerrada_at);
+      const expectedDeclino = i % 3 === 0 ? [`stub_${i}`] : [];
+      expect(stored[g].declino_cajas).toEqual(expectedDeclino);
+    }
   });
 
   // ===========================================================================
