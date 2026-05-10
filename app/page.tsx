@@ -867,6 +867,11 @@ function AccessFlow() {
     );
   }
 
+  // TODO post-MVP: Google SSO real (ver IMPLEMENTATION.md §19 "Google SSO
+  // real"). Este branch del flujo es un mockup "Próximamente" — el day-1 de
+  // pilotos usa magic link via email, pero la UI ya promete la opción.
+  // Reemplazar por flow real cuando el founder firme decisiones (provider,
+  // scope, mapping a `sesiones`, domain whitelist, convivencia con magic link).
   if (stage === 'google') {
     return (
       <div className="flex flex-col items-center text-center">

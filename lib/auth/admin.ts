@@ -11,7 +11,9 @@
 //   - Trade-off aceptado: si el token leak, hay que rotarlo en Vercel.
 //
 // Producción puede luego pivotar a OAuth/SSO sin tocar el contrato de
-// `requireAdmin()` — sólo la implementación interna.
+// `requireAdmin()` — sólo la implementación interna. El plan completo
+// (provider, scope, mapping, domain whitelist, convivencia con magic
+// link) está documentado en IMPLEMENTATION.md §19 "Google SSO real".
 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
