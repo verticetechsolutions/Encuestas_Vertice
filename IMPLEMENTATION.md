@@ -1274,45 +1274,7 @@ sin overhead manual del founder en cada onboarding.
 graduarlo a §20 sin resolución completa). Cuando se cierre, mover toda
 la spec aquí escrita a §20 con cambios concretos aplicados.
 
-### Integration tests contra Neon branch efímero
-
-**Estado:** los suites en `lib/motor/review.test.ts` (24 tests) y
-`lib/motor/review.e2e.test.ts` (16 tests) corren contra `db` y
-`@/lib/inngest/client` mockeados con `vi.hoisted`. Verifican lógica del motor,
-shape del SQL emitido (vía serialización del objeto Drizzle) y orquestación
-de side-effects, pero **NO ejecutan SQL contra Postgres**.
-
-**Problema:** mocks no detectan diff entre el SQL que Drizzle genera y lo que
-Postgres real acepta bajo carga. Casos posibles que el mock NO captura:
-- Constraint violations en runtime (FK, unique index, NOT NULL).
-- Race conditions reales sobre `secciones_cerradas` jsonb con concurrencia
-  alta — el operador `||` es atómico per-statement pero conviene confirmar
-  contra Postgres real.
-- Comportamiento del trigger `RETURNING` en `transicionarSesionASintetizando`
-  bajo isolation level real.
-- Performance regressions: queries que pasan en mock pero hacen full scan en
-  prod sin índice apropiado.
-
-**Pendiente — antes de production deploy de Phase 5:**
-- Suite de integración que corre contra Neon branch creado on-demand por
-  test run (vía `mcp__Neon__create_branch` o equivalente CLI).
-- Aplicar migración 0002 al branch antes del run.
-- Cleanup: `mcp__Neon__delete_branch` al terminar (incluso si tests fallan).
-- Tests específicos:
-    1. `processSolicitarReview` end-to-end con DB real, opusCall mockeado.
-       Verificar persistencia en `reviews_seccion`, `cajas_declinadas`,
-       `sesiones.secciones_cerradas` jsonb.
-    2. `mergeSeccionCerrada` con N=10 calls concurrentes (Promise.all) sobre
-       una misma sesión con grupos distintos — todos los grupos deben
-       aparecer en `secciones_cerradas` post-ejecución.
-    3. `transicionarSesionASintetizando` con 2 calls simultáneas sobre la
-       misma sesión — exactamente uno retorna `true`, el otro `false`.
-    4. `declinarCaja` con duplicados (misma `sesion_id`, `caja_codigo`) →
-       solo una fila persistida (idempotencia vía `ON CONFLICT DO NOTHING`).
-
-**Bloqueante para:** production deploy de Phase 5.
-**No bloqueante para:** merge a master de step 5 (los mocks cubren la
-intención del código; la integración real es seguro pre-prod, no pre-merge).
+### ~~Integration tests contra Neon branch efímero~~ ✅ RESUELTO 2026-05-10 (PR #8, ver §20)
 
 ---
 
@@ -1374,6 +1336,32 @@ features y se podía wirear directamente.
 
 Los otros 2 (`review.profundizacion.caja_collateral` y `caso.consumido_por_grupo`)
 quedan en §19 con explicación del bloqueo.
+
+### Integration tests contra Neon branch efímero — resuelto 2026-05-10 (PR #8)
+
+**Origen:** §19 listaba la deuda de tests integración contra Postgres real
+porque los mocks `vi.hoisted` no validaban shape de SQL ni race conditions
+reales sobre `secciones_cerradas` jsonb.
+
+**Cambios concretos (commit `78308eb`):**
+- `lib/motor/review.integration.test.ts` (12 tests, +232 LOC) contra branch
+  Neon `test-integration` (`br-noisy-credit-amkaj2or`). Cubre:
+  - `mergeSeccionCerrada` race + idempotencia con N=10 calls concurrentes.
+  - `transicionarSesionASintetizando` guard atómico (2 calls simultáneas →
+    exactamente uno retorna true).
+  - `declinarCaja` ON CONFLICT DO NOTHING + FK 23503 + unique 23505.
+  - `processSolicitarReview` full flow: insert reviews_seccion + atomic
+    merge sesiones.secciones_cerradas + inserts cajas_declinadas con
+    razon=aceptada_round_1, todo desde Postgres real con opusCall mockeado.
+- `vitest.config.ts` — `fileParallelism: false` + `sequence: { concurrent:
+  false }` para serializar suites; integration tests TRUNCATE las tablas
+  que tocan y los singletons postgres-js no son re-entrantes seguros por
+  suite.
+- Skip-if-missing si `DATABASE_URL_TEST` no está set, así CI sin acceso a
+  Neon no falla.
+
+**Pendiente para sesión paralela A (no para esta deuda):** aplicar migración
+0004 a branch principal `vertice-mvp/main` post-merge de PR #11.
 
 ### Inngest wiring para `sesion/lista_para_sintesis` — resuelto 2026-05-02
 
@@ -1461,6 +1449,118 @@ Construido en paralelo a Fase 5 (motor) en una sesión aislada (worktree `vertic
 3. Permitir mic. Hablar en español MX. Verificar que interim aparezca gris y final aparezca negro. Confirmar que "Pausa >1.5s" se vuelve "sí" cuando dejas de hablar.
 4. Editar un segmento haciendo clic. Verificar el punto dorado de "corregida_manualmente".
 5. Cambiar de pestaña. Verificar que la grabación se pausa y reanuda solo al volver.
+
+---
+
+## 22 · Pre-deploy checklist Fase 10
+
+Lista cementada de pasos a completar antes de poner Vértice frente a un
+piloto real. Cada item lleva owner explícito + criterio de done. NO mover a
+done sin verificación literal.
+
+### 22.1 Infrastructure
+
+- [ ] **Vercel Blob storage para PDFs de síntesis** (owner: founder).
+  - Provisionar bucket en Vercel dashboard (project: vertice).
+  - Set `BLOB_READ_WRITE_TOKEN` en Vercel env (Production + Preview).
+  - Wire `lib/inngest/functions/sintetizarSesion.ts:generar-pdf` step para
+    `await blobStorage.put(buffer)` y persistir URL en
+    `perfil_decision_final.pdf_url` (columna ya existe).
+  - Done: una sesión completa en producción genera PDF y la URL queda
+    accesible vía `/admin/instituciones/[id]` con expires según TTL del bucket.
+
+- [ ] **Inngest cloud production keys** (owner: founder).
+  - `INNGEST_EVENT_KEY` + `INNGEST_SIGNING_KEY` en Vercel env (Production).
+  - Verificar que `app/api/inngest/route.ts` recibe events dispatched desde
+    `dispatchSesionListaParaSintesis` con event_id retornado correlacionado
+    en Axiom.
+  - Done: Inngest UI muestra runs de `sintetizar-sesion` exitosos en prod.
+
+- [ ] **Neon production branch + migrations aplicadas** (owner: sesión A).
+  - Confirmar que `vertice-mvp/main` tiene aplicadas las migraciones
+    0000-0004 (incluida la 0004 drop de magic_link cols).
+  - Smoke: `SELECT count(*) FROM reviews_seccion;` no falla shape-wise.
+  - Done: `db/migrations/meta/_journal.json` actualizado y push a master.
+
+### 22.2 LLM keys
+
+- [ ] **`ANTHROPIC_API_KEY`** en Vercel env (Production).
+  - Smoke: ejecutar una sesión real (PR #4 mergeado), confirmar que
+    `productionOpusCall` (review.ts) y `productionOpusSintesisCall`
+    (sintesis_final.ts) reciben respuesta con shape válido.
+  - Capturar `usage.reasoningTokens` en primer run productivo para
+    decidir si el budget 8K queda holgado o ajustado (ver
+    `docs/pr4-review-notes.md` §2 si existe).
+  - Done: una sesión end-to-end produce un PerfilDecisionFinal Zod-válido.
+
+- [ ] **`DEEPGRAM_API_KEY`** en Vercel env (Production).
+  - Smoke: `/entrevista/[sesion_id]` con sesión real, click MicButton →
+    permiso mic → streaming → texto appendea al textarea.
+  - Verificar el ciclo completo descrito en
+    `lib/stt/append-transcript.ts` + PR #13.
+  - Done: una pregunta entera resuelta solo con dictado, sin keyboard.
+
+### 22.3 Email
+
+- [ ] **`RESEND_API_KEY` + dominio verificado** (owner: founder).
+  - Verificar dominio `vertice.mx` (o el que sea elegido) en Resend.
+  - DKIM + SPF + DMARC publicados — validar con Resend dashboard.
+  - Done: enviar magic link real desde admin a un email externo y
+    confirmar que llega sin marcar como spam en Gmail/Outlook.
+
+### 22.4 Smoke production
+
+- [ ] **End-to-end real desde landing**:
+  1. Abrir landing en prod.
+  2. Magic link → email → click → /entrevista/[sesion_id].
+  3. Responder 6 grupos con dictado + correcciones manuales.
+  4. Llegar a cierre de sesión → status='sintetizando'.
+  5. Inngest dispatch → Opus síntesis → status='completa'.
+  6. PDF generado y URL accesible en `/admin/instituciones/[id]`.
+  7. Email a founder con link al PDF (cuando esté wirado).
+  - Done: founder revisa el PDF y le pasa la primera revisión cualitativa.
+
+### 22.5 Pilotos iniciales
+
+- [ ] **Lista de 2-3 aliados financieros** para piloto cerrado.
+  - Selección por founder. Criterio: instituciones que ya tienen relación
+    operativa con Vértice y aceptan dar feedback estructurado post-sesión.
+  - Cada aliado recibe: 1 magic link, 1 email de bienvenida con
+    instrucciones, 1 ventana de soporte directo del founder.
+  - Done: cada aliado completó la sesión y firmó el feedback form
+    (instrumento separado).
+
+### 22.6 Rotación final de tokens
+
+- [ ] **`ADMIN_PANEL_TOKEN` rotación final** (owner: sesión A).
+  - Generar nuevo valor con `openssl rand -hex 32`.
+  - Set en Vercel env (Production).
+  - Confirmar que el viejo valor queda invalidado (intento de login con
+    valor previo retorna 401).
+  - Done: sesión A confirma rotación + actualiza `.audit/rotation_log.md`
+    con fecha + responsable.
+
+- [ ] **`AXIOM_TOKEN` con scope mínimo** (owner: founder).
+  - Crear token de Axiom con permisos `Ingest` solamente sobre
+    dataset `vertice-prod`. NO `Query` ni `Manage`.
+  - Set en Vercel env (Production). Remover scopes elevados si los hubo.
+  - Done: smoke de un evento (`logger.info('test', {})`) aparece en Axiom
+    UI sin errores 401/403.
+
+### 22.7 Observability dashboard
+
+- [ ] **Axiom alerts configuradas** (owner: founder).
+  - Tres alertas listadas en `docs/axiom_dashboard.md` §"Alarmas
+    operacionales": threshold Sonnet (b > 40%), latencia Opus (e > 12s),
+    Inngest sintesis fallando (>5%).
+  - Cada alerta apunta a webhook Slack + email de founder.
+  - Done: smoke de cada alerta forzando los thresholds en staging.
+
+- [ ] **Sentry release tracking** (owner: founder).
+  - Confirmar que `withSentryConfig` (next.config.ts:91) sube source
+    maps en builds prod. Token `SENTRY_AUTH_TOKEN` en Vercel env.
+  - Done: un error real en prod aparece en Sentry con stack trace
+    deminificado.
 
 ---
 
