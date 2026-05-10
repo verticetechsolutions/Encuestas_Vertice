@@ -11,6 +11,7 @@ import type {
   EmitirMagicLinkResult,
   VerificarMagicLinkOutcome,
 } from '@/lib/auth/contracts';
+import { logger } from '@/lib/observability/axiom';
 
 // Emite token plain (vive solo en la URL del email) + guarda hash en DB. Cada
 // emisión ejecuta auto-revoke transaccional de tokens previos no consumidos y
@@ -59,6 +60,15 @@ export async function emitirMagicLink(
 
   const baseUrl = process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
   const url = `${baseUrl}/acceso/${plain}`;
+
+  // Audit log: NUNCA loguear el plain token. Solo el prefix del hash para
+  // correlación con otros eventos (revocación, consumo).
+  logger.admin.magicLinkEmitido({
+    institucion_id,
+    token_hash_prefix: token_hash.slice(0, 8),
+    expires_at: expires_at.toISOString(),
+    dry_run: opts.dryRun === true,
+  });
 
   if (opts.dryRun) {
     return { url, enviado: false, expires_at, email_contacto: inst.email_contacto };

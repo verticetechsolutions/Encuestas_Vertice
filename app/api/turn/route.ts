@@ -62,14 +62,27 @@ import {
   SONNET_FASE1_PROMPT_READY,
 } from '@/lib/prompts/sonnet_fase1';
 import { logger } from '@/lib/observability/axiom';
+import {
+  checkRateLimit,
+  getClientIp,
+  RATE_LIMITS,
+} from '@/lib/security/rate-limit';
+import { checkSameOrigin } from '@/lib/security/csrf';
 
 // =============================================================================
 // Request schema
 // =============================================================================
 
+// Bound superior en `mensaje_usuario` para evitar DoS por payload gigante.
+// 8000 chars cubre con holgura el rango realista de un turno de entrevista
+// (~1-3 párrafos de texto humano). Antes de Anthropic, el handler rechaza
+// 400 si el body excede — protege RAM y evita meter texto enorme al
+// streamText buffer del AI SDK.
+const MENSAJE_USUARIO_MAX = 8_000;
+
 const TurnRequestSchema = z.object({
   sesion_id: z.string().uuid(),
-  mensaje_usuario: z.string().min(1),
+  mensaje_usuario: z.string().min(1).max(MENSAJE_USUARIO_MAX),
 });
 
 // =============================================================================
@@ -135,7 +148,31 @@ function formatStreamError(err: unknown): string {
 // =============================================================================
 
 export async function POST(req: Request) {
-  // 1. Gate: prompt de Sonnet listo. Si false, no podemos invocar Fase 1.
+  // 1. CSRF gate: same-origin check antes de cualquier trabajo. Defensa en
+  //    profundidad sobre `SameSite=lax` del cookie. Cero costo si pasa.
+  const csrf = checkSameOrigin(req);
+  if (!csrf.ok) {
+    logger.warn('turn.csrf_rechazado', { error: csrf.error });
+    return NextResponse.json(
+      { error: 'forbidden_origin', message: csrf.error },
+      { status: 403 }
+    );
+  }
+
+  // 2. Rate limit per-IP (catch-all). 100 reqs/min/IP cubre uso normal con
+  //    margen para retries; bloqueo previene abuse cross-sesión sin requerir
+  //    la sesion_id (todavía no parseada). Devuelve 429 con Retry-After.
+  const ip = getClientIp(req);
+  const rlIp = checkRateLimit(`turn:ip:${ip}`, RATE_LIMITS.turnPerIp);
+  if (!rlIp.allowed) {
+    logger.warn('turn.rate_limit.ip', { ip, retry_after_s: rlIp.retryAfterSeconds });
+    return NextResponse.json(
+      { error: 'rate_limited', retry_after_seconds: rlIp.retryAfterSeconds },
+      { status: 429, headers: { 'Retry-After': String(rlIp.retryAfterSeconds) } }
+    );
+  }
+
+  // 3. Gate: prompt de Sonnet listo. Si false, no podemos invocar Fase 1.
   if (!SONNET_FASE1_PROMPT_READY) {
     return NextResponse.json(
       {
@@ -148,7 +185,7 @@ export async function POST(req: Request) {
     );
   }
 
-  // 2. Parse request
+  // 4. Parse request
   let parsed;
   try {
     const json = await req.json();
@@ -163,6 +200,21 @@ export async function POST(req: Request) {
     );
   }
   const { sesion_id, mensaje_usuario } = parsed;
+
+  // 5. Rate limit per-sesion. Una sesión típica tiene ~30 turnos en 30-60
+  //    min; 30/min cubre con bursts de retries pero detiene runaway loops
+  //    del cliente.
+  const rlSesion = checkRateLimit(`turn:sesion:${sesion_id}`, RATE_LIMITS.turnPerSesion);
+  if (!rlSesion.allowed) {
+    logger.warn('turn.rate_limit.sesion', {
+      sesion_id,
+      retry_after_s: rlSesion.retryAfterSeconds,
+    });
+    return NextResponse.json(
+      { error: 'rate_limited', retry_after_seconds: rlSesion.retryAfterSeconds },
+      { status: 429, headers: { 'Retry-After': String(rlSesion.retryAfterSeconds) } }
+    );
+  }
 
   // 3. Validar que la sesión existe y está abierta. JOIN con instituciones para
   //    leer el `tipo` — lo necesitamos en `registrar_extraccion.execute` para

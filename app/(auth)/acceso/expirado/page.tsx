@@ -9,6 +9,7 @@ const MENSAJES: Record<string, string> = {
   revocado: 'Este enlace fue revocado por el equipo Vértice. Solicita uno nuevo a tu contacto.',
   institucion_no_encontrada: 'No encontramos la institución asociada a este enlace.',
   sin_sesion: 'No tienes una sesión activa. Pide un enlace nuevo para iniciar.',
+  rate_limited: 'Demasiados intentos en poco tiempo. Espera un minuto y vuelve a abrir tu enlace.',
 };
 
 export default async function AccesoExpiradoPage({ searchParams }: Props) {

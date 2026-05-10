@@ -86,6 +86,8 @@ function decodeMessage(code: string): string {
       return 'El token no coincide. Verifica el valor en `.env.local`.';
     case 'admin_disabled':
       return 'El panel está deshabilitado: falta `ADMIN_PANEL_TOKEN` en el servidor.';
+    case 'admin_rate_limited':
+      return 'Demasiados intentos en poco tiempo. Espera 15 minutos antes de reintentar.';
     default:
       return 'No se pudo iniciar sesión. Reintenta.';
   }
