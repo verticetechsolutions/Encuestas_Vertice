@@ -1,97 +1,82 @@
 'use client';
 
-// HeroPregunta — Paleta A, Typeform-style (2026-05-09 refactor).
-//   - Sin card wrapper. La pregunta vive directo en el canvas off-white.
-//   - Sin glow de esquina ni línea lateral gold (decoración).
-//   - "Tema: X · Y" inline debajo del título (lo que antes vivía en RightRail).
-//   - Textarea bg blanco puro + hairline 1px solid, focus = gold border.
-//   - Helper "Por ejemplo:" regular weight, no italic.
-//   - Botones unificados: ghost dictar + filled marcar respondida, mismo h-11.
+// HeroPregunta — workspace de la pregunta activa (rewrite limpio 2026-05-10).
 //
-// STT: cuando `sttEnabled=true`, monta el flujo Deepgram. Cada segmento
-// finalizado se concatena al texto vía onChangeTexto. En preview el botón se
-// renderiza disabled con tooltip — /api/stt/token requiere cookie real.
+// Estructura (flex-col gap-6 — spacing predecible y uniforme):
+//   1. Header: counter "Pregunta XX de YY" + chip RESPONDIDA (ghost slot).
+//   2. Question: h2 hero + auxiliar (split por "Por ejemplo:" o composición).
+//   3. Textarea + banner Lock (ghost slot bajo el textarea).
+//   4. Footer: autosave indicator + buttons (Dictar ghost + Marcar/Desmarcar CTA).
+//
+// Anti-shift por construcción:
+//   - Header min-h reservado (chip aparece sin empujar nada).
+//   - Banner min-h reservado (toggle no mueve el footer).
+//   - Textarea max-h + scroll interno (no crece el card si user escribe largo).
+//   - CTA min-w fijo (alterna "Marcar respondida" ↔ "Desmarcar" sin shift).
+//   - Ghost slots = visibility+opacity (CSS), nunca mount/unmount.
+//
+// STT (preview lo desactiva):
+//   - useEffect 1: cierra stream cuando cambia la pregunta + resetea tracker.
+//   - useEffect 2: cuando llega un segmento nuevo, lo concatena al texto.
 
 import { useEffect, useRef, useState } from 'react';
-import { Check, RotateCcw, Mic } from 'lucide-react';
+import { motion } from 'motion/react';
+import { Check, Lock, Mic, RotateCcw } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
-import { Button } from '@/components/ui/button';
 import { MicButton } from '@/components/stt/MicButton';
 import { useDeepgramStream } from '@/lib/stt/use-deepgram-stream';
-import { getFieldLabel } from '@/lib/cajas-labels';
-import type { Pregunta, AutosaveStatus } from '@/lib/state/entrevista';
+import {
+  SPRING_BUTTON,
+  SPRING_ICON,
+  ghostButtonVariants,
+  solidButtonVariants,
+} from '@/lib/motion-presets';
+import type { AutosaveStatus, Pregunta } from '@/lib/state/entrevista';
 import { cn } from '@/lib/utils';
 
 interface Props {
   pregunta: Pregunta;
   numero: number;
   total: number;
+  /** Sección actual (a11y / accessor); ya no se renderiza en el eyebrow. */
   seccionLabel: string;
-  /** Códigos de cajas que cubre esta pregunta (e.g. ['productos.ofrecidos']).
-      Se renderiza inline como "Tema: Productos ofrecidos · Mercado objetivo". */
+  /** Códigos de cajas que cubre esta pregunta. Disponibles para debug/tooltip. */
   cajasObjetivo: string[];
   texto: string;
   marcada: boolean;
   autosave: AutosaveStatus;
   onChangeTexto: (texto: string) => void;
   onToggleMarcada: (marcada: boolean) => void;
-  /** STT live wiring. False en preview/dev (sin cookie de sesión). */
+  /** STT live wiring. False en preview/dev (sin cookie). */
   sttEnabled?: boolean;
 }
 
-interface AutosaveMeta {
-  text: string;
-  tone: 'muted' | 'success' | 'warn';
-  pulsing: boolean;
-}
-
-// Separa la pregunta canónica de su clarificador secundario. Soporta 2 patrones:
-//   1. "...pregunta? Por ejemplo: ..." — microcopy clásico del fixture/IA
-//   2. "...pregunta1? Y/Si/¿pregunta2?" — pregunta compuesta (la 2da clausula
-//      es secundaria, debe bajar de jerarquía visual sin perder contexto).
-// El "auxiliar" se renderiza con jerarquía menor (foreground/40, 14.5px,
-// regular) sin importar si es ejemplo o pregunta secundaria — el usuario
-// distingue principal vs auxiliar, no la taxonomía del clarificador.
-function splitPreguntaYAuxiliar(texto: string): {
-  pregunta: string;
-  auxiliar: string | null;
-} {
-  // Patrón 1: "Por ejemplo:" microcopy clásico
-  let match = texto.match(/^(.+?)(\s+Por ejemplo:.*)$/);
-  if (match) {
-    return { pregunta: match[1].trim(), auxiliar: match[2].trim() };
-  }
-  // Patrón 2: pregunta compuesta — primer "?" cierra la principal, le sigue
-  // un conector (Y / Si / ¿) que abre la secundaria. Ej:
-  //   "¿Cuál es el monto mínimo? Y si tienen un ticket ideal, ¿cuál sería?"
-  match = texto.match(/^(.+?\?)\s+([YS¿].+\?)\s*$/);
-  if (match) {
-    return { pregunta: match[1].trim(), auxiliar: match[2].trim() };
-  }
+// Separa la pregunta canónica de su clarificador secundario:
+//   1. "...pregunta? Por ejemplo: ..." — microcopy clásico.
+//   2. "...pregunta1? Y/Si/¿pregunta2?" — pregunta compuesta.
+function splitPreguntaYAuxiliar(texto: string) {
+  const m1 = texto.match(/^(.+?)(\s+Por ejemplo:.*)$/);
+  if (m1) return { pregunta: m1[1].trim(), auxiliar: m1[2].trim() };
+  const m2 = texto.match(/^(.+?\?)\s+([YS¿].+\?)\s*$/);
+  if (m2) return { pregunta: m2[1].trim(), auxiliar: m2[2].trim() };
   return { pregunta: texto, auxiliar: null };
 }
 
-function autosaveMeta(status: AutosaveStatus): AutosaveMeta {
-  switch (status) {
-    case 'pending':
-      return { text: 'Por guardar', tone: 'muted', pulsing: true };
-    case 'saving':
-      return { text: 'Guardando', tone: 'muted', pulsing: true };
-    case 'saved':
-      return { text: 'Guardado', tone: 'success', pulsing: false };
-    case 'error':
-      return { text: 'Reintentando…', tone: 'warn', pulsing: true };
-    case 'idle':
-    default:
-      return { text: '', tone: 'muted', pulsing: false };
-  }
-}
+const AUTOSAVE_META: Record<
+  AutosaveStatus,
+  { text: string; tone: 'muted' | 'success' | 'warn'; pulsing: boolean }
+> = {
+  pending: { text: 'Por guardar', tone: 'muted', pulsing: true },
+  saving: { text: 'Guardando', tone: 'muted', pulsing: true },
+  saved: { text: 'Guardado', tone: 'success', pulsing: false },
+  error: { text: 'Reintentando…', tone: 'warn', pulsing: true },
+  idle: { text: '', tone: 'muted', pulsing: false },
+};
 
 export function HeroPregunta({
   pregunta,
   numero,
-  seccionLabel,
-  cajasObjetivo,
+  total,
   texto,
   marcada,
   autosave,
@@ -100,18 +85,20 @@ export function HeroPregunta({
   sttEnabled = false,
 }: Props) {
   const [showMicTooltip, setShowMicTooltip] = useState(false);
-  const meta = autosaveMeta(autosave);
+  const meta = AUTOSAVE_META[autosave];
+  const { pregunta: q, auxiliar } = splitPreguntaYAuxiliar(
+    pregunta.texto_pregunta
+  );
 
+  // STT wiring
   const stt = useDeepgramStream();
   const lastAppendedRef = useRef(0);
   const textoRef = useRef(texto);
   textoRef.current = texto;
 
-  // Cambio de pregunta: cierra el stream activo y resetea el tracker.
+  // Reset STT cuando cambia la pregunta.
   useEffect(() => {
-    if (stt.status === 'streaming' || stt.status === 'connecting') {
-      stt.stop();
-    }
+    if (stt.status === 'streaming' || stt.status === 'connecting') stt.stop();
     lastAppendedRef.current = stt.transcripts.history.length;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pregunta.id]);
@@ -132,124 +119,110 @@ export function HeroPregunta({
     onChangeTexto(previo + sep + fragmento);
   }, [stt.transcripts.history.length, onChangeTexto]);
 
-  const { pregunta: q, auxiliar } = splitPreguntaYAuxiliar(pregunta.texto_pregunta);
-
-  // Tema inline: cajasObjetivo → labels humanos, joined por " · ".
-  const temaLabel =
-    cajasObjetivo.length > 0
-      ? cajasObjetivo.map((c) => getFieldLabel(c)).join(' · ')
-      : null;
-
   return (
-    <article
-      key={pregunta.id}
-      style={{ viewTransitionName: 'question-card' }}
-      className="animate-fade-up"
-    >
-      {/* Eyebrow row — número + sección + chip respondida */}
-      <div className="flex flex-wrap items-center gap-2.5">
-        <span className="text-eyebrow numeric text-gold-deep">
-          P{numero.toString().padStart(2, '0')}
+    <article className="flex flex-col gap-6">
+      {/* ─── 1. HEADER — counter + chip respondida (ghost slot derecha) ─── */}
+      <header className="flex min-h-[28px] items-center justify-between gap-4">
+        <span className="text-[10px] font-medium uppercase tracking-[0.16em] numeric text-gold-deep">
+          Pregunta {numero.toString().padStart(2, '0')}
+          <span className="text-[color:var(--ink)]/30"> de </span>
+          {total.toString().padStart(2, '0')}
         </span>
-        {seccionLabel && (
-          <>
-            <span aria-hidden className="size-1 rounded-full bg-[color:var(--ink)]/20" />
-            <span className="text-eyebrow text-[color:var(--ink)]/45">
-              {seccionLabel}
-            </span>
-          </>
-        )}
-        {marcada && (
-          <span className="ml-auto inline-flex items-center gap-1.5 text-eyebrow text-gold-deep animate-fade-up">
-            <Check className="size-3" strokeWidth={3} />
-            Respondida
-          </span>
+        <span
+          aria-hidden={!marcada}
+          className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--gold)]/12 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-gold-deep ring-1 ring-[color:var(--gold)]/35 transition-opacity duration-200"
+          style={{
+            opacity: marcada ? 1 : 0,
+            visibility: marcada ? 'visible' : 'hidden',
+          }}
+        >
+          <Check className="size-3" strokeWidth={3} />
+          Respondida
+        </span>
+      </header>
+
+      {/* ─── 2. QUESTION — h2 hero + auxiliar opcional ─── */}
+      <div>
+        <h2 className="text-display text-[28px] leading-[1.08] tracking-[-0.025em] text-foreground md:text-[36px] xl:text-[40px]">
+          {q}
+        </h2>
+        {auxiliar && (
+          <p className="mt-4 max-w-[60ch] text-[14.5px] leading-relaxed text-foreground/55">
+            {auxiliar}
+          </p>
         )}
       </div>
 
-      {/* Pregunta hero — tracking apretado, peso 600 */}
-      <h2 className="mt-6 text-display text-[28px] leading-[1.08] tracking-[-0.025em] text-foreground md:text-[36px] xl:text-[40px]">
-        {q}
-      </h2>
-
-      {/* Auxiliar (ejemplo o pregunta secundaria) — jerarquía bajada para que
-          la pregunta principal mantenga el peso hero. Mismo styling para
-          ambos tipos: el usuario distingue principal vs auxiliar, no taxonomía. */}
-      {auxiliar && (
-        <p className="mt-4 max-w-[60ch] text-[14.5px] leading-relaxed text-foreground/40">
-          {auxiliar}
-        </p>
-      )}
-
-      {/* Tema inline — lo que esta pregunta cubre. Reemplaza al RightRail.
-          Una sola línea, joined por bullet middle (·). */}
-      {temaLabel && (
-        <p className="mt-5 text-[13px] tracking-tight text-foreground/45">
-          <span className="text-foreground/30">Tema:</span>{' '}
-          <span className="text-foreground/60">{temaLabel}</span>
-        </p>
-      )}
-
-      {/* Textarea — surface white pure + hairline 1px solid, focus gold */}
-      <div className="mt-8">
+      {/* ─── 3. TEXTAREA + banner Lock (ghost slot debajo) ─── */}
+      <div className="flex flex-col gap-3">
         <Textarea
           value={texto}
           onChange={(e) => onChangeTexto(e.target.value)}
-          placeholder="Empieza a escribir tu respuesta o usa el micrófono…"
+          placeholder={
+            marcada
+              ? 'Respuesta bloqueada. Desmarcá para editar.'
+              : 'Empieza a escribir tu respuesta o usa el micrófono…'
+          }
           rows={5}
-          className={cn(
-            'min-h-[180px] resize-none rounded-xl px-5 py-4 text-base leading-relaxed transition-all',
-            'bg-survey-surface text-foreground placeholder:text-foreground/35',
-            'border border-[color:var(--survey-hairline-strong)] shadow-none',
-            'hover:border-[color:rgb(10_15_28_/_0.18)]',
-            'focus-visible:border-[color:var(--gold)] focus-visible:ring-2 focus-visible:ring-[color:var(--gold)]/15 focus-visible:ring-offset-0'
-          )}
+          readOnly={marcada}
+          aria-readonly={marcada}
           aria-label={`Respuesta a la pregunta ${numero}`}
+          className={cn(
+            'min-h-[180px] max-h-[360px] resize-none overflow-auto rounded-xl px-5 py-4 text-base leading-relaxed transition-all',
+            'placeholder:text-foreground/35 border shadow-none',
+            marcada
+              ? [
+                  'cursor-not-allowed select-text',
+                  'bg-[color:var(--gold)]/[0.05] text-foreground/90',
+                  'border-[color:var(--gold)]/30',
+                  'focus-visible:border-[color:var(--gold)]/40 focus-visible:ring-0',
+                ]
+              : [
+                  'bg-survey-surface text-foreground',
+                  'border-[color:var(--survey-hairline-strong)]',
+                  'hover:border-[color:rgb(10_15_28_/_0.18)]',
+                  'focus-visible:border-[color:var(--gold)] focus-visible:ring-2 focus-visible:ring-[color:var(--gold)]/15 focus-visible:ring-offset-0',
+                ]
+          )}
         />
+
+        {/* Banner Lock ghost slot — siempre montado, opacity toggle */}
+        <div className="min-h-[20px]">
+          <div
+            aria-hidden={!marcada}
+            role="status"
+            className="flex items-center gap-2 text-[12.5px] text-foreground/65 transition-opacity duration-200"
+            style={{
+              opacity: marcada ? 1 : 0,
+              visibility: marcada ? 'visible' : 'hidden',
+            }}
+          >
+            <Lock className="size-3.5 text-gold-deep" strokeWidth={2.25} />
+            <span>
+              Respuesta marcada como definitiva. Desmarcá para editarla.
+            </span>
+          </div>
+        </div>
+
+        {/* STT interim/error (solo cuando sttEnabled) */}
         {sttEnabled && stt.transcripts.interim && (
           <p
-            className="mt-2 px-1 text-sm text-muted-foreground/70 animate-fade-up"
+            className="px-1 text-sm text-muted-foreground/70"
             aria-live="polite"
           >
             {stt.transcripts.interim}…
           </p>
         )}
         {sttEnabled && stt.error && stt.status === 'error' && (
-          <p className="mt-2 px-1 text-xs text-destructive" role="alert">
+          <p className="px-1 text-xs text-destructive" role="alert">
             {stt.error}
           </p>
         )}
       </div>
 
-      {/* Footer — autosave izq, botones der (ghost dictar + filled marcar) */}
-      <footer className="mt-6 flex flex-wrap items-center justify-between gap-4">
-        <div
-          className={cn(
-            'inline-flex items-center gap-2 text-xs font-medium numeric',
-            meta.tone === 'success' && 'text-gold-deep',
-            meta.tone === 'warn' && 'text-amber-700',
-            meta.tone === 'muted' && 'text-foreground/55'
-          )}
-          aria-live="polite"
-        >
-          {meta.text ? (
-            <>
-              <span
-                className={cn(
-                  'inline-block size-1.5 rounded-full',
-                  meta.tone === 'success' && 'bg-gold-deep',
-                  meta.tone === 'warn' && 'bg-amber-500',
-                  meta.tone === 'muted' && 'bg-foreground/40',
-                  meta.pulsing && 'animate-pulse-ring'
-                )}
-                aria-hidden
-              />
-              <span>{meta.text}</span>
-            </>
-          ) : (
-            <span className="text-foreground/35">Borrador autoguardado</span>
-          )}
-        </div>
+      {/* ─── 4. FOOTER — autosave izq, buttons der ─── */}
+      <footer className="flex flex-wrap items-center justify-between gap-4">
+        <AutosaveIndicator meta={meta} />
 
         <div className="flex items-center gap-2">
           {sttEnabled ? (
@@ -261,58 +234,157 @@ export function HeroPregunta({
               className="size-11 [&>svg]:size-4"
             />
           ) : (
-            <div className="relative">
-              <button
-                type="button"
-                disabled
-                onMouseEnter={() => setShowMicTooltip(true)}
-                onMouseLeave={() => setShowMicTooltip(false)}
-                onFocus={() => setShowMicTooltip(true)}
-                onBlur={() => setShowMicTooltip(false)}
-                aria-describedby={`mic-tip-${pregunta.id}`}
-                className="inline-flex h-11 items-center gap-2 rounded-full border border-[color:var(--survey-hairline-strong)] bg-transparent px-5 text-sm font-medium tracking-tight text-foreground/55 transition-colors hover:bg-[color:var(--survey-hover)] hover:text-foreground disabled:cursor-not-allowed disabled:opacity-70"
-              >
-                <Mic className="size-4" />
-                Dictar respuesta
-              </button>
-              {showMicTooltip && (
-                <div
-                  id={`mic-tip-${pregunta.id}`}
-                  role="tooltip"
-                  className="absolute right-0 bottom-full mb-2 w-56 rounded-xl bg-ink px-3 py-2 text-xs text-cream-pure shadow-lg animate-fade-up"
-                >
-                  Disponible solo en sesión real (preview lo desactiva).
-                </div>
-              )}
-            </div>
+            <DictarButtonDisabled
+              preguntaId={pregunta.id}
+              showTooltip={showMicTooltip}
+              onShowTooltip={setShowMicTooltip}
+            />
           )}
 
-          <Button
-            type="button"
-            size="lg"
-            onClick={() => onToggleMarcada(!marcada)}
-            className={cn(
-              'h-11 rounded-full px-5 text-sm font-medium tracking-tight transition-all',
-              'active:scale-[0.98]',
-              marcada
-                ? 'bg-survey-surface text-ink ring-1 ring-[color:var(--gold)]/45 hover:bg-survey-surface'
-                : 'bg-ink text-cream-pure hover:bg-ink-raised'
-            )}
-          >
-            {marcada ? (
-              <>
-                <RotateCcw className="size-4" strokeWidth={2.25} />
-                Desmarcar
-              </>
-            ) : (
-              <>
-                <Check className="size-4" strokeWidth={2.5} />
-                Marcar respondida
-              </>
-            )}
-          </Button>
+          <MarcarButton
+            marcada={marcada}
+            onToggle={() => onToggleMarcada(!marcada)}
+          />
         </div>
       </footer>
     </article>
+  );
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// Subcomponentes inline — para que el JSX principal sea legible.
+// ─────────────────────────────────────────────────────────────────────────────
+
+function AutosaveIndicator({
+  meta,
+}: {
+  meta: (typeof AUTOSAVE_META)[AutosaveStatus];
+}) {
+  return (
+    <div
+      aria-live="polite"
+      className={cn(
+        'inline-flex items-center gap-2 text-xs font-medium numeric',
+        meta.tone === 'success' && 'text-gold-deep',
+        meta.tone === 'warn' && 'text-amber-700',
+        meta.tone === 'muted' && 'text-foreground/55'
+      )}
+    >
+      {meta.text ? (
+        <>
+          <span
+            aria-hidden
+            className={cn(
+              'inline-block size-1.5 rounded-full',
+              meta.tone === 'success' && 'bg-gold-deep',
+              meta.tone === 'warn' && 'bg-amber-500',
+              meta.tone === 'muted' && 'bg-foreground/40',
+              meta.pulsing && 'animate-pulse-ring'
+            )}
+          />
+          <span>{meta.text}</span>
+        </>
+      ) : (
+        <span className="text-foreground/35">Borrador autoguardado</span>
+      )}
+    </div>
+  );
+}
+
+function DictarButtonDisabled({
+  preguntaId,
+  showTooltip,
+  onShowTooltip,
+}: {
+  preguntaId: string;
+  showTooltip: boolean;
+  onShowTooltip: (v: boolean) => void;
+}) {
+  return (
+    <div className="relative">
+      <motion.button
+        type="button"
+        disabled
+        onMouseEnter={() => onShowTooltip(true)}
+        onMouseLeave={() => onShowTooltip(false)}
+        onFocus={() => onShowTooltip(true)}
+        onBlur={() => onShowTooltip(false)}
+        aria-describedby={`mic-tip-${preguntaId}`}
+        initial="rest"
+        animate="rest"
+        variants={ghostButtonVariants}
+        transition={SPRING_BUTTON}
+        className="inline-flex h-12 cursor-not-allowed items-center gap-2.5 rounded-full border border-[color:var(--survey-hairline-strong)] bg-transparent pl-5 pr-2 text-[13.5px] font-medium tracking-tight text-foreground/55 opacity-70 transition-colors"
+      >
+        Dictar respuesta
+        <span
+          aria-hidden
+          className="inline-flex size-8 items-center justify-center rounded-full bg-[color:var(--ink)]/8 text-foreground/65"
+        >
+          <Mic className="size-3.5" strokeWidth={2.25} />
+        </span>
+      </motion.button>
+      {showTooltip && (
+        <div
+          id={`mic-tip-${preguntaId}`}
+          role="tooltip"
+          className="absolute right-0 bottom-full mb-2 w-56 rounded-xl bg-ink px-3 py-2 text-xs text-cream-pure shadow-lg animate-fade-up"
+        >
+          Disponible solo en sesión real (preview lo desactiva).
+        </div>
+      )}
+    </div>
+  );
+}
+
+function MarcarButton({
+  marcada,
+  onToggle,
+}: {
+  marcada: boolean;
+  onToggle: () => void;
+}) {
+  return (
+    <motion.button
+      type="button"
+      onClick={onToggle}
+      initial="rest"
+      animate="rest"
+      whileHover="hover"
+      whileFocus="hover"
+      whileTap="tap"
+      variants={solidButtonVariants}
+      transition={SPRING_BUTTON}
+      className={cn(
+        'inline-flex h-12 min-w-[200px] cursor-pointer items-center justify-between gap-3 rounded-full pl-5 pr-2 text-[13.5px] font-medium tracking-tight transition-colors',
+        'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--gold)]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--survey-card-2)]',
+        marcada
+          ? 'bg-[color:var(--cream-pure)] text-ink ring-1 ring-[color:var(--gold)]/45'
+          : 'bg-ink text-cream-pure shadow-[0_0_0_1px_rgba(244,241,234,0.04),0_20px_50px_-18px_rgba(200,168,100,0.32)] hover:bg-ink-raised'
+      )}
+    >
+      {marcada ? 'Desmarcar' : 'Marcar respondida'}
+      <motion.span
+        aria-hidden
+        variants={{
+          rest: { rotate: 0, scale: 1 },
+          hover: { rotate: marcada ? -45 : 0, scale: 1.06 },
+          tap: { rotate: marcada ? -45 : 0, scale: 0.92 },
+        }}
+        transition={SPRING_ICON}
+        className={cn(
+          'inline-flex size-8 items-center justify-center rounded-full',
+          marcada
+            ? 'bg-[color:var(--ink)] text-[color:var(--gold)]'
+            : 'bg-[color:var(--gold)] text-ink'
+        )}
+      >
+        {marcada ? (
+          <RotateCcw className="size-4" strokeWidth={2.5} />
+        ) : (
+          <Check className="size-4" strokeWidth={2.75} />
+        )}
+      </motion.span>
+    </motion.button>
   );
 }

@@ -1,17 +1,21 @@
 'use client';
 
-// BatchNav minimal — Paleta A (2026-05-09 refactor F3.4).
-//   - Sin pills, sin rings, sin background. Vive como text-link inline en el
-//     footer de card-2 (workspace).
-//   - 3 elementos: "← Anterior" (link/disabled), "X / N" counter (eyebrow numeric),
-//     "Siguiente →" (link/disabled).
-//   - Estado disabled = foreground/30 + cursor-not-allowed (sin chrome extra).
-//   - Hover en links = foreground/100 con underline subtle.
-//   - Mantiene API previa: preguntas[], activeIndex, onChange — la marca de
-//     respondida ya vive en el chip "Respondida" del HeroPregunta + en stepper
-//     superior, no necesitamos re-comunicarla acá.
+// BatchNav minimal — Paleta A (2026-05-09 refactor + spring physics 2026-05-10).
+//   - Sin pills, sin rings, sin background. Vive como text-link inline.
+//   - 3 elementos: "← Anterior" (link), "X / N" counter, "Siguiente →" (link).
+//   - Motion + spring physics (alineado con HeaderCTA del landing):
+//     hover lift + chevron shift (direccional), tap squeeze opacity.
+//   - cursor-pointer cuando enabled, cursor-not-allowed cuando disabled.
 
+import { motion } from 'motion/react';
 import { ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  SPRING_BUTTON,
+  SPRING_ICON,
+  iconShiftLeftVariants,
+  iconShiftRightVariants,
+  linkButtonVariants,
+} from '@/lib/motion-presets';
 import { cn } from '@/lib/utils';
 
 interface DotMeta {
@@ -37,26 +41,43 @@ export function BatchNav({ preguntas, activeIndex, onChange }: Props) {
       aria-label="Navegación entre preguntas del turno"
       className="flex items-center justify-between gap-4 text-[13px]"
     >
-      {/* ← Anterior — link minimal, disabled cuando no hay prev */}
-      <button
+      {/* ← Anterior */}
+      <motion.button
         type="button"
         onClick={() => canPrev && onChange(activeIndex - 1)}
         disabled={!canPrev}
         aria-label="Pregunta anterior"
+        initial="rest"
+        animate="rest"
+        whileHover={canPrev ? 'hover' : 'rest'}
+        whileFocus={canPrev ? 'hover' : 'rest'}
+        whileTap={canPrev ? 'tap' : 'rest'}
+        variants={linkButtonVariants}
+        transition={SPRING_BUTTON}
         className={cn(
-          'inline-flex items-center gap-1.5 font-medium tracking-tight transition-colors duration-200',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--gold)]/30 rounded',
+          'inline-flex items-center gap-1.5 rounded font-medium tracking-tight transition-colors duration-200',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--gold)]/30',
           canPrev
-            ? 'text-foreground/65 hover:text-foreground'
-            : 'text-foreground/25 cursor-not-allowed'
+            ? 'cursor-pointer text-foreground/65 hover:text-foreground'
+            : 'cursor-not-allowed text-foreground/25'
         )}
       >
-        <ChevronLeft className="size-4" strokeWidth={2} />
+        <motion.span
+          variants={iconShiftLeftVariants}
+          transition={SPRING_ICON}
+          className="inline-flex"
+          aria-hidden
+        >
+          <ChevronLeft className="size-4" strokeWidth={2} />
+        </motion.span>
         Anterior
-      </button>
+      </motion.button>
 
-      {/* Counter central — "X / N" + chip "respondidas" sutil */}
-      <div className="flex items-center gap-2.5 text-foreground/55">
+      {/* Counter central — "X / N" + chip "respondidas" como ghost slot.
+          min-w-[140px] reserva el ancho máximo (con "X marcadas" presente)
+          para que el chevron ← Anterior y Siguiente → no se desplacen
+          horizontalmente cuando el chip aparece o desaparece. */}
+      <div className="flex min-w-[180px] items-center justify-center gap-2.5 text-foreground/55">
         <span className="numeric font-medium text-foreground/85">
           {activeIndex + 1}
         </span>
@@ -64,30 +85,51 @@ export function BatchNav({ preguntas, activeIndex, onChange }: Props) {
           /
         </span>
         <span className="numeric text-foreground/55">{total}</span>
-        {respondidas > 0 && (
-          <span className="ml-2 text-eyebrow text-gold-deep">
-            {respondidas} marcada{respondidas === 1 ? '' : 's'}
-          </span>
-        )}
+        <span
+          className="ml-2 text-eyebrow text-gold-deep transition-opacity duration-200"
+          style={{
+            opacity: respondidas > 0 ? 1 : 0,
+            visibility: respondidas > 0 ? 'visible' : 'hidden',
+          }}
+          aria-hidden={respondidas === 0}
+        >
+          {respondidas > 0
+            ? `${respondidas} marcada${respondidas === 1 ? '' : 's'}`
+            : ' '}
+        </span>
       </div>
 
-      {/* Siguiente → — link minimal, disabled cuando no hay next */}
-      <button
+      {/* Siguiente → */}
+      <motion.button
         type="button"
         onClick={() => canNext && onChange(activeIndex + 1)}
         disabled={!canNext}
         aria-label="Siguiente pregunta"
+        initial="rest"
+        animate="rest"
+        whileHover={canNext ? 'hover' : 'rest'}
+        whileFocus={canNext ? 'hover' : 'rest'}
+        whileTap={canNext ? 'tap' : 'rest'}
+        variants={linkButtonVariants}
+        transition={SPRING_BUTTON}
         className={cn(
-          'inline-flex items-center gap-1.5 font-medium tracking-tight transition-colors duration-200',
-          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--gold)]/30 rounded',
+          'inline-flex items-center gap-1.5 rounded font-medium tracking-tight transition-colors duration-200',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--gold)]/30',
           canNext
-            ? 'text-foreground/65 hover:text-foreground'
-            : 'text-foreground/25 cursor-not-allowed'
+            ? 'cursor-pointer text-foreground/65 hover:text-foreground'
+            : 'cursor-not-allowed text-foreground/25'
         )}
       >
         Siguiente
-        <ChevronRight className="size-4" strokeWidth={2} />
-      </button>
+        <motion.span
+          variants={iconShiftRightVariants}
+          transition={SPRING_ICON}
+          className="inline-flex"
+          aria-hidden
+        >
+          <ChevronRight className="size-4" strokeWidth={2} />
+        </motion.span>
+      </motion.button>
     </nav>
   );
 }

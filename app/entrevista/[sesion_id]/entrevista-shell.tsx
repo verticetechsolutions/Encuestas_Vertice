@@ -22,12 +22,12 @@
 
 import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { HeroPregunta } from '@/components/entrevista/HeroPregunta';
 import { BatchNav } from '@/components/entrevista/BatchNav';
 import { Stepper } from '@/components/entrevista/Stepper';
 import { BrandSuccessGlyph } from '@/components/landing/BrandSuccessGlyph';
 import { useEntrevistaStore } from '@/lib/state/entrevista';
-import { withViewTransition } from '@/lib/view-transitions';
 import { getCajaAny, type GrupoUI } from '@/lib/schemas/cajas';
 import {
   Loader2,
@@ -88,12 +88,8 @@ export function EntrevistaShell({
   // se rehidrata del fixture/api y el índice se reinicia).
   const [pregIndex, setPregIndex] = useState(0);
 
-  // Wrapper view-transition para navegación entre preguntas. En Chrome ≥111,
-  // Edge, Safari 18+ activa la animación nativa CSS sobre `view-transition-name:
-  // question-card` (declarada en HeroPregunta + globals.css). En el resto cae
-  // al callback directo (no-op visual, sin throw).
   const navegarAPregunta = useCallback((idx: number) => {
-    withViewTransition(() => setPregIndex(idx));
+    setPregIndex(idx);
   }, []);
 
   // BrandSuccessGlyph overlay al cierre exitoso de turno. Detectamos transición
@@ -140,21 +136,6 @@ export function EntrevistaShell({
     return 'identificacion';
   }, [activePregunta]);
 
-  // Glyph divider entre transición de secciones (ej: Productos → Números).
-  // Cuando grupoActivo cambia, mostramos un ✦ dorado durante 1.2s para
-  // marcar tipográficamente el cambio sin romper el flujo de lectura.
-  const [mostrandoDividerSeccion, setMostrandoDividerSeccion] = useState(false);
-  const grupoAnteriorRef = useRef<GrupoUI | null>(null);
-  useEffect(() => {
-    if (grupoAnteriorRef.current && grupoAnteriorRef.current !== grupoActivo) {
-      setMostrandoDividerSeccion(true);
-      const t = setTimeout(() => setMostrandoDividerSeccion(false), 1200);
-      grupoAnteriorRef.current = grupoActivo;
-      return () => clearTimeout(t);
-    }
-    grupoAnteriorRef.current = grupoActivo;
-  }, [grupoActivo]);
-
   return (
     <div className="relative min-h-screen overflow-x-clip bg-survey-bg">
       {/* Atmosphere — canvas con play visual sutil (F3.5, 2026-05-09).
@@ -185,22 +166,20 @@ export function EntrevistaShell({
         </div>
       )}
 
-      {/* Container único centrado — 2 cards diferenciadas tonalmente:
-          card-1 cream warm (brand + stepper) y card-2 white (workspace).
-          Sin header standalone: el header vive como parte de card-1 para
-          que el viewport se sienta uniforme y orgánico. */}
-      <main className="relative z-10 mx-auto max-w-[720px] space-y-5 px-4 pt-8 pb-16 md:space-y-6 md:px-6 md:pt-12 md:pb-24">
+      {/* Container 2-col (2026-05-09 v3 layout): header navy compacto arriba
+          full-width, debajo grid sidebar (spine) + workspace (pregunta).
+          Mobile <md: el grid colapsa a single col y el spine activa su
+          fallback "Sección X de N" + barra lineal. */}
+      <main className="relative z-10 mx-auto max-w-[1040px] space-y-5 px-4 pt-8 pb-16 md:space-y-7 md:px-6 md:pt-12 md:pb-24">
         {/* ─────────────────────────────────────────────────────────────
-            CARD 1 — Brand + Stepper. Cream warm, asym suave.
-            Logo huge a la izquierda + meta column a la derecha,
-            hairline divider, stepper integrado debajo.
+            CARD 1 — Header navy compacto. Brand + meta only.
+            (El stepper salió: ahora vive en sidebar de la grid debajo.)
            ───────────────────────────────────────────────────────────── */}
         <section
           className="relative overflow-hidden rounded-3xl bg-survey-card-1 border border-[color:var(--survey-card-1-hairline)] animate-fade-up"
           style={{ animationDelay: '0ms' }}
         >
-          {/* Atmosphere internal — landing-aligned vibe sobre el navy ink.
-              Radial gold + noise SVG como el dark hero del landing. */}
+          {/* Atmosphere internal — radial gold + noise sobre navy ink. */}
           <div
             aria-hidden
             className="atmosphere-radial-gold pointer-events-none absolute inset-0"
@@ -210,25 +189,28 @@ export function EntrevistaShell({
             className="atmosphere-noise pointer-events-none absolute inset-0"
           />
 
-          {/* Top row — logo huge izquierda + meta derecha (asym suave) */}
-          <div className="relative flex items-start justify-between gap-6 px-6 pt-6 pb-5 md:px-9 md:pt-8 md:pb-6">
+          {/* Top row — logo huge izquierda + meta derecha (asym suave).
+              Jerarquía: Banco Demo es H1 (peer del logo, el sujeto de la
+              entrevista) y domina la columna derecha. La eyebrow de contexto
+              vive arriba como micro-pre-label, el chip de status va abajo. */}
+          <div className="relative flex items-start justify-between gap-6 px-6 py-5 md:px-9 md:py-6">
             <Image
               src="/Logo_white.svg"
               alt="Vértice"
               width={7095}
               height={2369}
               priority
-              className="h-9 w-auto select-none md:h-10"
+              className="h-11 w-auto select-none md:h-14"
             />
-            <div className="flex flex-col items-end gap-1.5 text-right">
-              <p className="text-eyebrow text-[color:var(--survey-card-1-fg-muted)]">
+            <div className="flex flex-col items-end gap-2 text-right">
+              <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-[color:var(--survey-card-1-fg-faint)]">
                 Entrevista de criterios
               </p>
-              <p className="text-[15px] font-medium tracking-tight text-[color:var(--survey-card-1-fg)]">
+              <p className="text-[19px] font-semibold leading-none tracking-tight text-[color:var(--survey-card-1-fg)] md:text-[20px]">
                 {nombre_institucion}
               </p>
               {preview ? (
-                <span className="inline-flex items-center gap-1.5 text-eyebrow text-gold-bright">
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.16em] text-gold-bright">
                   <span
                     className="size-1.5 rounded-full bg-gold-bright animate-pulse-ring"
                     aria-hidden
@@ -236,7 +218,7 @@ export function EntrevistaShell({
                   Preview UI
                 </span>
               ) : (
-                <span className="inline-flex items-center gap-1.5 text-eyebrow text-[color:var(--survey-card-1-fg-faint)]">
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.16em] text-[color:var(--survey-card-1-fg-faint)]">
                   <span
                     className="size-1.5 rounded-full bg-gold animate-pulse-ring"
                     aria-hidden
@@ -246,43 +228,49 @@ export function EntrevistaShell({
               )}
             </div>
           </div>
-
-          {/* Sin hairline interno: card 1 es una sola pieza unificada (brand
-              + stepper). El espacio padding-top del stepper basta como
-              separador visual sin partir la card. */}
-
-          {/* Stepper integrado en surface dark — colores cream-pure */}
-          <div className="relative px-6 pt-2 pb-6 md:px-9 md:pt-3 md:pb-7">
-            <Stepper
-              porGrupo={cajas_llenas_por_grupo}
-              activo={grupoActivo}
-              surface="dark"
-            />
-          </div>
         </section>
 
         {/* ─────────────────────────────────────────────────────────────
-            CARD 2 — Workspace. White pure, focus absoluto en la pregunta.
-            Pregunta + textarea + acciones + nav minimal al pie.
+            GRID 2-COL — Sidebar spine + workspace pregunta.
+            Sidebar sticky en desktop para que el spine quede visible al
+            scroll del workspace. Mobile colapsa a single col (fallback
+            del Stepper se activa: "Sección X de N" + barra).
            ───────────────────────────────────────────────────────────── */}
-        <section
-          className="rounded-3xl bg-survey-card-2 border border-[color:var(--survey-hairline)] overflow-hidden animate-fade-up"
-          style={{ animationDelay: '80ms' }}
-        >
-          {/* Glyph divider editorial entre secciones (estilo Stratechery * * *) */}
-          {mostrandoDividerSeccion && (
-            <div className="flex justify-center pt-6 animate-fade-up">
-              <span
-                aria-hidden
-                className="text-display text-gold text-[20px] tracking-[1em]"
-              >
-                ✦
-              </span>
+        <div className="grid gap-6 md:grid-cols-[260px_minmax(0,1fr)] md:gap-8">
+          <aside
+            className="md:sticky md:top-8 md:self-start animate-fade-up"
+            style={{ animationDelay: '40ms' }}
+          >
+            {/* Card secundaria — solo border hairline + bg cream pale para
+                diferenciarse del canvas sin invadir el foco del workspace
+                card 2 (white pure). Padding interno generoso reemplaza el
+                hack de pt-12 anterior. */}
+            <div className="rounded-3xl border border-[color:var(--survey-hairline)] bg-[color:var(--cream-pure)]/40 px-5 py-7 md:px-6 md:py-8">
+              <Stepper
+                porGrupo={cajas_llenas_por_grupo}
+                activo={grupoActivo}
+                surface="light"
+              />
             </div>
-          )}
+          </aside>
 
-          {/* Body de la card — pregunta hero (o estados loader/cierre) */}
-          <div className="px-6 pt-8 pb-6 md:px-10 md:pt-10 md:pb-8">
+          {/* CARD 2 — Workspace. White pure, focus absoluto en la pregunta.
+              overflow visible (no hidden) para que box-shadows de buttons
+              hijos puedan extenderse fuera del card sin ser recortados. */}
+          <section
+            className="rounded-3xl bg-survey-card-2 border border-[color:var(--survey-hairline)] animate-fade-up"
+            style={{ animationDelay: '80ms' }}
+          >
+          {/* Body de la card 2 — workspace de la pregunta.
+              motion.div layout anima el cambio de altura entre preguntas.
+              AnimatePresence + opacity fade da el cross-fade entre preguntas.
+              Padding generoso (px-14, pb-12) para que el CTA y su shadow
+              gold respiren del rounded corner del card. */}
+          <motion.div
+            layout
+            transition={{ layout: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } }}
+            className="px-6 pt-8 pb-8 md:px-14 md:pt-10 md:pb-12"
+          >
             {sesionCerrada ? (
               <div className="py-10 text-center animate-fade-up md:py-14">
                 <div className="flex justify-center">
@@ -299,19 +287,29 @@ export function EntrevistaShell({
                 </p>
               </div>
             ) : activePregunta ? (
-              <HeroPregunta
-                pregunta={activePregunta}
-                numero={pregIndex + 1}
-                total={total}
-                seccionLabel={GRUPO_LABEL[grupoActivo]}
-                cajasObjetivo={activePregunta.cajas_objetivo}
-                texto={respuestas[activePregunta.id] ?? ''}
-                marcada={marcadas[activePregunta.id] === true}
-                autosave={autosave[activePregunta.id] ?? 'idle'}
-                onChangeTexto={(t) => setRespuesta(activePregunta.id, t)}
-                onToggleMarcada={(m) => marcarRespondida(activePregunta.id, m)}
-                sttEnabled={!preview}
-              />
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={activePregunta.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  <HeroPregunta
+                    pregunta={activePregunta}
+                    numero={pregIndex + 1}
+                    total={total}
+                    seccionLabel={GRUPO_LABEL[grupoActivo]}
+                    cajasObjetivo={activePregunta.cajas_objetivo}
+                    texto={respuestas[activePregunta.id] ?? ''}
+                    marcada={marcadas[activePregunta.id] === true}
+                    autosave={autosave[activePregunta.id] ?? 'idle'}
+                    onChangeTexto={(t) => setRespuesta(activePregunta.id, t)}
+                    onToggleMarcada={(m) => marcarRespondida(activePregunta.id, m)}
+                    sttEnabled={!preview}
+                  />
+                </motion.div>
+              </AnimatePresence>
             ) : enviando ? (
               <div className="flex items-center justify-center gap-3 py-16">
                 <Loader2 className="size-5 animate-spin text-gold-deep" />
@@ -326,7 +324,7 @@ export function EntrevistaShell({
                 <p className="text-sm text-foreground/55">Cargando preguntas…</p>
               </div>
             )}
-          </div>
+          </motion.div>
 
           {/* BatchNav minimal — footer de card 2, separado por hairline.
               "← Anterior · 1 / 3 · Siguiente →" sin pills ni rings. */}
@@ -346,6 +344,7 @@ export function EntrevistaShell({
             </>
           )}
         </section>
+        </div>
 
         {/* Banner informativo (cierre de sección, transición) */}
         {!sesionCerrada && mensaje_estado && (

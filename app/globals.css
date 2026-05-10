@@ -213,6 +213,12 @@
   }
   html {
     @apply font-sans;
+    /* scrollbar-gutter: stable reserva siempre el espacio del scrollbar
+       vertical (15-17px), aunque la página no tenga overflow. Elimina el
+       horizontal layout shift que ocurre cuando se navega entre páginas/
+       preguntas y una excede el viewport pero la otra no.
+       Soporte: Chrome 94+, Firefox 97+, Safari 18.2+ (universal 2026). */
+    scrollbar-gutter: stable;
   }
   body {
     background-color: var(--canvas);
