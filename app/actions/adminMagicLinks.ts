@@ -6,6 +6,7 @@ import { db } from '@/lib/db';
 import { magic_tokens } from '@/db/schema';
 import { isAdminAuthenticated } from '@/lib/auth/admin';
 import { emitirMagicLink } from './auth';
+import { logger } from '@/lib/observability/axiom';
 
 export type ReenviarMode = 'email' | 'dry_run';
 
@@ -88,7 +89,10 @@ export async function revocarMagicLink(
         gt(magic_tokens.expires_at, now)
       )
     )
-    .returning({ institucion_id: magic_tokens.institucion_id });
+    .returning({
+      institucion_id: magic_tokens.institucion_id,
+      token_hash: magic_tokens.token_hash,
+    });
 
   if (updated.length === 0) {
     return {
@@ -96,6 +100,12 @@ export async function revocarMagicLink(
       error: 'Token no revocable (consumido, expirado o ya revocado).',
     };
   }
+
+  logger.admin.magicLinkRevocado({
+    institucion_id: updated[0].institucion_id,
+    token_hash_prefix: updated[0].token_hash.slice(0, 8),
+    razon: 'manual_admin',
+  });
 
   revalidatePath(`/admin/instituciones/${updated[0].institucion_id}`);
   revalidatePath('/admin/magic-links');

@@ -12,13 +12,43 @@ import { readSessionCookie } from '@/lib/auth/cookie';
 import { db } from '@/lib/db';
 import { sesiones } from '@/db/schema';
 import { grantEphemeralToken } from '@/lib/stt/client';
+import { checkRateLimit, getClientIp, RATE_LIMITS } from '@/lib/security/rate-limit';
+import { checkSameOrigin } from '@/lib/security/csrf';
+import { logger } from '@/lib/observability/axiom';
 
 const TOKEN_TTL_SECONDS = 60;
 
-export async function POST(): Promise<NextResponse> {
+export async function POST(req: Request): Promise<NextResponse> {
+  // CSRF gate: same-origin obligatorio.
+  const csrf = checkSameOrigin(req);
+  if (!csrf.ok) {
+    logger.warn('stt.csrf_rechazado', { error: csrf.error });
+    return NextResponse.json(
+      { error: 'forbidden_origin', message: csrf.error },
+      { status: 403 }
+    );
+  }
+
   const cookie = await readSessionCookie();
   if (!cookie) {
     return NextResponse.json({ error: 'sin_sesion' }, { status: 401 });
+  }
+
+  // Rate limit per-sesion. 20/min cubre reconexiones razonables; bloquea
+  // loops del cliente que pidan token continuamente. Catch-all per-IP no
+  // hace falta acá porque ya se requiere cookie de sesión válida.
+  const rl = checkRateLimit(`stt:sesion:${cookie}`, RATE_LIMITS.sttPerSesion);
+  if (!rl.allowed) {
+    const ip = getClientIp(req);
+    logger.warn('stt.rate_limit', {
+      sesion_id: cookie,
+      ip,
+      retry_after_s: rl.retryAfterSeconds,
+    });
+    return NextResponse.json(
+      { error: 'rate_limited', retry_after_seconds: rl.retryAfterSeconds },
+      { status: 429, headers: { 'Retry-After': String(rl.retryAfterSeconds) } }
+    );
   }
 
   const [row] = await db

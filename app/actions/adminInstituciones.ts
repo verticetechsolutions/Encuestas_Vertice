@@ -5,6 +5,7 @@ import { isAdminAuthenticated } from '@/lib/auth/admin';
 import { crearInstitucion } from '@/app/actions/instituciones';
 import { emitirMagicLink } from '@/app/actions/auth';
 import { CrearInstitucionInputSchema } from '@/lib/auth/contracts';
+import { logger } from '@/lib/observability/axiom';
 
 // State retornado al cliente vía useActionState. Discriminada por `ok` para
 // que el form pueda renderizar éxito vs. errores sin null-checks profundos.
@@ -59,6 +60,17 @@ export async function crearInstitucionConLink(
   try {
     const inst = await crearInstitucion(parsed.data);
     const link = await emitirMagicLink(inst.institucion_id, { dryRun: true });
+
+    // Audit log: institución creada + magic link emitido (el log de
+    // emitirMagicLink ya cubre el lado del token; este lo une al evento
+    // de creación de la institución).
+    logger.admin.institucionCreada({
+      institucion_id: inst.institucion_id,
+      razon_social: parsed.data.razon_social,
+      tipo: parsed.data.tipo,
+      emitio_magic_link: true,
+    });
+
     return {
       ok: true,
       institucion_id: inst.institucion_id,

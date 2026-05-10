@@ -7,6 +7,8 @@
 import { NextResponse, type NextRequest } from 'next/server';
 import { verificarMagicLink } from '@/app/actions/auth';
 import { SESSION_COOKIE } from '@/lib/auth/cookie';
+import { checkRateLimit, getClientIp, RATE_LIMITS } from '@/lib/security/rate-limit';
+import { logger } from '@/lib/observability/axiom';
 
 const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30;
 
@@ -14,6 +16,23 @@ export async function GET(
   req: NextRequest,
   { params }: { params: Promise<{ token: string }> }
 ) {
+  // Rate limit per-IP. Magic tokens son base64url 24 bytes (192 bits) —
+  // brute force es computacionalmente infeasible incluso sin cap, pero
+  // el cap evita amplificación + protege contra patrones de scraping
+  // automatizado de URLs sospechosas. 10/min/IP da 5-10 reintentos
+  // genuinos antes de bloquear.
+  const ip = getClientIp(req);
+  const rl = checkRateLimit(`acceso:ip:${ip}`, RATE_LIMITS.accesoPerIp);
+  if (!rl.allowed) {
+    logger.warn('acceso.rate_limit', { ip, retry_after_s: rl.retryAfterSeconds });
+    // Redirect a expirado con razón especial — ya tenemos la página
+    // /acceso/expirado preparada para mostrar mensaje al usuario.
+    const fail = new URL('/acceso/expirado?razon=rate_limited', req.url);
+    const res = NextResponse.redirect(fail);
+    res.headers.set('Retry-After', String(rl.retryAfterSeconds));
+    return res;
+  }
+
   const { token } = await params;
   const outcome = await verificarMagicLink(token);
 

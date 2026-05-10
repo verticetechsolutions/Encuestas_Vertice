@@ -122,6 +122,48 @@ export interface SesionSintesisFailedPayload {
   error: string;
 }
 
+// =============================================================================
+// Admin audit log payloads (security-hardening 2026-05-10)
+// =============================================================================
+// Eventos de auditoría para acciones administrativas. NUNCA incluir el token
+// admin ni el plaintext del magic link en el payload — solo metadata.
+
+export interface AdminLoginPayload {
+  ip: string;
+  // user_agent truncado a 200 chars para evitar logs gigantes con strings UA
+  // patológicos.
+  user_agent: string | null;
+}
+
+export interface AdminLoginFallidoPayload {
+  ip: string;
+  user_agent: string | null;
+  // 'admin_disabled' | 'admin_invalid_token' | 'rate_limited'
+  razon: string;
+}
+
+export interface AdminInstitucionCreadaPayload {
+  institucion_id: string;
+  razon_social: string;
+  tipo: string;
+  emitio_magic_link: boolean;
+}
+
+export interface AdminMagicLinkEmitidoPayload {
+  institucion_id: string;
+  // Hash del token (SHA-256 hex), NUNCA el plaintext.
+  token_hash_prefix: string; // primeros 8 chars del hash, para correlación con audit
+  expires_at: string; // ISO
+  dry_run: boolean;
+}
+
+export interface AdminMagicLinkRevocadoPayload {
+  institucion_id: string;
+  token_hash_prefix: string;
+  // 'reemision' | 'manual_admin'
+  razon: string;
+}
+
 function emit(level: LogLevel, event: string, payload: object = {}) {
   // `object` aceptamos tanto Record<string, unknown> como interfaces tipadas
   // sin index signature (los typed payloads de Phase 5 step 5). El spread funciona
@@ -191,6 +233,21 @@ export const logger = {
       emit('info', 'sesion.lista_para_sintesis', p),
     sintesisFailed: (p: SesionSintesisFailedPayload) =>
       emit('error', 'sesion.sintesis_failed', p),
+  },
+
+  // Admin audit log — security-hardening 2026-05-10. Estos eventos son la
+  // base del compliance trail de acciones administrativas. NUNCA loguear
+  // tokens plaintext en los payloads.
+  admin: {
+    login: (p: AdminLoginPayload) => emit('info', 'admin.login', p),
+    loginFallido: (p: AdminLoginFallidoPayload) =>
+      emit('warn', 'admin.login_fallido', p),
+    institucionCreada: (p: AdminInstitucionCreadaPayload) =>
+      emit('info', 'admin.institucion_creada', p),
+    magicLinkEmitido: (p: AdminMagicLinkEmitidoPayload) =>
+      emit('info', 'admin.magic_link_emitido', p),
+    magicLinkRevocado: (p: AdminMagicLinkRevocadoPayload) =>
+      emit('info', 'admin.magic_link_revocado', p),
   },
 
   flush: async () => {

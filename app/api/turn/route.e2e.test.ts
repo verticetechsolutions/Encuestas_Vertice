@@ -135,17 +135,29 @@ import { POST } from './route';
 // UUID v4 válido bajo Zod v4 strict (version=4, variant=[8-b]).
 const SESION_VALIDA_UUID = '11111111-1111-4111-8111-111111111111';
 
-function makeRequest(body: unknown, opts: { rawBody?: string } = {}) {
+function makeRequest(
+  body: unknown,
+  opts: { rawBody?: string; origin?: string | null } = {}
+) {
   const bodyStr =
     opts.rawBody !== undefined ? opts.rawBody : JSON.stringify(body);
+  const headers: Record<string, string> = { 'content-type': 'application/json' };
+  // CSRF check requiere Origin same-origin con NEXT_PUBLIC_APP_URL o el host
+  // del request. Default same-origin para que los tests de gate sigan
+  // pasando; tests específicos de CSRF override con `origin: '...'` o `null`.
+  if (opts.origin === undefined) {
+    headers.origin = 'http://localhost:3000';
+  } else if (opts.origin !== null) {
+    headers.origin = opts.origin;
+  }
   return new Request('http://localhost:3000/api/turn', {
     method: 'POST',
-    headers: { 'content-type': 'application/json' },
+    headers,
     body: bodyStr,
   });
 }
 
-beforeEach(() => {
+beforeEach(async () => {
   // Reset estado controlado: prompt listo + sin sesión configurada.
   mockState.promptReady = true;
   mockState.sesionRow = null;
@@ -153,6 +165,10 @@ beforeEach(() => {
   // Default: db.select().from()...limit() resuelve a [] (sesión no existe).
   // Los tests que necesiten una sesión la inyectan vía mockDbSelect.mockReturnValueOnce.
   mockDbSelect.mockReturnValue([]);
+  // Reset rate limiter state — sino tests del mismo archivo se interfieren
+  // (especialmente los que hacen muchos requests para validar el cap).
+  const { _resetRateLimitState } = await import('@/lib/security/rate-limit');
+  _resetRateLimitState();
 });
 
 // =============================================================================
@@ -286,5 +302,107 @@ describe('POST /api/turn — gates', () => {
         if (done) break;
       }
     }
+  });
+
+  // ===========================================================================
+  // Security gates añadidos en feat/security-hardening
+  // ===========================================================================
+
+  it('8. CSRF — request sin Origin ni Referer → 403 forbidden_origin', async () => {
+    const res = await POST(
+      makeRequest(
+        { sesion_id: SESION_VALIDA_UUID, mensaje_usuario: 'hola' },
+        { origin: null }
+      )
+    );
+    expect(res.status).toBe(403);
+    const json = (await res.json()) as { error: string; message: string };
+    expect(json.error).toBe('forbidden_origin');
+    expect(json.message).toBe('missing_origin_and_referer');
+  });
+
+  it('8b. CSRF — Origin de otro dominio → 403 forbidden_origin', async () => {
+    const res = await POST(
+      makeRequest(
+        { sesion_id: SESION_VALIDA_UUID, mensaje_usuario: 'hola' },
+        { origin: 'https://malicious.example' }
+      )
+    );
+    expect(res.status).toBe(403);
+    const json = (await res.json()) as { error: string; message: string };
+    expect(json.error).toBe('forbidden_origin');
+    expect(json.message).toContain('origin_not_allowed');
+  });
+
+  it('9. mensaje_usuario > 8000 chars → 400 invalid_request', async () => {
+    const huge = 'a'.repeat(8001);
+    const res = await POST(
+      makeRequest({ sesion_id: SESION_VALIDA_UUID, mensaje_usuario: huge })
+    );
+    expect(res.status).toBe(400);
+    const json = (await res.json()) as { error: string };
+    expect(json.error).toBe('invalid_request');
+  });
+
+  it('10. Rate limit IP — 101 req desde misma IP → 429 rate_limited', async () => {
+    mockDbSelect.mockReturnValue([
+      { status: 'abierta', consentimiento_at: new Date('2026-05-01'), tipo: 'banco' },
+    ]);
+
+    // RATE_LIMITS.turnPerIp.capacity = 100. Hacemos 100 requests OK y la 101
+    // debería bloquearse. Cada response stream consume el body para liberar.
+    let last: Response | null = null;
+    for (let i = 0; i < 101; i++) {
+      const res = await POST(
+        makeRequest({ sesion_id: SESION_VALIDA_UUID, mensaje_usuario: 'turno ' + i })
+      );
+      // Drenar body si stream para liberar el reader.
+      if (res.body && res.status === 200) {
+        const reader = res.body.getReader();
+        while (true) {
+          const { done } = await reader.read();
+          if (done) break;
+        }
+      }
+      last = res;
+    }
+    expect(last?.status).toBe(429);
+    const json = (await last!.json()) as { error: string; retry_after_seconds: number };
+    expect(json.error).toBe('rate_limited');
+    expect(json.retry_after_seconds).toBeGreaterThan(0);
+    expect(last!.headers.get('retry-after')).toBeTruthy();
+  }, 30_000);
+
+  it('11. Rate limit por sesion — bucket exhausto → 429', async () => {
+    mockDbSelect.mockReturnValue([
+      { status: 'abierta', consentimiento_at: new Date('2026-05-01'), tipo: 'banco' },
+    ]);
+
+    // Strategy determinística: en lugar de hacer 30+ POST consecutivos (timing-
+    // sensitive porque el bucket refilla a 0.5 token/s entre requests), agotamos
+    // el bucket directamente vía la función pura — equivalente a 30 POST sin
+    // tiempo transcurrido — y luego hacemos 1 POST que debe ser 429.
+    const { checkRateLimit, RATE_LIMITS } = await import('@/lib/security/rate-limit');
+    for (let i = 0; i < RATE_LIMITS.turnPerSesion.capacity; i++) {
+      checkRateLimit(`turn:sesion:${SESION_VALIDA_UUID}`, RATE_LIMITS.turnPerSesion);
+    }
+
+    const req = new Request('http://localhost:3000/api/turn', {
+      method: 'POST',
+      headers: {
+        'content-type': 'application/json',
+        origin: 'http://localhost:3000',
+        // IP única para que el limit per-IP no se interponga.
+        'x-forwarded-for': '10.99.0.1',
+      },
+      body: JSON.stringify({
+        sesion_id: SESION_VALIDA_UUID,
+        mensaje_usuario: 'this should be blocked',
+      }),
+    });
+    const res = await POST(req);
+    expect(res.status).toBe(429);
+    const json = (await res.json()) as { error: string };
+    expect(json.error).toBe('rate_limited');
   });
 });
