@@ -25,6 +25,7 @@ import { Check, Lock, Mic, RotateCcw } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { MicButton } from '@/components/stt/MicButton';
 import { useDeepgramStream } from '@/lib/stt/use-deepgram-stream';
+import { appendTranscriptSegments } from '@/lib/stt/append-transcript';
 import {
   SPRING_BUTTON,
   SPRING_ICON,
@@ -103,21 +104,18 @@ export function HeroPregunta({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pregunta.id]);
 
-  // Append de segmentos finalizados nuevos al texto.
+  // Append de segmentos finalizados nuevos al texto. Lógica pura aislada en
+  // lib/stt/append-transcript.ts para que sea unit-testable sin jsdom/RTL.
   useEffect(() => {
-    const len = stt.transcripts.history.length;
-    if (len === lastAppendedRef.current) return;
-    const nuevos = stt.transcripts.history.slice(lastAppendedRef.current);
-    const fragmento = nuevos
-      .map((s) => s.text.trim())
-      .filter(Boolean)
-      .join(' ');
-    lastAppendedRef.current = len;
-    if (!fragmento) return;
-    const previo = textoRef.current;
-    const sep = previo.length === 0 || /\s$/.test(previo) ? '' : ' ';
-    onChangeTexto(previo + sep + fragmento);
-  }, [stt.transcripts.history.length, onChangeTexto]);
+    const { nextTexto, consumidos } = appendTranscriptSegments(
+      textoRef.current,
+      stt.transcripts.history,
+      lastAppendedRef.current
+    );
+    if (consumidos === lastAppendedRef.current) return;
+    lastAppendedRef.current = consumidos;
+    if (nextTexto !== textoRef.current) onChangeTexto(nextTexto);
+  }, [stt.transcripts.history, onChangeTexto]);
 
   return (
     <article className="flex flex-col gap-6">
@@ -125,7 +123,7 @@ export function HeroPregunta({
       <header className="flex min-h-[28px] items-center justify-between gap-4">
         <span className="text-[10px] font-medium uppercase tracking-[0.16em] numeric text-gold-deep">
           Pregunta {numero.toString().padStart(2, '0')}
-          <span className="text-[color:var(--ink)]/30"> de </span>
+          <span className="text-[color:var(--ink)]/60"> de </span>
           {total.toString().padStart(2, '0')}
         </span>
         <span
@@ -147,7 +145,7 @@ export function HeroPregunta({
           {q}
         </h2>
         {auxiliar && (
-          <p className="mt-4 max-w-[60ch] text-[14.5px] leading-relaxed text-foreground/55">
+          <p className="mt-4 max-w-[60ch] text-[14.5px] leading-relaxed text-foreground/70">
             {auxiliar}
           </p>
         )}
@@ -285,7 +283,7 @@ function AutosaveIndicator({
           <span>{meta.text}</span>
         </>
       ) : (
-        <span className="text-foreground/35">Borrador autoguardado</span>
+        <span className="text-foreground/70">Borrador autoguardado</span>
       )}
     </div>
   );
