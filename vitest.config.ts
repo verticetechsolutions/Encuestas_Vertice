@@ -17,6 +17,18 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true,
   },
+  // JSX en `.tsx` (Phase 8 PDF template). Vite 7 + Vitest 4 usan rolldown-vite
+  // con oxc como transformer (no esbuild). El tsconfig del proyecto declara
+  // `jsx: "preserve"` para que Next 15 maneje JSX en runtime; los tests
+  // corren fuera de Next y necesitan transformar JSX antes de ejecutar.
+  // `runtime: 'automatic'` activa el runtime moderno de React 17+ y permite
+  // archivos `.tsx` sin `import React from 'react'`.
+  oxc: {
+    jsx: {
+      runtime: 'automatic',
+      development: false,
+    },
+  },
   test: {
     environment: 'node',
     globals: false,
