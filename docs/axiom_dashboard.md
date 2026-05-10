@@ -16,7 +16,7 @@ Las queries usan APL (Axiom Processing Language). Dataset: `vertice-prod` (o
 | `review.opus_call_fallido` | error | `processSolicitarReview` | `ReviewOpusCallFallidoPayload` |
 | `review.opus_response_invalida` | error | `processSolicitarReview` | `ReviewOpusCallFallidoPayload` |
 | `review.profundizacion.caja_collateral` | info | (TODO step posterior — emite cuando Sonnet re-extrae caja fuera de `cajas_a_reabordar`) | `ReviewProfundizacionCajaCollateralPayload` |
-| `extraccion.contradice_sin_previa` | warn | (TODO step posterior — emite cuando flag `contradice_extraccion_previa` no encuentra previa) | `ExtraccionContradiceSinPreviaPayload` |
+| `extraccion.contradice_sin_previa` | warn | `app/api/turn/route.ts` registrar_extraccion handler | `ExtraccionContradiceSinPreviaPayload` |
 | `decline_to_answer.registrado` | info | `declinarCaja` | `DeclineRegistradoPayload` |
 | `caso.consumido_por_grupo` | info | (TODO step posterior — emite tras consumir caso vía review desde §4.2.3) | `CasoConsumidoPorGrupoPayload` |
 | `sesion.lista_para_sintesis` | info | `dispatchSesionListaParaSintesis` | `SesionListaParaSintesisPayload` |
@@ -134,19 +134,22 @@ Tres alertas a configurar en Axiom (no son código, son config UI):
 
 ## Eventos pendientes de wiring (TODO posterior)
 
-Tres eventos están definidos en `axiom.ts` pero sus emisión sites no están
-implementados todavía. Se completan en steps posteriores:
+Quedan 2 eventos cuyos sites de emisión dependen de features no
+implementadas. Sus typed helpers (`logger.review.profundizacionCajaCollateral`,
+etc.) existen en `logger`; cuando los sites se implementen, basta llamarlos:
 
-1. `review.profundizacion.caja_collateral` — emitir desde el handler de
-   `registrar_extraccion` (no este step) cuando Sonnet re-extrae una caja fuera
-   de `cajas_a_reabordar` durante un round de profundización (necesita conocer
-   el round actual y el set de cajas autorizadas).
-2. `extraccion.contradice_sin_previa` — emitir desde el handler de
-   `registrar_extraccion` cuando `contradice_extraccion_previa=true` pero no
-   existe extracción previa para esa caja en la DB.
-3. `caso.consumido_por_grupo` — emitir desde el pipeline de caso sintético
-   cuando un caso se consume tras una decisión `caso_sintetico` de Opus. El
-   payload requiere contar casos acumulados por grupo y por sesión.
+1. `review.profundizacion.caja_collateral` — bloqueado por necesidad de
+   trackear `round actual` + `cajas_a_reabordar` por grupo en la sesión. No
+   hay state machine session-level que el handler `registrar_extraccion`
+   pueda consultar todavía.
+2. `caso.consumido_por_grupo` — bloqueado por pipeline de caso sintético
+   (gateado por `CASOS_PIPELINE_READY=false`). Cuando aterrice ese pipeline,
+   emitir el evento al consumir un caso tras decisión `caso_sintetico` de
+   Opus. El payload cuenta casos acumulados por grupo y por sesión.
 
-Sus typed helpers (`logger.review.profundizacionCajaCollateral`, etc.) ya
-existen en `logger`; cuando los sites se implementen, basta llamarlos.
+### Eventos resueltos
+
+- `extraccion.contradice_sin_previa` — wirado en `app/api/turn/route.ts`
+  (registrar_extraccion handler). Emite warn cuando Sonnet marca
+  `contradice_extraccion_previa=true` pero el batch persistente no encontró
+  previa (`supersedido_id === undefined`). 2026-05-10.

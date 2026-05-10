@@ -112,7 +112,7 @@ vi.mock('@/lib/observability/axiom', () => ({
     decline: { caja: vi.fn() },
     caso: { generadoPorGrupo: vi.fn(), consumidoPorGrupo: vi.fn() },
     sesion: { listaParaSintesis: vi.fn() },
-    extraccion: { persistida: vi.fn() },
+    extraccion: { persistida: vi.fn(), contradiceSinPrevia: vi.fn() },
   },
 }));
 

@@ -939,7 +939,7 @@ Approach: magic link de un solo uso (token plain en URL del email, hash SHA-256 
 **Pendientes (no bloqueantes para Fase 5):**
 - [ ] `RESEND_API_KEY` en `.env.local` — vacía actualmente. Hasta que la pongas, `--dry-run` imprime el link a consola; abre el link a mano en navegador para validar el flujo HTML.
 - [ ] Dominio verificado en Resend para `EMAIL_FROM=hola@verticemexico.com`.
-- [ ] Cleanup post-Fase 4: las columnas `instituciones.magic_link_token` y `magic_link_expires_at` quedan dead-but-present (founder dijo "no toca tablas existentes"); cleanup en migración futura cuando convenga.
+- [x] Cleanup post-Fase 4: columnas `instituciones.magic_link_token` y `magic_link_expires_at` removidas en migración `0004_drop_dead_magic_link_cols.sql` (2026-05-10). El flujo magic-link real vive en `magic_tokens` (Fase 4, migración 0001).
 
 ### Fase 5 · Motor conversacional core (8 horas) — 🟡 EN PROGRESO (todo cerrado salvo sub-paso 5.iv 🔒 prompts Opus + ANTHROPIC_API_KEY)
 
@@ -1201,24 +1201,21 @@ Items conocidos pero deferred. Listar aquí evita que se pierdan.
 
 ### ~~Inngest wiring para `sesion/lista_para_sintesis`~~ ✅ RESUELTO (commit 9, ver §20)
 
-### Eventos Axiom sin emission site (3)
+### Eventos Axiom sin emission site (2)
 
-`docs/axiom_dashboard.md` lista 3 eventos cuyo wiring queda para steps
-posteriores: `review.profundizacion.caja_collateral`,
-`extraccion.contradice_sin_previa`, `caso.consumido_por_grupo`. Los typed
-helpers ya existen en `logger.*`; los call sites se agregarán cuando se
-implementen `registrar_extraccion` (handler real con supersede chain) y el
-pipeline de casos sintéticos.
+`docs/axiom_dashboard.md` lista los eventos pendientes de wiring. Los typed
+helpers ya existen en `logger.*`; los call sites se agregarán cuando aterricen
+las features que dependen:
 
-### `mapa_incertidumbre` no incorpora `cajas_declinadas`
+1. `review.profundizacion.caja_collateral` — bloqueado por necesidad de
+   trackear `round actual` + `cajas_a_reabordar` por grupo en la sesión. No
+   hay state machine session-level que el handler `registrar_extraccion`
+   pueda consultar todavía.
+2. `caso.consumido_por_grupo` — bloqueado por pipeline de casos sintéticos
+   (`CASOS_PIPELINE_READY=false`). Cuando aterrice ese pipeline, emitir el
+   evento al consumir un caso tras decisión `caso_sintetico` de Opus.
 
-`computeMapaIncertidumbre` en `lib/motor/mapa.ts` aún no considera
-`cajas_declinadas` como `terminal` (similar a `no_aplica`). Spec v2 §7 documenta
-esto como follow-up. Mientras tanto: `sintesis_final.ts` consume
-`cajas_declinadas` directamente al armar el perfil; el `mapa_incertidumbre`
-expone una visión incompleta (cajas declinadas se ven como `parcial`/`vacia`).
-Aceptable para v1 mientras no se construya UI que dependa del estado declined
-en tiempo real.
+`extraccion.contradice_sin_previa` se resolvió 2026-05-10 (ver §20).
 
 ### Integration tests contra Neon branch efímero
 
@@ -1267,6 +1264,59 @@ intención del código; la integración real es seguro pre-prod, no pre-merge).
 Registro auditable de items que estuvieron en §19 y se cerraron. Listar aquí
 (en vez de borrar) preserva el historial para postmortems y para entender por
 qué algo está como está al releer.
+
+### `mapa_incertidumbre` + `cajas_declinadas` — resuelto pre-2026-05-10
+
+**Origen:** §19 (versión previa) listaba que `computeMapaIncertidumbre` no
+consideraba `cajas_declinadas` como terminal. Auditoría 2026-05-10 confirma
+que la deuda quedó stale — el código se cerró en algún commit posterior
+(probablemente parte del wiring de Phase 5 step 5).
+
+**Estado actual:**
+- `lib/motor/mapa.ts:64` acepta `cajasDeclinadas: readonly string[]` como
+  3er parámetro y trata `'declinada'` como `CajaStatus` terminal con override
+  sobre cualquier estado de extracción.
+- `app/api/turn/route.ts:315` ya pasa el set de declinadas (vía
+  `listarCajasDeclinadas`) a `computeMapaIncertidumbre`.
+- `lib/motor/mapa.test.ts` cubre el path declined (líneas 78, 86, 100, 103).
+
+**Por qué se cierra ahora:** el doc seguía listándolo como pendiente; al
+auditar §19 antes de tocar otra cosa, confirmamos que la implementación
+existía. Movido a §20 para no inducir trabajo duplicado.
+
+### Cleanup columnas dead `instituciones.magic_link_token` + `magic_link_expires_at` — resuelto 2026-05-10
+
+**Origen:** Fase 4 dejó las dos columnas como dead-but-present (founder dijo
+"no toca tablas existentes"). El flujo magic-link real usa la tabla separada
+`magic_tokens` (Fase 4 migración 0001). Auditoría 2026-05-10 confirmó cero
+uso en código.
+
+**Cambios concretos:**
+- `db/schema.ts` — removidas las dos columnas de la definición de
+  `instituciones`. Comentario apunta a la migración.
+- `db/migrations/0004_drop_dead_magic_link_cols.sql` — manual migration
+  (patrón espejo de `0003_magic_token_revoked_at.sql`). Ejecuta DROP CONSTRAINT
+  + 2 DROP COLUMN con `IF EXISTS` para idempotencia. **NO aplicada
+  automáticamente** — founder la aplica manualmente al merge contra
+  `vertice-mvp/main`.
+
+### Eventos Axiom — `extraccion.contradice_sin_previa` wirado 2026-05-10
+
+**Origen:** §19 listaba 3 eventos sin emission site. Auditoría 2026-05-10
+identificó que `extraccion.contradice_sin_previa` no requería gating de otras
+features y se podía wirear directamente.
+
+**Cambios concretos:**
+- `app/api/turn/route.ts:registrar_extraccion.execute` — track paralelo
+  `contradiceFlags[i]` con el flag `contradice_extraccion_previa` por item;
+  tras `persistirExtraccionesBatch`, emite `logger.extraccion.contradiceSinPrevia`
+  para los items donde `contradice=true` pero `supersedido_id` quedó
+  undefined (no había previa).
+- `docs/axiom_dashboard.md` — tabla de eventos actualizada; sección "pendientes"
+  reducida a 2 (ambos gateados por features no implementadas).
+
+Los otros 2 (`review.profundizacion.caja_collateral` y `caso.consumido_por_grupo`)
+quedan en §19 con explicación del bloqueo.
 
 ### Inngest wiring para `sesion/lista_para_sintesis` — resuelto 2026-05-02
 
