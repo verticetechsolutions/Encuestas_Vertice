@@ -29,6 +29,8 @@ import {
   OpusSintesisPromptNotReady,
   SesionNoEncontradaError,
 } from '@/lib/motor/sintesis_final';
+import { generarPdfSintesis } from '@/lib/motor/sintesis_pdf';
+import type { PerfilDecisionFinal } from '@/lib/schemas/perfil_decision_final';
 
 export const sintetizarSesion = inngest.createFunction(
   {
@@ -66,10 +68,14 @@ export const sintetizarSesion = inngest.createFunction(
           completitud: r.perfil.metricas.completitud,
           confianza_global: r.perfil.metricas.confianza_global,
         });
+        // Pasamos el perfil completo al siguiente step para evitar una
+        // segunda lectura de DB. Los step outputs son JSON-serializables y
+        // PerfilDecisionFinal es jsonb-shaped por construcción.
         return {
           perfil_id: r.perfil_id,
           version: r.version,
           status_transition: r.status_transition,
+          perfil: r.perfil,
         };
       } catch (err) {
         // Errores que no resuelven con retry — los marcamos NonRetriable para
@@ -101,6 +107,63 @@ export const sintetizarSesion = inngest.createFunction(
       }
     });
 
-    return result;
+    // Step separado para el PDF: aislamos la generación del documento de la
+    // síntesis Opus. Si el PDF falla (Chromium crash, OOM, fonts no leíbles)
+    // NO queremos rehacer la llamada a Opus — el perfil ya está persistido y
+    // la sesión ya está marcada `completa`. Inngest cachea el step previo y
+    // sólo reintentaría éste. Errores de PDF se loguean pero no fallan la
+    // function — el perfil_decision_final es el entregable canónico, el PDF
+    // es un nice-to-have hasta que tengamos storage real (Fase 10).
+    await step.run('generar-pdf', async () => {
+      // Inngest serializa el output de cada step. `result.perfil` viene del
+      // step previo intacto pero typescript lo ve como cualquier shape;
+      // narrowing explícito antes del render. Cast directo a
+      // PerfilDecisionFinal: el shape es estable post-validación Zod en
+      // procesarSintesisFinal y JSON.parse(JSON.stringify(...)) preserva
+      // todo salvo Date — ver normalización abajo.
+      const perfilRaw = result.perfil as PerfilDecisionFinal & { generado_at: string | Date };
+      const perfil: PerfilDecisionFinal = {
+        ...perfilRaw,
+        // Inngest serializa Dates como ISO strings; el template acepta ambos
+        // pero coercemos para consistencia con el shape original.
+        generado_at:
+          typeof perfilRaw.generado_at === 'string'
+            ? new Date(perfilRaw.generado_at)
+            : perfilRaw.generado_at,
+      };
+      try {
+        const pdf = await generarPdfSintesis(perfil);
+        // Storage queda como TODO Fase 10. Por ahora sólo medimos que el
+        // pipeline produce un PDF plausible (>20KB) y lo logueamos. Cuando
+        // aterrice Vercel Blob, este step llama blobStorage.put(buffer) y
+        // persiste la URL en perfil_decision_final.pdf_url.
+        logger.info('inngest.generar_pdf.ok', {
+          event_id: event.id,
+          sesion_id: data.sesion_id,
+          perfil_id: result.perfil_id,
+          pdf_bytes: pdf.bytes,
+        });
+        return { bytes: pdf.bytes };
+      } catch (err) {
+        logger.error('inngest.generar_pdf.fallo', {
+          event_id: event.id,
+          sesion_id: data.sesion_id,
+          perfil_id: result.perfil_id,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        // Non-fatal: el perfil ya está persistido. Devolvemos error markdown
+        // sin re-throw para que Inngest no reintente este step.
+        return { error: err instanceof Error ? err.message : 'unknown' };
+      }
+    });
+
+    // El return final NO incluye `perfil` — Inngest persiste el output
+    // completo del handler en su event history y no queremos duplicar la
+    // jsonb del perfil que ya vive en perfil_decision_final.
+    return {
+      perfil_id: result.perfil_id,
+      version: result.version,
+      status_transition: result.status_transition,
+    };
   }
 );
