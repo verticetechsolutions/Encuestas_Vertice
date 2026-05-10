@@ -1217,6 +1217,63 @@ las features que dependen:
 
 `extraccion.contradice_sin_previa` se resolvió 2026-05-10 (ver §20).
 
+### Google SSO real (post-MVP)
+
+**Estado:** la landing pública (`app/page.tsx:870`) muestra un botón
+"Continuar con Google" que abre un dialog "Próximamente. La autenticación
+con Google estará disponible al activar el panel". El flujo único activo
+hoy es magic link via email. El stub está intencional — la UI promete la
+opción para el día que aterrice.
+
+**Por qué importa para el roadmap:**
+- Aliados financieros institucionales (CNBV-regulados) esperan SSO con
+  cuenta corporativa (Google Workspace dominante en pyme MX). Magic link
+  por email funciona pero los compliance teams suelen requerir auth
+  federado.
+- Acelera onboarding al 2do, 3er, Nº piloto: en lugar de generar magic
+  link manual desde admin por cada nuevo usuario de la institución, el
+  founder pre-autoriza el dominio (e.g. `@bancodemo.mx`) y cualquier
+  empleado con cuenta Google de ese dominio entra directo.
+- Reduce superficie de ataque a magic links (que viven 7 días con TTL
+  fijo). SSO permite revocar al instante via Google Workspace admin.
+
+**Decisiones arquitectónicas pendientes (founder + tech):**
+1. **Scope:** ¿solo aliado-side, solo admin-side, ambos, o pivot completo
+   reemplazando magic link? `lib/auth/admin.ts:13` ya menciona "puede
+   pivotar a OAuth/SSO sin tocar el contrato".
+2. **Provider:** ¿`next-auth` (Auth.js) v5, `@auth/core` direct, o
+   implementación custom contra Google OAuth 2.0 + OIDC? next-auth da
+   más rápido (adapter Drizzle existe), implementación custom da control
+   sobre el cookie shape para no romper el contrato actual de
+   `vertice_session = sesion_id`.
+3. **Mapping a `sesiones`:** ¿la cuenta Google se ata 1:1 a una
+   `instituciones`? ¿Múltiples emails Google pueden compartir la misma
+   sesión activa de la institución? ¿Cómo se gestionan empleados que
+   rotan? (Workspace admin revoca → ¿cierra la sesión Vértice?)
+4. **Domain whitelist:** la admin debe poder agregar dominios autorizados
+   por institución. Tabla nueva o columna jsonb en `instituciones`.
+5. **Convivencia con magic link:** ¿se mantiene como fallback (cuenta
+   personal sin Google Workspace) o se desactiva? Decisión que afecta
+   la migración 0001 magic_tokens.
+
+**Cambios concretos que requeriría:**
+- Tabla `usuarios` (id, email, google_sub, institucion_id, role, created_at).
+- Tabla `dominios_autorizados` o columna jsonb en `instituciones`.
+- Server Actions: `signInWithGoogle`, `linkUsuarioToInstitucion`.
+- Middleware: extender el gate cookie `vertice_session` para resolver
+  vía usuario→institución (hoy es directo a sesion_id).
+- UI: `app/page.tsx` reemplazar el dialog "Próximamente" con flow real;
+  nuevo `/admin/usuarios` para gestión.
+- Env vars: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `AUTH_SECRET`.
+
+**Cuándo:** post-MVP, pre-segundo piloto. No bloqueante para el primer
+aliado (puede entrar via magic link). Bloqueante para escalar a Nº pilotos
+sin overhead manual del founder en cada onboarding.
+
+**Tracker:** este item se mantiene en §19 hasta que aterrice (no
+graduarlo a §20 sin resolución completa). Cuando se cierre, mover toda
+la spec aquí escrita a §20 con cambios concretos aplicados.
+
 ### Integration tests contra Neon branch efímero
 
 **Estado:** los suites en `lib/motor/review.test.ts` (24 tests) y
