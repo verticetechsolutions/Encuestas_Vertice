@@ -22,12 +22,12 @@
 
 import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { AnimatePresence, motion } from 'motion/react';
 import { HeroPregunta } from '@/components/entrevista/HeroPregunta';
 import { BatchNav } from '@/components/entrevista/BatchNav';
 import { Stepper } from '@/components/entrevista/Stepper';
 import { BrandSuccessGlyph } from '@/components/landing/BrandSuccessGlyph';
 import { useEntrevistaStore } from '@/lib/state/entrevista';
-import { withViewTransition } from '@/lib/view-transitions';
 import { getCajaAny, type GrupoUI } from '@/lib/schemas/cajas';
 import {
   Loader2,
@@ -88,12 +88,8 @@ export function EntrevistaShell({
   // se rehidrata del fixture/api y el índice se reinicia).
   const [pregIndex, setPregIndex] = useState(0);
 
-  // Wrapper view-transition para navegación entre preguntas. En Chrome ≥111,
-  // Edge, Safari 18+ activa la animación nativa CSS sobre `view-transition-name:
-  // question-card` (declarada en HeroPregunta + globals.css). En el resto cae
-  // al callback directo (no-op visual, sin throw).
   const navegarAPregunta = useCallback((idx: number) => {
-    withViewTransition(() => setPregIndex(idx));
+    setPregIndex(idx);
   }, []);
 
   // BrandSuccessGlyph overlay al cierre exitoso de turno. Detectamos transición
@@ -140,26 +136,21 @@ export function EntrevistaShell({
     return 'identificacion';
   }, [activePregunta]);
 
-  // Glyph divider entre transición de secciones (ej: Productos → Números).
-  // Cuando grupoActivo cambia, mostramos un ✦ dorado durante 1.2s para
-  // marcar tipográficamente el cambio sin romper el flujo de lectura.
-  const [mostrandoDividerSeccion, setMostrandoDividerSeccion] = useState(false);
-  const grupoAnteriorRef = useRef<GrupoUI | null>(null);
-  useEffect(() => {
-    if (grupoAnteriorRef.current && grupoAnteriorRef.current !== grupoActivo) {
-      setMostrandoDividerSeccion(true);
-      const t = setTimeout(() => setMostrandoDividerSeccion(false), 1200);
-      grupoAnteriorRef.current = grupoActivo;
-      return () => clearTimeout(t);
-    }
-    grupoAnteriorRef.current = grupoActivo;
-  }, [grupoActivo]);
-
   return (
     <div className="relative min-h-screen overflow-x-clip bg-survey-bg">
-      {/* Paleta A (2026-05-09): off-white pure como canvas, sin atmosphere overlay.
-          El radial gold y el noise SVG distraen en una lectura de 12 min con un
-          único punto de foco (la pregunta). Hairlines + tipografía hacen el resto. */}
+      {/* Atmosphere — canvas con play visual sutil (F3.5, 2026-05-09).
+          - Radial gold ~5% top-right (asym, da depth sin competir)
+          - Radial cream-warm ~3% bottom-left (balance asimétrico)
+          Las cards (#FBF6EE cream + #FFFFFF white) son las superficies
+          principales; este overlay vive detrás dándoles atmósfera. */}
+      <div
+        aria-hidden
+        className="pointer-events-none absolute inset-0"
+        style={{
+          backgroundImage:
+            'radial-gradient(800px 500px at 92% 4%, rgb(200 168 100 / 0.05), transparent 65%), radial-gradient(700px 500px at 6% 96%, rgb(200 168 100 / 0.03), transparent 60%)',
+        }}
+      />
 
       {/* BrandSuccessGlyph overlay — celebración editorial al cierre exitoso de
           turno. ~2.2s. */}
@@ -175,149 +166,211 @@ export function EntrevistaShell({
         </div>
       )}
 
-      {/* Header — full bleed, hairline bottom. F6 lo simplifica completo.
-          Por ahora conservamos el card dark a max-w del contenedor único. */}
-      <header className="relative z-10 border-b border-[color:var(--survey-hairline)] bg-survey-bg">
-        <div className="mx-auto flex max-w-[720px] items-center justify-between gap-4 px-6 py-4 md:px-8">
-          <div className="flex items-center gap-3">
+      {/* Container 2-col (2026-05-09 v3 layout): header navy compacto arriba
+          full-width, debajo grid sidebar (spine) + workspace (pregunta).
+          Mobile <md: el grid colapsa a single col y el spine activa su
+          fallback "Sección X de N" + barra lineal. */}
+      <main className="relative z-10 mx-auto max-w-[1040px] space-y-5 px-4 pt-8 pb-16 md:space-y-7 md:px-6 md:pt-12 md:pb-24">
+        {/* ─────────────────────────────────────────────────────────────
+            CARD 1 — Header navy compacto. Brand + meta only.
+            (El stepper salió: ahora vive en sidebar de la grid debajo.)
+           ───────────────────────────────────────────────────────────── */}
+        <section
+          className="relative overflow-hidden rounded-3xl bg-survey-card-1 border border-[color:var(--survey-card-1-hairline)] animate-fade-up"
+          style={{ animationDelay: '0ms' }}
+        >
+          {/* Atmosphere internal — radial gold + noise sobre navy ink. */}
+          <div
+            aria-hidden
+            className="atmosphere-radial-gold pointer-events-none absolute inset-0"
+          />
+          <div
+            aria-hidden
+            className="atmosphere-noise pointer-events-none absolute inset-0"
+          />
+
+          {/* Top row — logo huge izquierda + meta derecha (asym suave).
+              Jerarquía: Banco Demo es H1 (peer del logo, el sujeto de la
+              entrevista) y domina la columna derecha. La eyebrow de contexto
+              vive arriba como micro-pre-label, el chip de status va abajo. */}
+          <div className="relative flex items-start justify-between gap-6 px-6 py-5 md:px-9 md:py-6">
             <Image
-              src="/Logo_blue.svg"
+              src="/Logo_white.svg"
               alt="Vértice"
               width={7095}
               height={2369}
               priority
-              className="h-6 w-auto select-none"
+              className="h-11 w-auto select-none md:h-14"
             />
-            <span aria-hidden className="hidden h-5 w-px bg-[color:var(--survey-hairline-strong)] md:block" />
-            <p className="hidden text-eyebrow text-[color:var(--ink)]/45 md:block">
-              Entrevista de criterios
-            </p>
-          </div>
-          <div className="flex items-center gap-3">
-            {preview && (
-              <span className="hidden items-center gap-2 text-eyebrow text-gold-deep md:inline-flex">
-                <span
-                  className="size-1.5 rounded-full bg-gold animate-pulse-ring"
-                  aria-hidden
-                />
-                Preview UI
-              </span>
-            )}
-            <span className="text-sm font-medium tracking-tight text-[color:var(--ink)]/85">
-              {nombre_institucion}
-            </span>
-          </div>
-        </div>
-      </header>
-
-      {/* Container único centrado. Single column max-w-720px, generous padding.
-          Everything (stepper, pregunta, nav, banners) vive en este eje. */}
-      <main className="relative z-10 mx-auto max-w-[720px] px-6 pt-10 pb-16 md:px-8 md:pt-14 md:pb-24">
-        {/* Stepper minimalista — sin pill wrapper. Vive directo sobre canvas. */}
-        <Stepper porGrupo={cajas_llenas_por_grupo} activo={grupoActivo} />
-
-        {/* Espacio entre stepper y pregunta — generoso para Typeform-feel */}
-        <div className="mt-12 space-y-8 md:mt-16">
-          {/* Glyph divider editorial entre secciones — marca el cambio
-              tipográficamente sin texto adicional (estilo Stratechery * * *). */}
-          {mostrandoDividerSeccion && (
-            <div className="flex justify-center py-2 animate-fade-up">
-              <span
-                aria-hidden
-                className="text-display text-gold text-[24px] tracking-[1em]"
-              >
-                ✦
-              </span>
-            </div>
-          )}
-
-          {/* Hero pregunta, loader, o pantalla de cierre.
-              Sin card wrapper — la pregunta vive directo en canvas. */}
-          {sesionCerrada ? (
-            <div className="px-2 py-12 text-center animate-fade-up md:py-16">
-              <div className="flex justify-center">
-                <BrandSuccessGlyph size={72} />
-              </div>
-              <p className="text-eyebrow mt-9 text-gold-deep">Sesión cerrada</p>
-              <h2 className="mt-5 text-display text-[28px] leading-[1.05] tracking-[-0.025em] text-foreground md:text-[36px]">
-                Entrevista completada.
-              </h2>
-              <span aria-hidden className="gold-hairline mx-auto mt-6 block w-12" />
-              <p className="mx-auto mt-6 max-w-md text-sm leading-relaxed text-foreground/55">
-                {mensaje_estado ??
-                  'Estamos generando la síntesis del perfil. Recibirás el resultado por correo cuando esté listo.'}
+            <div className="flex flex-col items-end gap-2 text-right">
+              <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-[color:var(--survey-card-1-fg-faint)]">
+                Entrevista de criterios
               </p>
-            </div>
-          ) : activePregunta ? (
-            <HeroPregunta
-              pregunta={activePregunta}
-              numero={pregIndex + 1}
-              total={total}
-              seccionLabel={GRUPO_LABEL[grupoActivo]}
-              cajasObjetivo={activePregunta.cajas_objetivo}
-              texto={respuestas[activePregunta.id] ?? ''}
-              marcada={marcadas[activePregunta.id] === true}
-              autosave={autosave[activePregunta.id] ?? 'idle'}
-              onChangeTexto={(t) => setRespuesta(activePregunta.id, t)}
-              onToggleMarcada={(m) => marcarRespondida(activePregunta.id, m)}
-              sttEnabled={!preview}
-            />
-          ) : enviando ? (
-            <div className="flex items-center justify-center gap-3 py-20">
-              <Loader2 className="size-5 animate-spin text-gold-deep" />
-              <p className="text-sm text-foreground/65">
-                {status === 'enviando'
-                  ? 'Enviando tus respuestas al motor…'
-                  : 'Generando las próximas preguntas…'}
+              <p className="text-[19px] font-semibold leading-none tracking-tight text-[color:var(--survey-card-1-fg)] md:text-[20px]">
+                {nombre_institucion}
               </p>
+              {preview ? (
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.16em] text-gold-bright">
+                  <span
+                    className="size-1.5 rounded-full bg-gold-bright animate-pulse-ring"
+                    aria-hidden
+                  />
+                  Preview UI
+                </span>
+              ) : (
+                <span className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.16em] text-[color:var(--survey-card-1-fg-faint)]">
+                  <span
+                    className="size-1.5 rounded-full bg-gold animate-pulse-ring"
+                    aria-hidden
+                  />
+                  Borrador autoguardado
+                </span>
+              )}
             </div>
-          ) : (
-            <div className="py-20 text-center">
-              <p className="text-sm text-foreground/55">Cargando preguntas…</p>
-            </div>
-          )}
+          </div>
+        </section>
 
-          {/* BatchNav minimal — sin pill wrapper, alineado al center bajo la pregunta.
-              F5 lo redibuja a "← Anterior · 1 / 3 ·" minimalista. */}
-          {!sesionCerrada && batch && total > 0 && (
-            <div className="flex items-center justify-center pt-4">
-              <BatchNav
-                preguntas={batch.preguntas.map((p) => ({
-                  id: p.id,
-                  marcada: marcadas[p.id] === true,
-                }))}
-                activeIndex={pregIndex}
-                onChange={navegarAPregunta}
+        {/* ─────────────────────────────────────────────────────────────
+            GRID 2-COL — Sidebar spine + workspace pregunta.
+            Sidebar sticky en desktop para que el spine quede visible al
+            scroll del workspace. Mobile colapsa a single col (fallback
+            del Stepper se activa: "Sección X de N" + barra).
+           ───────────────────────────────────────────────────────────── */}
+        <div className="grid gap-6 md:grid-cols-[260px_minmax(0,1fr)] md:gap-8">
+          <aside
+            className="md:sticky md:top-8 md:self-start animate-fade-up"
+            style={{ animationDelay: '40ms' }}
+          >
+            {/* Card secundaria — solo border hairline + bg cream pale para
+                diferenciarse del canvas sin invadir el foco del workspace
+                card 2 (white pure). Padding interno generoso reemplaza el
+                hack de pt-12 anterior. */}
+            <div className="rounded-3xl border border-[color:var(--survey-hairline)] bg-[color:var(--cream-pure)]/40 px-5 py-7 md:px-6 md:py-8">
+              <Stepper
+                porGrupo={cajas_llenas_por_grupo}
+                activo={grupoActivo}
+                surface="light"
               />
             </div>
-          )}
+          </aside>
 
-          {/* Banner informativo (cierre de sección, transición) */}
-          {!sesionCerrada && mensaje_estado && (
-            <div className="flex items-start gap-3 rounded-xl border border-[color:var(--gold)]/25 bg-[color:var(--gold)]/[0.06] p-4 animate-fade-up">
-              <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-gold-deep" />
-              <p className="text-sm leading-relaxed text-foreground/85">
-                {mensaje_estado}
-              </p>
-            </div>
-          )}
-
-          {/* Error banner */}
-          {enError && (
-            <div className="flex items-start gap-3 rounded-xl border border-amber-200/70 bg-amber-50 p-4 animate-fade-up">
-              <AlertCircle className="mt-0.5 size-5 shrink-0 text-amber-600" />
-              <div className="text-sm leading-relaxed text-amber-900">
-                <p className="font-medium">No se pudo continuar el turno.</p>
-                <p className="mt-0.5 text-amber-900/80">
-                  {ultimo_error_turn ?? 'Error desconocido.'}
-                </p>
-                <p className="mt-1.5 text-xs text-amber-900/70">
-                  Tus respuestas se conservaron. Reintenta cuando quieras.
+          {/* CARD 2 — Workspace. White pure, focus absoluto en la pregunta.
+              overflow visible (no hidden) para que box-shadows de buttons
+              hijos puedan extenderse fuera del card sin ser recortados. */}
+          <section
+            className="rounded-3xl bg-survey-card-2 border border-[color:var(--survey-hairline)] animate-fade-up"
+            style={{ animationDelay: '80ms' }}
+          >
+          {/* Body de la card 2 — workspace de la pregunta.
+              motion.div layout anima el cambio de altura entre preguntas.
+              AnimatePresence + opacity fade da el cross-fade entre preguntas.
+              Padding generoso (px-14, pb-12) para que el CTA y su shadow
+              gold respiren del rounded corner del card. */}
+          <motion.div
+            layout
+            transition={{ layout: { duration: 0.4, ease: [0.16, 1, 0.3, 1] } }}
+            className="px-6 pt-8 pb-8 md:px-14 md:pt-10 md:pb-12"
+          >
+            {sesionCerrada ? (
+              <div className="py-10 text-center animate-fade-up md:py-14">
+                <div className="flex justify-center">
+                  <BrandSuccessGlyph size={72} />
+                </div>
+                <p className="text-eyebrow mt-9 text-gold-deep">Sesión cerrada</p>
+                <h2 className="mt-5 text-display text-[28px] leading-[1.05] tracking-[-0.025em] text-foreground md:text-[36px]">
+                  Entrevista completada.
+                </h2>
+                <span aria-hidden className="gold-hairline mx-auto mt-6 block w-12" />
+                <p className="mx-auto mt-6 max-w-md text-sm leading-relaxed text-foreground/55">
+                  {mensaje_estado ??
+                    'Estamos generando la síntesis del perfil. Recibirás el resultado por correo cuando esté listo.'}
                 </p>
               </div>
-            </div>
+            ) : activePregunta ? (
+              <AnimatePresence mode="wait" initial={false}>
+                <motion.div
+                  key={activePregunta.id}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0 }}
+                  transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
+                >
+                  <HeroPregunta
+                    pregunta={activePregunta}
+                    numero={pregIndex + 1}
+                    total={total}
+                    seccionLabel={GRUPO_LABEL[grupoActivo]}
+                    cajasObjetivo={activePregunta.cajas_objetivo}
+                    texto={respuestas[activePregunta.id] ?? ''}
+                    marcada={marcadas[activePregunta.id] === true}
+                    autosave={autosave[activePregunta.id] ?? 'idle'}
+                    onChangeTexto={(t) => setRespuesta(activePregunta.id, t)}
+                    onToggleMarcada={(m) => marcarRespondida(activePregunta.id, m)}
+                    sttEnabled={!preview}
+                  />
+                </motion.div>
+              </AnimatePresence>
+            ) : enviando ? (
+              <div className="flex items-center justify-center gap-3 py-16">
+                <Loader2 className="size-5 animate-spin text-gold-deep" />
+                <p className="text-sm text-foreground/65">
+                  {status === 'enviando'
+                    ? 'Enviando tus respuestas al motor…'
+                    : 'Generando las próximas preguntas…'}
+                </p>
+              </div>
+            ) : (
+              <div className="py-16 text-center">
+                <p className="text-sm text-foreground/55">Cargando preguntas…</p>
+              </div>
+            )}
+          </motion.div>
+
+          {/* BatchNav minimal — footer de card 2, separado por hairline.
+              "← Anterior · 1 / 3 · Siguiente →" sin pills ni rings. */}
+          {!sesionCerrada && batch && total > 0 && (
+            <>
+              <div className="h-px bg-[color:var(--survey-hairline)]" aria-hidden />
+              <div className="px-6 py-4 md:px-10 md:py-5">
+                <BatchNav
+                  preguntas={batch.preguntas.map((p) => ({
+                    id: p.id,
+                    marcada: marcadas[p.id] === true,
+                  }))}
+                  activeIndex={pregIndex}
+                  onChange={navegarAPregunta}
+                />
+              </div>
+            </>
           )}
+        </section>
         </div>
+
+        {/* Banner informativo (cierre de sección, transición) */}
+        {!sesionCerrada && mensaje_estado && (
+          <div className="flex items-start gap-3 rounded-xl border border-[color:var(--gold)]/25 bg-[color:var(--gold)]/[0.06] p-4 animate-fade-up">
+            <CheckCircle2 className="mt-0.5 size-5 shrink-0 text-gold-deep" />
+            <p className="text-sm leading-relaxed text-foreground/85">
+              {mensaje_estado}
+            </p>
+          </div>
+        )}
+
+        {/* Error banner */}
+        {enError && (
+          <div className="flex items-start gap-3 rounded-xl border border-amber-200/70 bg-amber-50 p-4 animate-fade-up">
+            <AlertCircle className="mt-0.5 size-5 shrink-0 text-amber-600" />
+            <div className="text-sm leading-relaxed text-amber-900">
+              <p className="font-medium">No se pudo continuar el turno.</p>
+              <p className="mt-0.5 text-amber-900/80">
+                {ultimo_error_turn ?? 'Error desconocido.'}
+              </p>
+              <p className="mt-1.5 text-xs text-amber-900/70">
+                Tus respuestas se conservaron. Reintenta cuando quieras.
+              </p>
+            </div>
+          </div>
+        )}
       </main>
     </div>
   );

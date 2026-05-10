@@ -1,14 +1,21 @@
 'use client';
 
-// BatchNav — navegación entre las N preguntas del turno actual.
-//   - Dots horizontales con estado: active (ink + gold ring), respondida
-//     (ink sólido + check gold), pendiente (outline ink).
-//   - Botones Anterior / Siguiente a los lados (rounded-full pill).
-//   - Click en un dot navega a esa pregunta.
-//   - En mobile: dots compactos sin labels, en desktop: dots + label "P01"
-//     en el activo.
+// BatchNav minimal — Paleta A (2026-05-09 refactor + spring physics 2026-05-10).
+//   - Sin pills, sin rings, sin background. Vive como text-link inline.
+//   - 3 elementos: "← Anterior" (link), "X / N" counter, "Siguiente →" (link).
+//   - Motion + spring physics (alineado con HeaderCTA del landing):
+//     hover lift + chevron shift (direccional), tap squeeze opacity.
+//   - cursor-pointer cuando enabled, cursor-not-allowed cuando disabled.
 
-import { Check, ChevronLeft, ChevronRight } from 'lucide-react';
+import { motion } from 'motion/react';
+import { ChevronLeft, ChevronRight } from 'lucide-react';
+import {
+  SPRING_BUTTON,
+  SPRING_ICON,
+  iconShiftLeftVariants,
+  iconShiftRightVariants,
+  linkButtonVariants,
+} from '@/lib/motion-presets';
 import { cn } from '@/lib/utils';
 
 interface DotMeta {
@@ -27,84 +34,102 @@ export function BatchNav({ preguntas, activeIndex, onChange }: Props) {
   const canPrev = activeIndex > 0;
   const canNext = activeIndex < total - 1;
 
+  const respondidas = preguntas.filter((p) => p.marcada).length;
+
   return (
     <nav
       aria-label="Navegación entre preguntas del turno"
-      className="flex items-center gap-3"
+      className="flex items-center justify-between gap-4 text-[13px]"
     >
-      <button
+      {/* ← Anterior */}
+      <motion.button
         type="button"
         onClick={() => canPrev && onChange(activeIndex - 1)}
         disabled={!canPrev}
         aria-label="Pregunta anterior"
+        initial="rest"
+        animate="rest"
+        whileHover={canPrev ? 'hover' : 'rest'}
+        whileFocus={canPrev ? 'hover' : 'rest'}
+        whileTap={canPrev ? 'tap' : 'rest'}
+        variants={linkButtonVariants}
+        transition={SPRING_BUTTON}
         className={cn(
-          'inline-flex size-10 items-center justify-center rounded-full ring-1 transition-all',
+          'inline-flex items-center gap-1.5 rounded font-medium tracking-tight transition-colors duration-200',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--gold)]/30',
           canPrev
-            ? 'bg-cream-pure text-foreground ring-ink/15 hover:bg-ink/[0.04] active:scale-95'
-            : 'bg-cream-pure/40 text-foreground/35 ring-ink/8 cursor-not-allowed'
+            ? 'cursor-pointer text-foreground/65 hover:text-foreground'
+            : 'cursor-not-allowed text-foreground/25'
         )}
       >
-        <ChevronLeft className="size-4" />
-      </button>
+        <motion.span
+          variants={iconShiftLeftVariants}
+          transition={SPRING_ICON}
+          className="inline-flex"
+          aria-hidden
+        >
+          <ChevronLeft className="size-4" strokeWidth={2} />
+        </motion.span>
+        Anterior
+      </motion.button>
 
-      <ol className="flex items-center gap-1.5 rounded-full bg-cream-pure px-3 py-2 ring-1 ring-ink/10">
-        {preguntas.map((p, i) => {
-          const esActivo = i === activeIndex;
-          const respondida = p.marcada;
+      {/* Counter central — "X / N" + chip "respondidas" como ghost slot.
+          min-w-[140px] reserva el ancho máximo (con "X marcadas" presente)
+          para que el chevron ← Anterior y Siguiente → no se desplacen
+          horizontalmente cuando el chip aparece o desaparece. */}
+      <div className="flex min-w-[180px] items-center justify-center gap-2.5 text-foreground/55">
+        <span className="numeric font-medium text-foreground/85">
+          {activeIndex + 1}
+        </span>
+        <span aria-hidden className="text-foreground/30">
+          /
+        </span>
+        <span className="numeric text-foreground/55">{total}</span>
+        <span
+          className="ml-2 text-eyebrow text-gold-deep transition-opacity duration-200"
+          style={{
+            opacity: respondidas > 0 ? 1 : 0,
+            visibility: respondidas > 0 ? 'visible' : 'hidden',
+          }}
+          aria-hidden={respondidas === 0}
+        >
+          {respondidas > 0
+            ? `${respondidas} marcada${respondidas === 1 ? '' : 's'}`
+            : ' '}
+        </span>
+      </div>
 
-          return (
-            <li key={p.id}>
-              <button
-                type="button"
-                onClick={() => onChange(i)}
-                aria-current={esActivo ? 'step' : undefined}
-                aria-label={`Ir a pregunta ${i + 1}${respondida ? ' (respondida)' : ''}`}
-                className={cn(
-                  'group/dot inline-flex items-center gap-1.5 rounded-full transition-all duration-200 ease-out',
-                  esActivo ? 'px-3 py-1' : 'px-1 py-1'
-                )}
-              >
-                <span
-                  className={cn(
-                    'inline-flex items-center justify-center rounded-full text-[10px] font-semibold tabular-nums transition-all',
-                    esActivo
-                      ? 'size-6 bg-ink text-gold ring-1 ring-gold/35'
-                      : respondida
-                      ? 'size-6 bg-ink text-cream-pure'
-                      : 'size-6 bg-ink/[0.04] text-foreground/55 ring-1 ring-ink/10 group-hover/dot:bg-ink/[0.08]'
-                  )}
-                >
-                  {respondida && !esActivo ? (
-                    <Check className="size-3 text-gold" strokeWidth={2.8} />
-                  ) : (
-                    i + 1
-                  )}
-                </span>
-                {esActivo && (
-                  <span className="font-mono text-[11px] font-semibold tracking-tight text-foreground">
-                    P{(i + 1).toString().padStart(2, '0')}
-                  </span>
-                )}
-              </button>
-            </li>
-          );
-        })}
-      </ol>
-
-      <button
+      {/* Siguiente → */}
+      <motion.button
         type="button"
         onClick={() => canNext && onChange(activeIndex + 1)}
         disabled={!canNext}
         aria-label="Siguiente pregunta"
+        initial="rest"
+        animate="rest"
+        whileHover={canNext ? 'hover' : 'rest'}
+        whileFocus={canNext ? 'hover' : 'rest'}
+        whileTap={canNext ? 'tap' : 'rest'}
+        variants={linkButtonVariants}
+        transition={SPRING_BUTTON}
         className={cn(
-          'inline-flex size-10 items-center justify-center rounded-full ring-1 transition-all',
+          'inline-flex items-center gap-1.5 rounded font-medium tracking-tight transition-colors duration-200',
+          'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--gold)]/30',
           canNext
-            ? 'bg-cream-pure text-foreground ring-ink/15 hover:bg-ink/[0.04] active:scale-95'
-            : 'bg-cream-pure/40 text-foreground/35 ring-ink/8 cursor-not-allowed'
+            ? 'cursor-pointer text-foreground/65 hover:text-foreground'
+            : 'cursor-not-allowed text-foreground/25'
         )}
       >
-        <ChevronRight className="size-4" />
-      </button>
+        Siguiente
+        <motion.span
+          variants={iconShiftRightVariants}
+          transition={SPRING_ICON}
+          className="inline-flex"
+          aria-hidden
+        >
+          <ChevronRight className="size-4" strokeWidth={2} />
+        </motion.span>
+      </motion.button>
     </nav>
   );
 }

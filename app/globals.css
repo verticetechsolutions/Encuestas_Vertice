@@ -72,6 +72,15 @@
   --color-survey-hairline: var(--survey-hairline);
   --color-survey-hairline-strong: var(--survey-hairline-strong);
   --color-survey-hover: var(--survey-hover);
+  /* 2 cards diferenciadas — card-1 navy ink (dark brand pocket), card-2
+     white pure (workspace). Strong tonal contrast espejo del landing. */
+  --color-survey-card-1: var(--survey-card-1);
+  --color-survey-card-1-fg: var(--survey-card-1-fg);
+  --color-survey-card-1-fg-muted: var(--survey-card-1-fg-muted);
+  --color-survey-card-1-fg-faint: var(--survey-card-1-fg-faint);
+  --color-survey-card-1-hairline: var(--survey-card-1-hairline);
+  --color-survey-card-1-hairline-strong: var(--survey-card-1-hairline-strong);
+  --color-survey-card-2: var(--survey-card-2);
 
   --radius-sm: calc(var(--radius) * 0.6);
   --radius-md: calc(var(--radius) * 0.8);
@@ -154,6 +163,15 @@
      Scope: /entrevista/* y /preview/ui. Uso fuera de ese scope = bug. */
   --survey-bg: #FAF8F4;                  /* off-white page background */
   --survey-surface: #FFFFFF;             /* textarea, modals, white surfaces */
+  /* Card 1 (brand + stepper) — navy ink, espejo del landing dark.
+     Logo_white + colores fg cream-pure. Conversación tonal con card-2 white. */
+  --survey-card-1: #0A0F1C;              /* navy ink — brand surface dark */
+  --survey-card-1-fg: #F4F1EA;           /* cream-pure — texto sobre dark */
+  --survey-card-1-fg-muted: rgb(244 241 234 / 0.55);
+  --survey-card-1-fg-faint: rgb(244 241 234 / 0.35);
+  --survey-card-1-hairline: rgb(244 241 234 / 0.10);
+  --survey-card-1-hairline-strong: rgb(244 241 234 / 0.20);
+  --survey-card-2: #FFFFFF;              /* card workspace — white pure */
   --survey-text: var(--ink);
   --survey-text-72: rgb(10 15 28 / 0.72);
   --survey-text-65: rgb(10 15 28 / 0.65);
@@ -195,6 +213,12 @@
   }
   html {
     @apply font-sans;
+    /* scrollbar-gutter: stable reserva siempre el espacio del scrollbar
+       vertical (15-17px), aunque la página no tenga overflow. Elimina el
+       horizontal layout shift que ocurre cuando se navega entre páginas/
+       preguntas y una excede el viewport pero la otra no.
+       Soporte: Chrome 94+, Firefox 97+, Safari 18.2+ (universal 2026). */
+    scrollbar-gutter: stable;
   }
   body {
     background-color: var(--canvas);

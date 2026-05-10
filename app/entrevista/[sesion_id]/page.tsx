@@ -29,8 +29,10 @@ function computeTotalesPorGrupo(
 
 // Server Component for the entrevista. Validates cookie ↔ sesion_id ↔
 // consentimiento_at, then hands off to the client shell with the data the
-// client needs (institution name + totales por grupo). The shell loads a
-// fixture mock at mount until /api/turn is wired with ANTHROPIC_API_KEY.
+// client needs (institution name + totales por grupo). The shell carga el
+// PRIMER_BATCH_BIENVENIDA hardcoded (identidad institucional) en mount; los
+// batches subsecuentes los emite Sonnet vía /api/turn. Modo preview (sandbox
+// de diseño) sigue cargando el fixture mock para QA visual.
 export default async function EntrevistaPage({ params }: Props) {
   const { sesion_id } = await params;
   const cookie = await readSessionCookie();
