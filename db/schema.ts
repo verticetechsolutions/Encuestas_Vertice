@@ -65,8 +65,10 @@ export const instituciones = pgTable('instituciones', {
   nombre_comercial: text('nombre_comercial'),
   tipo: tipoInstitucionEnum('tipo').notNull(),
   email_contacto: text('email_contacto').notNull().unique(),
-  magic_link_token: text('magic_link_token').unique(),
-  magic_link_expires_at: timestamp('magic_link_expires_at', { withTimezone: true }),
+  // Columnas magic_link_token / magic_link_expires_at removidas en migración
+  // 0003 (Phase 4 dead code cleanup, 2026-05-10). El flujo magic-link real
+  // vive en `magic_tokens` (Fase 4, migración 0001) — esas columnas en
+  // instituciones nunca llegaron a usarse.
   created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
   updated_at: timestamp('updated_at', { withTimezone: true }).defaultNow().notNull(),
 });

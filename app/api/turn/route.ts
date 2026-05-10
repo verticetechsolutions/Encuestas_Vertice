@@ -257,6 +257,11 @@ export async function POST(req: Request) {
           // nada para el modelo). Las inválidas se devuelven al modelo para
           // que sepa cuáles cerraron y cuáles tiene que reintentar.
           const validas: ExtraccionInput[] = [];
+          // Track de `contradice_extraccion_previa` paralelo a `validas` (mismo
+          // índice). Sonnet marca este flag cuando cree que está corrigiendo
+          // una extracción previa; si NO existe previa para esa caja, es un
+          // hint inválido que conviene loguear para auditoría del prompt.
+          const contradiceFlags: boolean[] = [];
           const errores: Array<{
             indice: number;
             caja_codigo: string;
@@ -281,6 +286,7 @@ export async function POST(req: Request) {
               confianza: e.confianza,
               evidencia_textual: e.evidencia_textual,
             });
+            contradiceFlags.push(e.contradice_extraccion_previa === true);
           }
 
           if (validas.length === 0) {
@@ -301,6 +307,19 @@ export async function POST(req: Request) {
             const supersedidos = persistidas.filter(
               (p) => p.supersedido_id !== undefined
             ).length;
+
+            // Auditoría del prompt: Sonnet marcó `contradice_extraccion_previa=true`
+            // pero no había extracción previa (supersedido_id undefined). Hint
+            // inválido — útil para detectar drift del prompt sin bloquear el
+            // turno. Emite warn-level por caja afectada.
+            for (let i = 0; i < persistidas.length; i++) {
+              if (contradiceFlags[i] && persistidas[i].supersedido_id === undefined) {
+                logger.extraccion.contradiceSinPrevia({
+                  sesion_id,
+                  caja_codigo: validas[i].caja_codigo,
+                });
+              }
+            }
 
             // Snapshot del mapa para alimentar el panel UI live. El cliente
             // lee `mapa_summary.llenas_por_grupo` y reemplaza su contador por
