@@ -125,7 +125,7 @@ export function HeroPregunta({
       <header className="flex min-h-[28px] items-center justify-between gap-4">
         <span className="text-[10px] font-medium uppercase tracking-[0.16em] numeric text-gold-deep">
           Pregunta {numero.toString().padStart(2, '0')}
-          <span className="text-[color:var(--ink)]/30"> de </span>
+          <span className="text-[color:var(--ink)]/60"> de </span>
           {total.toString().padStart(2, '0')}
         </span>
         <span
@@ -147,7 +147,7 @@ export function HeroPregunta({
           {q}
         </h2>
         {auxiliar && (
-          <p className="mt-4 max-w-[60ch] text-[14.5px] leading-relaxed text-foreground/55">
+          <p className="mt-4 max-w-[60ch] text-[14.5px] leading-relaxed text-foreground/70">
             {auxiliar}
           </p>
         )}
@@ -285,7 +285,7 @@ function AutosaveIndicator({
           <span>{meta.text}</span>
         </>
       ) : (
-        <span className="text-foreground/35">Borrador autoguardado</span>
+        <span className="text-foreground/70">Borrador autoguardado</span>
       )}
     </div>
   );

@@ -236,7 +236,7 @@ export function EntrevistaShell({
             scroll del workspace. Mobile colapsa a single col (fallback
             del Stepper se activa: "Sección X de N" + barra).
            ───────────────────────────────────────────────────────────── */}
-        <div className="grid gap-6 md:grid-cols-[260px_minmax(0,1fr)] md:gap-8">
+        <div className="flex flex-col gap-6 md:grid md:grid-cols-[260px_minmax(0,1fr)] md:gap-8">
           <aside
             className="md:sticky md:top-8 md:self-start animate-fade-up"
             style={{ animationDelay: '40ms' }}
