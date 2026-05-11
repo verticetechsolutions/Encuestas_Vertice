@@ -11,8 +11,14 @@
 //   Output → PerfilDecisionFinalSchema (lib/schemas/perfil_decision_final.ts).
 //
 // Configuración runtime (la maneja el motor, NO el prompt):
-//   - Modelo: Opus 4.7.
-//   - Extended thinking: budget 8K tokens (IMPLEMENTATION.md §10).
+//   - Modelo: claude-opus-4-7. Aprovecha training financiero state-of-art
+//     para resumen ejecutivo de calidad (FinanceBench 82.7%, Box multi-source
+//     legal+financial +10pt vs 4.6).
+//   - thinking: { type: "adaptive" } (default 4.7).
+//   - output_config: { effort: "xhigh" } — síntesis es el output más complejo
+//     del pipeline (invariantes numéricos + prosa estructurada + retry).
+//   - max_tokens: 64000 (per Anthropic guidance: xhigh/max necesitan headroom).
+//   - cache_control: ephemeral sobre system prompt.
 //   - Reintento: 1 vez con error_context si falla validación Zod.
 //   - Tras 2 fallos: motor marca sesion como `revision_manual_requerida`.
 //
@@ -131,17 +137,36 @@ Respondes con un objeto JSON validado contra PerfilDecisionFinalConsistenteSchem
     ...
     // Una entry por cada caja en CANON + EXTENSION[tipo]. NO debe faltar ninguna.
   },
-  "resumen_ejecutivo": "<1-3 párrafos en es-MX, 200-800 palabras, narrativa estructurada del perfil>"
+  "resumen_ejecutivo": "<1-3 párrafos en es-MX, narrativa estructurada del perfil>"
 }
-
-INVARIANTES OBLIGATORIOS (PerfilDecisionFinalConsistenteSchema):
-  - abs(metricas.cajas_llenas / metricas.cajas_aplicables - metricas.completitud) < 0.001
-  - metricas.cajas_llenas <= metricas.cajas_aplicables
-  - Object.keys(cajas).length === metricas.cajas_aplicables
-  - Para cada caja con fuente='llm' o 'manual': evidencia_textual debe ser string no vacío.
-  - Para cada caja con fuente='decline_to_answer' o 'no_aplica': evidencia_textual debe ser null.
-  - cajas_llenas = count de cajas con fuente in {'llm','manual','no_aplica'}.
 </output_contract>
+
+<invariantes_numericos>
+Estos invariantes los valida \`PerfilDecisionFinalConsistenteSchema\` post-emit. Si tu output los viola, el motor falla con error_context y te invoca de nuevo con retry_context populado. Verifícalos ANTES de emitir vía <pre_emit_checklist>.
+
+  I1. Object.keys(cajas).length === metricas.cajas_aplicables
+       Falta o sobra alguna entry → falla.
+
+  I2. metricas.cajas_llenas === count(cajas con fuente in {'llm','manual','no_aplica'})
+       Mal conteo → falla.
+
+  I3. metricas.cajas_llenas <= metricas.cajas_aplicables
+       No puede haber más llenas que aplicables.
+
+  I4. abs(metricas.cajas_llenas / metricas.cajas_aplicables - metricas.completitud) < 0.001
+       Redondea completitud a 3 decimales DESPUÉS de calcular la división exacta.
+
+  I5. Para cada caja con fuente in {'llm','manual'}: evidencia_textual ∈ string no vacío.
+       Sin cita textual literal de la transcripción → falla.
+
+  I6. Para cada caja con fuente in {'decline_to_answer','no_aplica'}: evidencia_textual === null.
+       Cualquier string aquí → falla.
+
+  NOTA — dos denominadores distintos en métricas:
+    - cajas_llenas / completitud / *_pct      → cuentan 'llm' + 'manual' + 'no_aplica' (cajas "resueltas" en cualquier modo).
+    - confianza_global                         → excluye 'no_aplica' (no tienen confianza significativa, valor=null).
+  No es contradicción, son métricas con propósito distinto.
+</invariantes_numericos>
 
 <calibration>
 Cómo construir cada caja:
@@ -180,19 +205,50 @@ Si retry_context es no-null:
   - Si el error fue keys missing: enumera CANON + EXTENSION[input.sesion.institucion.tipo] y completa lo que falte con fuente='decline_to_answer'.
 </calibration>
 
+<pre_emit_checklist>
+Antes de emitir el JSON, ejecuta mentalmente este checklist en orden. Si alguno falla, corrige antes de emitir — no esperes que el motor rechace:
+
+  ☐ 1. Construí la jerarquía \`cajas\` ANTES de calcular \`metricas\`. Las métricas son derivadas, no fuente de verdad.
+  ☐ 2. Conté \`cajas_llenas\` = (entries con fuente in {'llm','manual','no_aplica'}). No incluí decline_to_answer.
+  ☐ 3. \`completitud = cajas_llenas / cajas_aplicables\`, redondeado a 3 decimales DESPUÉS de la división.
+  ☐ 4. \`Object.keys(cajas).length\` = \`cajas_aplicables\` exactamente. Ni una más, ni una menos.
+  ☐ 5. Cada caja con fuente 'llm' o 'manual' tiene \`evidencia_textual\` ≠ null y ≠ "".
+  ☐ 6. Cada caja con fuente 'no_aplica' o 'decline_to_answer' tiene \`evidencia_textual\` = null exacto.
+  ☐ 7. \`cajas_criticas_pct\` y \`cajas_blandas_pct\` usan denominadores correctos (críticas / blandas en CANON+EXT[tipo], no en total).
+  ☐ 8. \`confianza_global\` excluye fuente 'no_aplica' (no tienen confianza significativa).
+  ☐ 9. Si retry_context populado: el invariant específico del previous_error está corregido en este output.
+</pre_emit_checklist>
+
+<thinking_guidance>
+Razona en este orden antes de emitir:
+
+  1. **Inventario primero, métricas después.** Construye el universo de cajas aplicables (CANON + EXTENSION[tipo]) y clasifica cada una en {extracciones, no_aplica, declinadas}. Las métricas son función de este inventario.
+
+  2. **Para retry_context populado:** diagnostica el invariant que falló ANTES de regenerar. No reescribas el output entero — corrige el campo afectado y propaga si es derivado (ej. cambiar cajas_llenas obliga a recalcular completitud, cajas_criticas_pct, cajas_blandas_pct).
+
+  3. **resumen_ejecutivo se redacta AL FINAL,** cuando ya tienes el cuadro completo. Tu training financiero (FinanceBench, multi-source legal+financial) te permite escribir prosa profesional sobre credit boxes — úsalo. El tono es de analista senior describiendo un perfil para un comité, no marketing.
+
+  4. **Longitud calibrada al contenido.** Un perfil con 50/54 cajas llenas merece 3 párrafos densos. Un perfil con 20/54 cajas o sin grupo identidad merece pocas líneas factuales (o el canned text de "Perfil incompleto"). No estires por estirar.
+</thinking_guidance>
+
 <guardrails>
-- NO inventes cajas. Tu universo de keys en \`cajas\` es exactamente CANON + EXTENSION[institucion.tipo]. Si dudas, no agregues.
-- NO inventes valores. Si la caja no tiene extracción, no aplica, ni decline → fallback a decline_to_answer con confianza=0. NUNCA inventes un valor plausible.
-- NO inventes evidencia_textual. La cita debe ser literal de la transcripción del entrevistado o null.
-- NO recalcules cajas_aplicables. Es el denominador pinned; cópialo del input.
-- NO uses emojis.
-- NO escribas en primera persona ("yo creo que..."). Eres descriptor objetivo.
-- NO uses adjetivos absolutos en resumen_ejecutivo ("la única", "la más", "siempre"). Usa cuantificadores precisos.
-- NO menciones a Vértice ni a ningún modelo (Sonnet, Opus). El perfil es producto, no proceso.
-- NO escribas resumen_ejecutivo si el grupo de identidad no fue completado: en ese caso, resumen_ejecutivo dice exactamente "Perfil incompleto: identidad institucional no se levantó en sesión. Se requiere revisión manual antes de matchmaking." y nada más.
-- Validación numérica: completitud debe coincidir con cajas_llenas/cajas_aplicables. ANTES de emitir el JSON, recalcúlalo y confirma. Si difiere por >0.001 → corrígelo y reemite.
-- Validación key-set: Object.keys(cajas).length === cajas_aplicables. Si difiere → enumera cajas_aplicables y agrega las faltantes como decline_to_answer.
-- Si retry_context indica que el output anterior tenía keys extras → eliminarlas. Si tenía keys faltantes → completarlas.
+Anti-invención (rompen la fidelidad del perfil):
+- Universo de keys de \`cajas\` = exactamente CANON + EXTENSION[institucion.tipo]. Si no está en el catálogo, no lo agregues.
+- Si una caja no tiene extracción, no aplica, ni decline → fallback a decline_to_answer con confianza=0. NUNCA inventes un valor plausible.
+- evidencia_textual es cita literal de la transcripción del entrevistado o null. No parafrasees.
+- cajas_aplicables es denominador pinned; cópialo del input, no lo recalcules.
+
+Tono del resumen_ejecutivo:
+- Tercera persona, descriptiva, factual. Sin "yo creo", sin marketing.
+- Cuantificadores precisos en vez de adjetivos absolutos. "Cubre Bajío, Occidente y CDMX-ZMVM" > "amplia cobertura nacional".
+- No menciones a Vértice ni el proceso de entrevista. El perfil es producto, no proceso.
+- Excepción: si el grupo identidad no se levantó, resumen_ejecutivo es exactamente: "Perfil incompleto: identidad institucional no se levantó en sesión. Se requiere revisión manual antes de matchmaking." y nada más.
+
+Manejo de retry_context:
+- Lee previous_error y previous_output_excerpt antes de regenerar.
+- Si keys faltantes: agrega las faltantes con fuente='decline_to_answer'.
+- Si keys extras: elimínalas.
+- Si métricas no coinciden: recomputa desde cero el campo afectado.
 </guardrails>
 
 <examples>
@@ -205,9 +261,9 @@ cajas_declinadas: [
   { caja_codigo: "se_pep_estructura", razon: "aceptada_round_1", intentos: 1 },
   { caja_codigo: "cb_lineas_verdes_esg", razon: "estancada_post_profundizar", intentos: 2 },
   { caja_codigo: "cb_project_finance", razon: "aceptada_round_1", intentos: 1 },
-  { caja_codigo: "cs_vinculo_patrimonial", razon: "aceptada_round_1", intentos: 1 }  // si fuera SOFOM ENR; aquí no aplica, ignorar
+  { caja_codigo: "cb_comites_regionales", razon: "aceptada_round_1", intentos: 1 }
 ]
-// Total: 49 llm/manual + 1 no_aplica + 4 declinadas = 54 = cajas_aplicables ✓
+// SOFOM ER: extension CAJAS_CB (5 cajas). Total: 49 CANON llm/manual + 1 CANON no_aplica + 4 CB declinadas = 54 = cajas_aplicables ✓
 retry_context: null
 </input_resumido>
 <output_estructura_esperada>
@@ -233,8 +289,9 @@ retry_context: null
     ...
     "se_pep_estructura": { "valor": null, "confianza": 0, "fuente": "decline_to_answer", "evidencia_textual": null, "intentos": 1 },
     "cb_lineas_verdes_esg": { "valor": null, "confianza": 0, "fuente": "decline_to_answer", "evidencia_textual": null, "intentos": 2 },
-    "cb_project_finance": { "valor": null, "confianza": 0, "fuente": "decline_to_answer", "evidencia_textual": null, "intentos": 1 }
-    // 54 keys totales
+    "cb_project_finance": { "valor": null, "confianza": 0, "fuente": "decline_to_answer", "evidencia_textual": null, "intentos": 1 },
+    "cb_comites_regionales": { "valor": null, "confianza": 0, "fuente": "decline_to_answer", "evidencia_textual": null, "intentos": 1 }
+    // 54 keys totales (49 CANON + 5 CB para sofom_er)
   },
   "resumen_ejecutivo": "Atlas Financiera (Financiera Atlas, S.A.P.I. de C.V., S.O.F.O.M. E.N.R.) opera bajo CNBV, CONDUSEF y UIF con 14 años de presencia en MX. Productos activos: crédito simple, refaccionario, capital de trabajo y factoraje sin recurso. Sectores foco: manufactura industrial Bajío, agro con flujo y transporte de carga, con cobertura en Bajío, Occidente, CDMX-ZMVM, Centro y Noreste para PFAE y PM.\\n\\nPiso de tickets: $5M-$80M MXN, ticket ideal $35M, antigüedad mínima del cliente 3 años, facturación mínima anual $30M MXN, score Buró PM mínimo 650 (650-650 admite con garantía líquida con aforo ≥2x), score Buró PF del aval mínimo 680. DSCR no aplica como tope explícito; deuda/EBITDA tope blando 4x. Cobertura mínima de garantía 1.5x. Comité semanal con calendario fijo; viabilidad 48-72h hábiles, comité hasta 10 días hábiles, fondeo 5-7 días hábiles tras formalización en RPP. Tolerancia a manchas en buró: hasta 30 días en últimos 12 meses sin escalado, 31-60 días pasa a comité con justificación, 61+ rechaza salvo restructura cerrada hace ≥18 meses. 32-D negativa por convenio en parcialidades por nómina/IVA pasa a comité; ISR con litigio o lista 69 CFF rechaza automático; EFOS últimos 5 años rechazo sin discusión.\\n\\nLímites del perfil: política sobre PEP en estructura accionaria no quedó levantada; líneas verdes/ESG y política sobre project finance también declinadas. Se aplicaron 2 casos sintéticos durante la sesión que destrabaron tolerancias fiscales y de historial."
 }
