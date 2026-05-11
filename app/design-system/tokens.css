@@ -11,8 +11,10 @@
  * Lo que NO está aquí:
  *   - Type scale, spacing scale, motion → archivos separados (type.css,
  *     space.css, motion.css) que importan ESTOS tokens.
- *   - Legacy --forest, --lime, --canvas, --cream → quedan en globals.css
- *     hasta sweep de Wave 3 (admin sigue usándolos).
+ *   - Legacy --forest, --lime, --canvas, --cream → viven en globals.css
+ *     porque powers (a) admin scope (out of design system), (b) Shadcn
+ *     role mapping (--primary, --accent, --ring, --chart-*, --sidebar)
+ *     que se usa app-wide vía shadcn/ui. NO migrar a Wave N.
  *   - Shadcn role mapping (--primary, --secondary, etc) → globals.css.
  */
 
