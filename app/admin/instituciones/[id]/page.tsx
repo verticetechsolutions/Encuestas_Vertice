@@ -143,7 +143,7 @@ export default async function AdminInstitucionDetailPage({ params }: Props) {
                     <td className="px-5 py-3 text-right">
                       <Link
                         href={`/admin/sesiones/${s.id}`}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-forest hover:underline"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-gold-deep hover:underline"
                       >
                         Detalle <ArrowRight className="size-3" />
                       </Link>
@@ -291,7 +291,7 @@ function Tag({
       className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ring-1 ${
         muted
           ? 'bg-foreground/5 text-muted-foreground ring-foreground/10'
-          : 'bg-forest/10 text-forest ring-forest/25'
+          : 'bg-ink/8 text-gold-deep ring-ink/20'
       }`}
     >
       {icon}
@@ -326,8 +326,8 @@ function Stat({
 }
 
 const MAGIC_STATUS_STYLE: Record<string, string> = {
-  vigente: 'bg-lime/30 text-lime-foreground ring-lime/40',
-  consumido: 'bg-forest text-primary-foreground ring-forest',
+  vigente: 'bg-gold-bright/30 text-gold-deep ring-gold-bright/50',
+  consumido: 'bg-ink text-cream-pure ring-ink',
   expirado: 'bg-amber-100 text-amber-900 ring-amber-200',
   revocado: 'bg-foreground/8 text-muted-foreground ring-foreground/15',
 };

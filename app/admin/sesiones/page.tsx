@@ -89,7 +89,7 @@ export default async function AdminSesionesIndexPage({ searchParams }: Props) {
                   <Td>
                     <Link
                       href={`/admin/instituciones/${s.institucion_id}`}
-                      className="font-medium text-foreground hover:text-forest hover:underline"
+                      className="font-medium text-foreground hover:text-gold-deep hover:underline"
                     >
                       {s.razon_social}
                     </Link>
@@ -115,7 +115,7 @@ export default async function AdminSesionesIndexPage({ searchParams }: Props) {
                   <Td className="text-right">
                     <Link
                       href={`/admin/sesiones/${s.sesion_id}`}
-                      className="inline-flex items-center gap-1 text-xs font-medium text-forest hover:underline"
+                      className="inline-flex items-center gap-1 text-xs font-medium text-gold-deep hover:underline"
                     >
                       Ver <ArrowRight className="size-3" />
                     </Link>
@@ -172,7 +172,7 @@ function ChipLink({
   children: React.ReactNode;
 }) {
   const cls = active
-    ? 'bg-forest text-primary-foreground ring-forest'
+    ? 'bg-ink text-cream-pure ring-ink'
     : 'bg-cream text-foreground ring-foreground/10 hover:bg-foreground/5';
   return (
     <Link
@@ -195,7 +195,7 @@ function EmptyState({ isExplicitFilter }: { isExplicitFilter: boolean }) {
       {isExplicitFilter && (
         <Link
           href="/admin/sesiones"
-          className="mt-3 inline-block text-xs font-medium text-forest hover:underline"
+          className="mt-3 inline-block text-xs font-medium text-gold-deep hover:underline"
         >
           Ver todas
         </Link>
@@ -233,10 +233,10 @@ function Td({
 }
 
 const STATUS_STYLE: Record<string, string> = {
-  abierta: 'bg-lime/30 text-lime-foreground ring-lime/40',
+  abierta: 'bg-gold-bright/30 text-gold-deep ring-gold-bright/50',
   pausada: 'bg-amber-100 text-amber-900 ring-amber-200',
-  sintetizando: 'bg-forest/15 text-forest ring-forest/30',
-  completa: 'bg-forest text-primary-foreground ring-forest',
+  sintetizando: 'bg-ink/8 text-ink/72 ring-ink/15',
+  completa: 'bg-ink text-cream-pure ring-ink',
   abandonada: 'bg-foreground/8 text-muted-foreground ring-foreground/15',
 };
 

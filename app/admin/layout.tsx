@@ -28,11 +28,11 @@ export default async function AdminLayout({
 
   return (
     <div className="min-h-screen bg-canvas">
-      <header className="border-b border-foreground/10 bg-forest-deep text-primary-foreground">
+      <header className="border-b border-foreground/10 bg-ink text-primary-foreground">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3.5">
           <div className="flex items-center gap-4">
             <Link href="/admin" className="flex items-center gap-2.5">
-              <div className="flex size-8 items-center justify-center rounded-full bg-lime text-lime-foreground">
+              <div className="flex size-8 items-center justify-center rounded-full bg-gold text-ink">
                 <span className="text-xs font-bold tracking-tight">V</span>
               </div>
               <div className="leading-tight">
@@ -59,7 +59,7 @@ export default async function AdminLayout({
             <form action={logoutAdmin}>
               <button
                 type="submit"
-                className="rounded-full bg-forest/40 px-3 py-1.5 text-xs font-medium text-primary-foreground/85 ring-1 ring-primary-foreground/10 transition hover:bg-forest/70"
+                className="rounded-full bg-cream-pure/10 px-3 py-1.5 text-xs font-medium text-primary-foreground/85 ring-1 ring-primary-foreground/10 transition hover:bg-cream-pure/20"
               >
                 Cerrar sesión
               </button>
@@ -82,7 +82,7 @@ function NavLink({
   return (
     <Link
       href={href}
-      className="rounded-full px-3 py-1.5 text-xs font-medium text-primary-foreground/75 transition hover:bg-forest/40 hover:text-primary-foreground"
+      className="rounded-full px-3 py-1.5 text-xs font-medium text-primary-foreground/75 transition hover:bg-cream-pure/10 hover:text-primary-foreground"
     >
       {children}
     </Link>

@@ -92,7 +92,7 @@ export default async function AdminMagicLinksIndexPage({
                     <td className="px-5 py-3">
                       <Link
                         href={`/admin/instituciones/${m.institucion_id}`}
-                        className="font-medium text-foreground hover:text-forest hover:underline"
+                        className="font-medium text-foreground hover:text-gold-deep hover:underline"
                       >
                         {m.razon_social}
                       </Link>
@@ -164,7 +164,7 @@ function ChipLink({
   children: React.ReactNode;
 }) {
   const cls = active
-    ? 'bg-forest text-primary-foreground ring-forest'
+    ? 'bg-ink text-cream-pure ring-ink'
     : 'bg-cream text-foreground ring-foreground/10 hover:bg-foreground/5';
   return (
     <Link
@@ -187,7 +187,7 @@ function EmptyState({ isExplicitFilter }: { isExplicitFilter: boolean }) {
       {isExplicitFilter && (
         <Link
           href="/admin/magic-links"
-          className="mt-3 inline-block text-xs font-medium text-forest hover:underline"
+          className="mt-3 inline-block text-xs font-medium text-gold-deep hover:underline"
         >
           Ver todos
         </Link>
@@ -197,8 +197,8 @@ function EmptyState({ isExplicitFilter }: { isExplicitFilter: boolean }) {
 }
 
 const MAGIC_STATUS_STYLE: Record<string, string> = {
-  vigente: 'bg-lime/30 text-lime-foreground ring-lime/40',
-  consumido: 'bg-forest text-primary-foreground ring-forest',
+  vigente: 'bg-gold-bright/30 text-gold-deep ring-gold-bright/50',
+  consumido: 'bg-ink text-cream-pure ring-ink',
   expirado: 'bg-amber-100 text-amber-900 ring-amber-200',
   revocado: 'bg-foreground/8 text-muted-foreground ring-foreground/15',
 };

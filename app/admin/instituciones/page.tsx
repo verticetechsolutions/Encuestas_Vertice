@@ -74,7 +74,7 @@ export default async function AdminInstitucionesPage() {
         </div>
         <Link
           href="/admin/instituciones/nueva"
-          className="inline-flex items-center gap-2 rounded-full bg-forest px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-forest-soft active:scale-[0.98]"
+          className="inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-[var(--ink-raised)] active:scale-[0.98]"
         >
           <Building2 className="size-4" />
           Nueva institución
@@ -110,7 +110,7 @@ export default async function AdminInstitucionesPage() {
                   <td className="px-5 py-3">
                     <Link
                       href={`/admin/instituciones/${r.id}`}
-                      className="font-medium text-foreground hover:text-forest hover:underline"
+                      className="font-medium text-foreground hover:text-gold-deep hover:underline"
                     >
                       {r.razon_social}
                     </Link>
@@ -138,7 +138,7 @@ export default async function AdminInstitucionesPage() {
                   <td className="px-5 py-3 text-right">
                     <Link
                       href={`/admin/instituciones/${r.id}`}
-                      className="inline-flex items-center gap-1 text-xs font-medium text-forest hover:underline"
+                      className="inline-flex items-center gap-1 text-xs font-medium text-gold-deep hover:underline"
                     >
                       Detalle <ArrowRight className="size-3" />
                     </Link>

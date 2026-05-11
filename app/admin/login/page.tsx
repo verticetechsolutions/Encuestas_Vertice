@@ -57,13 +57,13 @@ export default async function AdminLoginPage({
                 required
                 autoFocus
                 autoComplete="off"
-                className="mt-1.5 w-full rounded-xl border-0 bg-background px-3 py-2.5 font-mono text-sm text-foreground ring-1 ring-foreground/10 outline-none focus:ring-2 focus:ring-forest"
+                className="mt-1.5 w-full rounded-xl border-0 bg-background px-3 py-2.5 font-mono text-sm text-foreground ring-1 ring-foreground/10 outline-none focus:ring-2 focus:ring-ink/30"
                 placeholder="••••••••"
               />
             </label>
             <button
               type="submit"
-              className="mt-2 inline-flex h-11 items-center justify-center rounded-full bg-forest px-5 text-sm font-semibold tracking-tight text-primary-foreground transition hover:bg-forest-soft active:scale-[0.98]"
+              className="mt-2 inline-flex h-11 items-center justify-center rounded-full bg-ink px-5 text-sm font-semibold tracking-tight text-primary-foreground transition hover:bg-[var(--ink-raised)] active:scale-[0.98]"
             >
               Entrar al panel
             </button>

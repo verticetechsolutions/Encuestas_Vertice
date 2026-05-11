@@ -31,7 +31,7 @@ export function CommandPaletteTrigger() {
         type="button"
         aria-label="Abrir búsqueda"
         onClick={() => setOpen(true)}
-        className="inline-flex items-center gap-2 rounded-full bg-forest/40 px-3 py-1.5 text-xs font-medium text-primary-foreground/85 ring-1 ring-primary-foreground/10 transition hover:bg-forest/70"
+        className="inline-flex items-center gap-2 rounded-full bg-cream-pure/10 px-3 py-1.5 text-xs font-medium text-primary-foreground/85 ring-1 ring-primary-foreground/10 transition hover:bg-cream-pure/20"
       >
         <Search className="size-3.5" />
         <span className="hidden md:inline">Buscar…</span>
