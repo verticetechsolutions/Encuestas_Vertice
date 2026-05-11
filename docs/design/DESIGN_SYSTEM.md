@@ -58,6 +58,18 @@
 > Tras Wave 3 cerrarse "como no-op", founder pidió migrar admin panel también para consistencia visual. ~45 occurrences de forest/lime en `app/admin/*` + `components/admin/*` migradas a ink/gold (cero shadcn primitives importados en admin, solo classNames directos, así que la migración fue clean).
 >
 > Mapping completo en ADR-010 actualizado. Tokens legacy `--forest`/`--lime` se mantienen en globals.css por shadcn role mapping (que sigue usado por shadcn/ui primitives en `components/ui/`).
+
+---
+
+> **Update 2026-05-11 (Wave 5 — shadcn remap)** — Shadcn role mapping también remapped a brand tokens.
+>
+> Última pieza del puzzle: `--primary`, `--accent`, `--ring`, `--chart-*`, `--sidebar*` ahora apuntan a `var(--ink)`, `var(--gold)`, etc. (antes apuntaban a forest/lime). Dark mode también remapped: `--primary: var(--cream-pure)` (cream pill sobre ink, espejo del landing CTA), `--accent: var(--gold-bright)`.
+>
+> Impact: shadcn primitives (`<Select>` en `app/page.tsx`, `<Textarea>` en `HeroPregunta`) ahora renderizan focus rings y dropdowns en ink/gold automáticamente. Cero refactor de consumer code requerido.
+>
+> Tokens legacy `--forest`/`--lime`/`--canvas`/`--cream` quedan como dead definitions sin consumer activo (low priority — pueden eliminarse en sweep posterior, no causan visual issue).
+>
+> Ver ADR-011 para detalle. **Design system completamente cerrado** — 1 universo de brand tokens consumido por todos los layers (`app/design-system/*`, shadcn role mapping, classNames directos). No habrá Wave 6.
 >
 > **Design system completo app-wide**: landing + entrevista + admin todos consumen los tokens del design system. Shadcn primitives quedan en su universo paralelo con role mapping legacy.
 
