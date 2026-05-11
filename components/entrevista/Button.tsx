@@ -1,8 +1,9 @@
 // components/entrevista/Button.tsx
 //
-// Inverse de landing Button. primary = pill ink solid sobre cream bg,
-// con inner icon-pill cream + arrow rotate hover. ghost = pill border
-// ink/12 → ink/30 hover.
+// Inverse de landing Button. primary = pill ink solid sobre cream bg.
+// ghost = pill border ink/12 → ink/30 hover.
+//
+// Wave 2 (2026-05-11): consume --radius-pill + --shadow-cta-glow-cream tokens.
 
 'use client';
 
@@ -36,10 +37,10 @@ export function Button({
     return (
       <button
         className={cn(
-          'group/cta relative inline-flex items-center gap-3 rounded-full',
+          'group/cta relative inline-flex items-center gap-3 rounded-[var(--radius-pill)]',
           'bg-ink pl-6 pr-2 text-[13.5px] font-medium text-cream-pure',
           'transition-colors duration-[var(--dur-fast)] ease-[var(--ease-out-expo)]',
-          'shadow-[0_0_0_1px_rgba(10,15,28,0.04),0_20px_50px_-20px_rgba(10,15,28,0.35)]',
+          'shadow-[var(--shadow-cta-glow-cream)]',
           'hover:bg-[var(--ink-raised)]',
           sizeClass[size],
           className,
@@ -47,7 +48,7 @@ export function Button({
         {...rest}
       >
         <span>{children}</span>
-        <span className="inline-flex size-9 items-center justify-center rounded-full bg-cream-pure text-ink transition-transform duration-[var(--dur-fast)] group-hover/cta:translate-x-0.5">
+        <span className="inline-flex size-9 items-center justify-center rounded-[var(--radius-pill)] bg-cream-pure text-ink transition-transform duration-[var(--dur-fast)] group-hover/cta:translate-x-0.5">
           <Icon className="size-4" strokeWidth={2} />
         </span>
       </button>
@@ -57,7 +58,7 @@ export function Button({
   return (
     <button
       className={cn(
-        'group/ghost inline-flex items-center gap-2.5 rounded-full',
+        'group/ghost inline-flex items-center gap-2.5 rounded-[var(--radius-pill)]',
         'border border-[var(--survey-hairline-strong)] px-5 text-[13.5px] font-medium text-[var(--survey-text)]',
         'transition-colors duration-[var(--dur-fast)] ease-[var(--ease-out-expo)]',
         'hover:border-[rgb(10_15_28_/_0.30)]',
