@@ -1,0 +1,54 @@
+/* app/design-system/tokens.css
+ *
+ * LAYER 0 · Brand primitives — single source of truth para color y type
+ * families. Compartido entre landing (ink surface) y entrevista (cream
+ * surface). Cualquier color en componentes debe derivar de aquí.
+ *
+ * También incluye los survey-specific surface tokens (--survey-*) que
+ * son tokens compuestos sobre primitivos — viven aquí porque son
+ * shared entre /preview/ui y /entrevista/*.
+ *
+ * Lo que NO está aquí:
+ *   - Type scale, spacing scale, motion → archivos separados (type.css,
+ *     space.css, motion.css) que importan ESTOS tokens.
+ *   - Legacy --forest, --lime, --canvas, --cream → quedan en globals.css
+ *     hasta sweep de Wave 3 (admin sigue usándolos).
+ *   - Shadcn role mapping (--primary, --secondary, etc) → globals.css.
+ */
+
+:root {
+  /* === Brand primitives ============================================ */
+  --ink:         #0A0F1C;   /* navy ink — landing dark surface */
+  --ink-raised:  #1A2236;   /* hover/elevated sobre ink */
+  --cream-pure:  #F4F1EA;   /* cream off-white — texto sobre ink */
+  --gold:        #C8A864;   /* champán — acento principal */
+  --gold-deep:   #866D38;   /* gold deep — AA on white */
+  --gold-bright: #F2D89C;   /* gold bright — highlight, focus */
+  --gold-light:  #E0BE7C;   /* gold light — gradient base V mark */
+  --burgundy:    #8B3A3A;   /* burgundy desat — error states */
+
+  /* === Type families ============================================== */
+  --font-display: 'General Sans', 'Satoshi', ui-sans-serif, sans-serif;
+  --font-sans:    'Satoshi', ui-sans-serif, sans-serif;
+
+  /* === Survey surface tokens (entrevista) =========================
+   * Off-white pure + hairlines finísimos + accent oro solo en 1px.
+   * Scope: /entrevista/* y /preview/ui. NO usar en landing. */
+  --survey-bg:                  #FAF8F4;
+  --survey-surface:             #FFFFFF;
+  --survey-card-1:              #0A0F1C;
+  --survey-card-1-fg:           #F4F1EA;
+  --survey-card-1-fg-muted:     rgb(244 241 234 / 0.55);
+  --survey-card-1-fg-faint:     rgb(244 241 234 / 0.35);
+  --survey-card-1-hairline:        rgb(244 241 234 / 0.10);
+  --survey-card-1-hairline-strong: rgb(244 241 234 / 0.20);
+  --survey-card-2:              #FFFFFF;
+  --survey-text:                #0A0F1C;
+  --survey-text-72:             rgb(10 15 28 / 0.72);
+  --survey-text-65:             rgb(10 15 28 / 0.65);
+  --survey-text-45:             rgb(10 15 28 / 0.45);
+  --survey-hairline:            rgb(10 15 28 / 0.06);
+  --survey-hairline-strong:     rgb(10 15 28 / 0.10);
+  --survey-hover:               rgb(10 15 28 / 0.03);
+  --survey-active-bg:           rgb(200 168 100 / 0.08);
+}
