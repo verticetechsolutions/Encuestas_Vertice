@@ -76,4 +76,16 @@
   --shadow-cta-glow:       0 0 0 1px rgb(244 241 234 / 0.04), 0 30px 70px -20px rgb(200 168 100 / 0.45);
   --shadow-cta-glow-cream: 0 0 0 1px rgb(10 15 28 / 0.04), 0 20px 50px -20px rgb(10 15 28 / 0.35);
   --shadow-dialog:         0 30px 90px -20px rgb(0 0 0 / 0.5);
+
+  /* === Icon system ===============================================
+   * Lucide-only (ADR-004 final). Tokens de size + stroke para
+   * consistency. Wrapper component <Icon> en components/{landing,
+   * entrevista}/Icon.tsx enforces estos tokens. */
+  --icon-sm:           14px;
+  --icon-md:           18px;
+  --icon-lg:           24px;
+  --icon-xl:           32px;
+  --icon-stroke:       2;     /* default strokeWidth */
+  --icon-stroke-thin:  1.5;   /* delicate cases */
+  --icon-stroke-bold:  2.5;   /* arrows, ChevronRight nav */
 }
