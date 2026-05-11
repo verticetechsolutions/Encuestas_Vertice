@@ -25,6 +25,7 @@ import { Check, Lock, Mic, RotateCcw } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { MicButton } from '@/components/stt/MicButton';
 import { useDeepgramStream } from '@/lib/stt/use-deepgram-stream';
+import { appendTranscriptSegments } from '@/lib/stt/append-transcript';
 import {
   SPRING_BUTTON,
   SPRING_ICON,
@@ -103,21 +104,18 @@ export function HeroPregunta({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pregunta.id]);
 
-  // Append de segmentos finalizados nuevos al texto.
+  // Append de segmentos finalizados nuevos al texto. Lógica pura aislada en
+  // lib/stt/append-transcript.ts para que sea unit-testable sin jsdom/RTL.
   useEffect(() => {
-    const len = stt.transcripts.history.length;
-    if (len === lastAppendedRef.current) return;
-    const nuevos = stt.transcripts.history.slice(lastAppendedRef.current);
-    const fragmento = nuevos
-      .map((s) => s.text.trim())
-      .filter(Boolean)
-      .join(' ');
-    lastAppendedRef.current = len;
-    if (!fragmento) return;
-    const previo = textoRef.current;
-    const sep = previo.length === 0 || /\s$/.test(previo) ? '' : ' ';
-    onChangeTexto(previo + sep + fragmento);
-  }, [stt.transcripts.history.length, onChangeTexto]);
+    const { nextTexto, consumidos } = appendTranscriptSegments(
+      textoRef.current,
+      stt.transcripts.history,
+      lastAppendedRef.current
+    );
+    if (consumidos === lastAppendedRef.current) return;
+    lastAppendedRef.current = consumidos;
+    if (nextTexto !== textoRef.current) onChangeTexto(nextTexto);
+  }, [stt.transcripts.history, onChangeTexto]);
 
   return (
     <article className="flex flex-col gap-6">
