@@ -35,6 +35,37 @@ export interface PreguntaBatch {
   preguntas: Pregunta[];
 }
 
+// =============================================================================
+// Primer batch (bootstrap real, no fixture)
+// =============================================================================
+// Sonnet emite los batches subsecuentes vía /api/turn, pero el primer turn
+// necesita arrancar de algún lado: la sesión se abre sin historial y Sonnet
+// solo emite tras leer una respuesta del usuario. Este batch hardcoded es la
+// pregunta de apertura: identidad institucional. Cubre las 5 cajas del grupo
+// `identificacion` (CANON), que son las primeras en orden canónico spec §4.3.
+//
+// NO es un fixture mock — es contenido de producto. Cuando el usuario responde,
+// Sonnet recibe la respuesta + el system prompt completo y arranca el flujo
+// adaptativo normal (registrar_extraccion → generar_batch_preguntas).
+export const PRIMER_BATCH_BIENVENIDA: PreguntaBatch = {
+  id: 'bienvenida-001',
+  preguntas: [
+    {
+      id: 'bienvenida-p-1',
+      texto_pregunta:
+        'Para arrancar, cuéntanos sobre tu institución: razón social, nombre comercial si lo manejan, qué tipo son (banco, sofom, sofipo, arrendadora, etc.), bajo qué entes están regulados (CNBV, CONDUSEF, UIF), y cuántos años llevan operando.',
+      cajas_objetivo: [
+        'id_razon_social',
+        'id_nombre_comercial',
+        'id_tipo_institucion',
+        'id_regulacion',
+        'id_anios_operacion',
+      ],
+      tipo: 'directa',
+    },
+  ],
+};
+
 export type EntrevistaStatus =
   | 'cargando'
   | 'esperando_batch'
@@ -80,6 +111,7 @@ interface EntrevistaState {
   setRespuesta: (preguntaId: string, texto: string) => void;
   marcarRespondida: (preguntaId: string, marcada: boolean) => void;
   enviarBatch: () => Promise<void>;
+  cargarPrimerBatch: () => void;
   cargarFixtureMock: () => void;
 }
 
@@ -551,6 +583,15 @@ export const useEntrevistaStore = create<EntrevistaState>((set, get) => ({
       const msg = err instanceof Error ? err.message : 'Error de red.';
       set({ status: 'error_turn', ultimo_error_turn: msg });
     }
+  },
+
+  cargarPrimerBatch: () => {
+    // Idempotente: si ya hay batch (por ejemplo recarga tras turn), no piso.
+    if (get().batch_actual) return;
+    set({
+      batch_actual: PRIMER_BATCH_BIENVENIDA,
+      status: 'mostrando_batch',
+    });
   },
 
   cargarFixtureMock: () => {

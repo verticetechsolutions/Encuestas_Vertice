@@ -116,21 +116,11 @@ export const sintetizarSesion = inngest.createFunction(
     // es un nice-to-have hasta que tengamos storage real (Fase 10).
     await step.run('generar-pdf', async () => {
       // Inngest serializa el output de cada step. `result.perfil` viene del
-      // step previo intacto pero typescript lo ve como cualquier shape;
-      // narrowing explícito antes del render. Cast directo a
-      // PerfilDecisionFinal: el shape es estable post-validación Zod en
-      // procesarSintesisFinal y JSON.parse(JSON.stringify(...)) preserva
-      // todo salvo Date — ver normalización abajo.
-      const perfilRaw = result.perfil as PerfilDecisionFinal & { generado_at: string | Date };
-      const perfil: PerfilDecisionFinal = {
-        ...perfilRaw,
-        // Inngest serializa Dates como ISO strings; el template acepta ambos
-        // pero coercemos para consistencia con el shape original.
-        generado_at:
-          typeof perfilRaw.generado_at === 'string'
-            ? new Date(perfilRaw.generado_at)
-            : perfilRaw.generado_at,
-      };
+      // step previo intacto. El schema canónico ahora declara `generado_at`
+      // como `z.string().datetime()` (ISO 8601) — alineado con lo que Opus
+      // emite y con el ida/vuelta JSON de Inngest. El template del PDF
+      // acepta `Date | string` así que pasamos el shape directo.
+      const perfil = result.perfil as PerfilDecisionFinal;
       try {
         const pdf = await generarPdfSintesis(perfil);
         // Storage queda como TODO Fase 10. Por ahora sólo medimos que el

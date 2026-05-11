@@ -69,6 +69,7 @@ export function EntrevistaShell({
 }: Props) {
   const init = useEntrevistaStore((s) => s.init);
   const cargarFixtureMock = useEntrevistaStore((s) => s.cargarFixtureMock);
+  const cargarPrimerBatch = useEntrevistaStore((s) => s.cargarPrimerBatch);
   const status = useEntrevistaStore((s) => s.status);
   const batch = useEntrevistaStore((s) => s.batch_actual);
   const respuestas = useEntrevistaStore((s) => s.respuestas_pendientes);
@@ -112,8 +113,22 @@ export function EntrevistaShell({
 
   useEffect(() => {
     init(sesion_id, totales_por_grupo, { preview });
-    cargarFixtureMock();
-  }, [sesion_id, totales_por_grupo, preview, init, cargarFixtureMock]);
+    if (preview) {
+      // Preview UI sandbox: rota el fixture mock para diseño/QA visual.
+      cargarFixtureMock();
+    } else {
+      // Producción: pregunta de bienvenida hardcoded (identidad institucional).
+      // Sonnet toma el relevo desde el segundo turn vía /api/turn.
+      cargarPrimerBatch();
+    }
+  }, [
+    sesion_id,
+    totales_por_grupo,
+    preview,
+    init,
+    cargarFixtureMock,
+    cargarPrimerBatch,
+  ]);
 
   // Reset índice al llegar batch nuevo. batch.id cambia entre turnos de Sonnet.
   useEffect(() => {

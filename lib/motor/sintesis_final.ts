@@ -29,6 +29,8 @@
 //   - Notificación admin por email (espera RESEND_API_KEY).
 
 import { sql, eq, and, isNull, desc } from 'drizzle-orm';
+import { generateObject } from 'ai';
+import { anthropic } from '@ai-sdk/anthropic';
 import { db } from '@/lib/db';
 import {
   sesiones,
@@ -48,7 +50,10 @@ import {
   type CajaCanon,
 } from '@/lib/schemas/cajas';
 import type { TipoInstitucion } from '@/lib/schemas/casos';
-import { OPUS_SINTESIS_FINAL_PROMPT_READY } from '@/lib/prompts/opus_sintesis_final';
+import {
+  OPUS_SINTESIS_FINAL_PROMPT_READY,
+  OPUS_SINTESIS_FINAL_SYSTEM_PROMPT,
+} from '@/lib/prompts/opus_sintesis_final';
 import { logger } from '@/lib/observability/axiom';
 
 // =============================================================================
@@ -136,16 +141,32 @@ export class SesionNoEncontradaError extends Error {
 // Producción opusCall — placeholder hasta firma del prompt
 // =============================================================================
 
-export const productionOpusSintesisCall: OpusSintesisCallFn = async () => {
+export const productionOpusSintesisCall: OpusSintesisCallFn = async (input) => {
   if (!OPUS_SINTESIS_FINAL_PROMPT_READY) {
     throw new OpusSintesisPromptNotReady();
   }
-  // TODO Fase 8 wiring real: SDK Anthropic + extended thinking 8K +
-  // OPUS_SINTESIS_FINAL_SYSTEM_PROMPT + tool-output schema vía z.toJSONSchema.
-  // Reintento intra-llamada (1x) con error_context si Zod falla. Tras 2 fallos
-  // intra-llamada se propaga SintesisValidacionError y la Inngest function
-  // decide retries.
-  throw new OpusSintesisPromptNotReady();
+
+  // Extended thinking 8K (IMPLEMENTATION.md §10): Opus razona internamente sobre
+  // la transcripción + extracciones antes de emitir el JSON estructurado. El
+  // budget se cementa por specs, no se ajusta por sesión.
+  //
+  // Reintento intra-llamada: NO se hace aquí. La Inngest function ya tiene
+  // retries=4 con backoff. Si Zod falla, lanzamos SintesisValidacionError y
+  // que Inngest decida retry. Evita doble-cobro de tokens en caso de prompt
+  // mal calibrado (mejor que founder vea el fallo rápido).
+  const { object } = await generateObject({
+    model: anthropic('claude-opus-4-7'),
+    system: OPUS_SINTESIS_FINAL_SYSTEM_PROMPT,
+    schema: PerfilDecisionFinalConsistenteSchema,
+    prompt: JSON.stringify(input, null, 2),
+    providerOptions: {
+      anthropic: {
+        thinking: { type: 'enabled', budgetTokens: 8000 },
+      },
+    },
+  });
+
+  return object;
 };
 
 // =============================================================================

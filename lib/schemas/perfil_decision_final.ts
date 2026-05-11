@@ -80,7 +80,11 @@ export const PerfilDecisionFinalSchema = z.object({
   schema_version: z.literal('1.0'),
   institucion: InstitucionRefSchema,
   sesion_id: z.string().uuid(),
-  generado_at: z.coerce.date(),
+  // ISO 8601 string (no `z.coerce.date()`): el AI SDK serializa el schema a
+  // JSONSchema para forzar el output de Opus, y Date no tiene mapping JSON
+  // natural. El prompt ya le pide a Opus un ISO string. Drizzle jsonb lo
+  // persiste tal cual; frontend (formatRelative) acepta string o Date.
+  generado_at: z.string().datetime(),
   metricas: MetricasPerfilSchema,
   // Mapa caja_codigo → entry. Incluye CANON + EXTENSION[tipo] aplicables a esta sesión.
   // Cajas no respondidas que cayeron al cap quedan con fuente = 'decline_to_answer'.

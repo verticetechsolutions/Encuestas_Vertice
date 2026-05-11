@@ -94,7 +94,7 @@ function perfilValido(overrides: Partial<PerfilDecisionFinal> = {}): PerfilDecis
       tipo: 'sofom_er',
     },
     sesion_id: SESION_ID,
-    generado_at: new Date('2026-05-07T12:00:00Z'),
+    generado_at: '2026-05-07T12:00:00.000Z',
     metricas: {
       cajas_llenas: 30,
       cajas_aplicables: 60,
@@ -145,10 +145,23 @@ function inputMinimo(): SintesisInput {
 // =============================================================================
 
 describe('productionOpusSintesisCall', () => {
-  it('arroja OpusSintesisPromptNotReady mientras el prompt no esté firmado', async () => {
-    await expect(productionOpusSintesisCall(inputMinimo())).rejects.toBeInstanceOf(
-      OpusSintesisPromptNotReady
-    );
+  // Con OPUS_SINTESIS_FINAL_PROMPT_READY=true, productionOpusSintesisCall ya
+  // NO arroja OpusSintesisPromptNotReady — invoca generateObject del AI SDK.
+  // Sin ANTHROPIC_API_KEY el AI SDK arroja AI_LoadAPIKeyError.
+  it('sin ANTHROPIC_API_KEY arroja AI_LoadAPIKeyError (no OpusSintesisPromptNotReady)', async () => {
+    const prevKey = process.env.ANTHROPIC_API_KEY;
+    delete process.env.ANTHROPIC_API_KEY;
+    try {
+      await expect(productionOpusSintesisCall(inputMinimo())).rejects.toThrow(/api key/i);
+    } finally {
+      if (prevKey !== undefined) process.env.ANTHROPIC_API_KEY = prevKey;
+    }
+  });
+
+  it('OpusSintesisPromptNotReady sigue documentando el contrato fail-fast del flag', () => {
+    const err = new OpusSintesisPromptNotReady();
+    expect(err.name).toBe('OpusSintesisPromptNotReady');
+    expect(err.message).toContain('OPUS_SINTESIS_FINAL_PROMPT_READY');
   });
 });
 
