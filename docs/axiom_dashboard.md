@@ -22,8 +22,39 @@ Las queries usan APL (Axiom Processing Language). Dataset: `vertice-prod` (o
 | `sesion.lista_para_sintesis` | info | `dispatchSesionListaParaSintesis` | `SesionListaParaSintesisPayload` |
 | `sesion.sintesis_failed` | error | (TODO Inngest handler — sintesis_final falla) | `SesionSintesisFailedPayload` |
 
+### Admin audit log (security-hardening 2026-05-10, PR #9)
+
+Eventos del compliance trail de acciones administrativas. Wirados en
+`lib/observability/axiom.ts:241-251` con namespace `logger.admin.*`. NUNCA
+loguear tokens plaintext en payloads.
+
+| Event name | Nivel | Emisor | Payload |
+|---|---|---|---|
+| `admin.login` | info | `app/actions/adminAuth.ts:60` | `AdminLoginPayload` |
+| `admin.login_fallido` | warn | `app/actions/adminAuth.ts:43,49,54` | `AdminLoginFallidoPayload` (razon: rate_limited \| admin_disabled \| admin_invalid_token) |
+| `admin.institucion_creada` | info | `app/actions/adminInstituciones.ts:67` | `AdminInstitucionCreadaPayload` |
+| `admin.magic_link_emitido` | info | `app/actions/auth.ts:66` | `AdminMagicLinkEmitidoPayload` |
+| `admin.magic_link_revocado` | info | `app/actions/adminMagicLinks.ts:104` | `AdminMagicLinkRevocadoPayload` |
+
 Tipos en `lib/observability/axiom.ts`. Helpers en `logger.review.*`,
-`logger.decline.*`, `logger.caso.*`, `logger.sesion.*`, `logger.extraccion.*`.
+`logger.decline.*`, `logger.caso.*`, `logger.sesion.*`, `logger.extraccion.*`,
+`logger.admin.*`.
+
+### Eventos de seguridad NO logueados a Axiom (deuda)
+
+`lib/security/csrf.ts:checkSameOrigin` y `lib/security/rate-limit.ts`
+**devuelven** error objects pero **no emiten** a Axiom. Cuando un request es
+rechazado por CSRF same-origin o rate-limit, el caller (`app/api/turn/route.ts`,
+`app/actions/adminAuth.ts`) recibe el error pero no hay un evento dedicado
+en el dataset.
+
+Pendiente cuando se quiera dashboard de "abusos contra la app":
+- Agregar `logger.security.csrfTokenInvalid({ path, origin, referer })`.
+- Agregar `logger.security.rateLimitExceeded({ key, retry_after_ms, route })`.
+- Wire en los call sites de `checkSameOrigin` y `enforceRateLimit`.
+
+No es bloqueante para el primer piloto (la app no está expuesta a tráfico
+adversarial todavía). Es bloqueante si se decide abrir signup público.
 
 ## Métricas derivadas (spec v2 §5.2)
 
