@@ -3,6 +3,9 @@
 // Card primitive para landing. Variant default = manifest pattern
 // (ink-raised bg + gold seam top + radius-section). Atmosphere
 // overlays opcionales via prop atmosphere=true.
+//
+// Wave 2 (2026-05-11): consume --radius-card/section + --shadow-card-ink
+// tokens (era literales inline en Wave 1).
 
 import { cn } from '@/lib/utils';
 import { Atmosphere } from './Atmosphere';
@@ -19,16 +22,16 @@ interface CardProps {
 
 const variantClass: Record<Variant, string> = {
   default:
-    'relative overflow-hidden rounded-[18px] bg-[var(--ink-raised)] ' +
-    'shadow-[inset_0_0_0_1px_rgba(244,241,234,0.055),inset_0_1px_0_rgba(200,168,100,0.18)] ' +
+    'relative overflow-hidden rounded-[var(--radius-card)] bg-[var(--ink-raised)] ' +
+    'shadow-[var(--shadow-card-ink)] ' +
     'p-[var(--card-padding)]',
   manifest:
-    'relative overflow-hidden rounded-[28px] bg-[var(--ink-raised)] ' +
-    'shadow-[inset_0_0_0_1px_rgba(244,241,234,0.055),inset_0_1px_0_rgba(200,168,100,0.18)] ' +
+    'relative overflow-hidden rounded-[var(--radius-section)] bg-[var(--ink-raised)] ' +
+    'shadow-[var(--shadow-card-ink)] ' +
     'px-6 py-14 sm:px-10 sm:py-20 lg:px-14',
   compact:
-    'relative overflow-hidden rounded-[14px] bg-[var(--ink-raised)] ' +
-    'shadow-[inset_0_0_0_1px_rgba(244,241,234,0.055)] ' +
+    'relative overflow-hidden rounded-[var(--radius-md)] bg-[var(--ink-raised)] ' +
+    'shadow-[var(--shadow-hairline-ink)] ' +
     'p-6',
 };
 
