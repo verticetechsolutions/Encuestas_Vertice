@@ -9,7 +9,12 @@ import { motion } from 'motion/react';
 import { ArrowUpRight } from 'lucide-react';
 import type { MouseEvent } from 'react';
 
-const SPRING_FILL = { type: 'spring' as const, stiffness: 320, damping: 22, mass: 0.55 };
+import { springs } from '@/lib/design-system/motion/springs';
+
+// Alias semánticos. SPRING_ARROW se queda inline porque damping=18 no
+// matchea ningún preset y refactorearlo arriesga cambiar el feel.
+// Wave 2 evalúa si agregar arrowSnap a springs.ts.
+const SPRING_FILL = springs.elegant;
 const SPRING_ARROW = { type: 'spring' as const, stiffness: 520, damping: 18, mass: 0.4 };
 const SPRING_TEXT = { type: 'spring' as const, stiffness: 380, damping: 26 };
 
