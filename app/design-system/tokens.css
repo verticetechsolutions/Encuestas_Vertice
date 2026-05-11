@@ -64,4 +64,16 @@
   --radius-card:    18px;
   --radius-section: 28px;
   --radius-pill:    9999px;
+
+  /* === Shadow scale ==============================================
+   * Inset hairlines + outer glows para CTAs y dialogs. Centralizados
+   * para que cuando cambien valores brand (ej. el gold blur radius),
+   * se actualizan ambos surfaces a la vez. */
+  --shadow-hairline-ink:   inset 0 0 0 1px rgb(244 241 234 / 0.06);
+  --shadow-hairline-cream: inset 0 0 0 1px rgb(10 15 28 / 0.06);
+  --shadow-gold-seam:      inset 0 1px 0 rgb(200 168 100 / 0.18);
+  --shadow-card-ink:       inset 0 0 0 1px rgb(244 241 234 / 0.055), inset 0 1px 0 rgb(200 168 100 / 0.18);
+  --shadow-cta-glow:       0 0 0 1px rgb(244 241 234 / 0.04), 0 30px 70px -20px rgb(200 168 100 / 0.45);
+  --shadow-cta-glow-cream: 0 0 0 1px rgb(10 15 28 / 0.04), 0 20px 50px -20px rgb(10 15 28 / 0.35);
+  --shadow-dialog:         0 30px 90px -20px rgb(0 0 0 / 0.5);
 }
