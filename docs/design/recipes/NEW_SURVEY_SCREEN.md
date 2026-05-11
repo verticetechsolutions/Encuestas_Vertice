@@ -11,6 +11,7 @@ import { Eyebrow } from '@/components/entrevista/Eyebrow';
 import { Hairline } from '@/components/entrevista/Hairline';
 import { Button } from '@/components/entrevista/Button';
 import { Card } from '@/components/entrevista/Card';
+import { Icon } from '@/components/entrevista/Icon';
 
 export default function NewScreen() {
   return (
@@ -51,6 +52,7 @@ export default function NewScreen() {
 - [ ] CTAs usan `<Button variant="primary|ghost">`.
 - [ ] Dividers usan `<Hairline tone="ink">` (NO `border-ink/8`).
 - [ ] Si quieres `gold` acento sobre cream surface, USA `text-gold-deep` (`gold` falla AA contrast on white).
+- [ ] Iconos usan `<Icon icon={X} size="md|sm|lg|xl" stroke="default|thin|bold" />`. Nunca strokeWidth/size literal.
 
 ## Heads-up para componentes complejos (per ADR-006)
 
