@@ -119,68 +119,73 @@
   --lime-soft: oklch(0.95 0.08 125);
   --lime-foreground: oklch(0.28 0.06 145);
 
-  /* Shadcn role mapping — usamos forest como primary, lime como accent. */
+  /* Shadcn role mapping — Wave 5 (2026-05-11) remapped a design system
+     tokens. Antes: forest/lime. Ahora: ink/gold para consistency
+     app-wide. Shadcn primitives en components/ui/ (Select, Textarea,
+     Button, Card, Progress) ahora renderizan con brand colors. */
   --card: var(--cream);
-  --card-foreground: oklch(0.20 0.02 145);
+  --card-foreground: var(--ink);
   --popover: var(--cream);
-  --popover-foreground: oklch(0.20 0.02 145);
-  --primary: var(--forest);
-  --primary-foreground: oklch(0.97 0.012 90);
+  --popover-foreground: var(--ink);
+  --primary: var(--ink);
+  --primary-foreground: var(--cream-pure);
   --secondary: oklch(0.94 0.01 90);
-  --secondary-foreground: oklch(0.30 0.04 145);
+  --secondary-foreground: var(--ink);
   --muted: oklch(0.94 0.01 90);
   --muted-foreground: oklch(0.45 0.02 110);
-  --accent: var(--lime);
-  --accent-foreground: var(--lime-foreground);
-  --destructive: oklch(0.55 0.18 27);
-  --border: oklch(0.88 0.012 90);
-  --input: oklch(0.92 0.012 90);
-  --ring: var(--forest);
+  --accent: var(--gold);
+  --accent-foreground: var(--ink);
+  --destructive: var(--burgundy);
+  --border: rgb(10 15 28 / 0.12);
+  --input: rgb(10 15 28 / 0.08);
+  --ring: var(--ink);
 
-  --chart-1: var(--forest);
-  --chart-2: var(--lime);
-  --chart-3: oklch(0.55 0.07 145);
-  --chart-4: oklch(0.78 0.10 130);
-  --chart-5: oklch(0.40 0.05 110);
+  --chart-1: var(--ink);
+  --chart-2: var(--gold);
+  --chart-3: var(--gold-deep);
+  --chart-4: var(--gold-bright);
+  --chart-5: var(--burgundy);
 
   --radius: 0.875rem;
 
-  --sidebar: var(--forest);
-  --sidebar-foreground: oklch(0.97 0.012 90);
-  --sidebar-primary: var(--lime);
-  --sidebar-primary-foreground: var(--lime-foreground);
-  --sidebar-accent: oklch(0.40 0.075 145);
-  --sidebar-accent-foreground: oklch(0.97 0.012 90);
-  --sidebar-border: oklch(0.42 0.07 145);
-  --sidebar-ring: var(--lime);
+  --sidebar: var(--ink);
+  --sidebar-foreground: var(--cream-pure);
+  --sidebar-primary: var(--gold);
+  --sidebar-primary-foreground: var(--ink);
+  --sidebar-accent: var(--ink-raised);
+  --sidebar-accent-foreground: var(--cream-pure);
+  --sidebar-border: rgb(244 241 234 / 0.10);
+  --sidebar-ring: var(--gold);
 
   /* Tipografía display — vive en app/design-system/tokens.css.
      Survey surface tokens (--survey-*) viven en app/design-system/tokens.css. */
 }
 
 .dark {
-  /* Modo oscuro: por ahora reusamos la paleta clara invertida. Founder no
-     ha pedido dark mode todavía, pero shadcn lo expone gratis. */
-  --canvas: oklch(0.18 0.02 145);
-  --cream: oklch(0.22 0.025 145);
-  --background: var(--cream);
-  --foreground: oklch(0.96 0.012 90);
-  --card: oklch(0.24 0.025 145);
-  --card-foreground: oklch(0.96 0.012 90);
-  --popover: oklch(0.24 0.025 145);
-  --popover-foreground: oklch(0.96 0.012 90);
-  --primary: var(--lime);
-  --primary-foreground: var(--lime-foreground);
-  --secondary: oklch(0.30 0.04 145);
-  --secondary-foreground: oklch(0.96 0.012 90);
-  --muted: oklch(0.30 0.04 145);
-  --muted-foreground: oklch(0.72 0.02 110);
-  --accent: var(--lime);
-  --accent-foreground: var(--lime-foreground);
-  --destructive: oklch(0.65 0.20 27);
-  --border: oklch(0.34 0.04 145);
-  --input: oklch(0.34 0.04 145);
-  --ring: var(--lime);
+  /* Modo oscuro: Wave 5 (2026-05-11) remapped a brand ink/cream-pure.
+     Inverse del light: primary es cream-pure pill sobre ink (espejo
+     del landing CTA hero). Accent es gold-bright para pop sobre ink.
+     Founder no ha pedido dark mode todavía pero shadcn lo expone gratis. */
+  --canvas: var(--ink);
+  --cream: var(--ink-raised);
+  --background: var(--ink);
+  --foreground: var(--cream-pure);
+  --card: var(--ink-raised);
+  --card-foreground: var(--cream-pure);
+  --popover: var(--ink-raised);
+  --popover-foreground: var(--cream-pure);
+  --primary: var(--cream-pure);
+  --primary-foreground: var(--ink);
+  --secondary: rgb(244 241 234 / 0.08);
+  --secondary-foreground: var(--cream-pure);
+  --muted: rgb(244 241 234 / 0.08);
+  --muted-foreground: rgb(244 241 234 / 0.55);
+  --accent: var(--gold-bright);
+  --accent-foreground: var(--ink);
+  --destructive: var(--burgundy);
+  --border: rgb(244 241 234 / 0.10);
+  --input: rgb(244 241 234 / 0.06);
+  --ring: var(--gold);
 }
 
 @layer base {

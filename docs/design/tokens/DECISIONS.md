@@ -193,10 +193,50 @@ Si surge necesidad de un icono que Lucide no tenga: (a) elegir el más cercano d
   - completa/consumido (done): `bg-ink text-cream-pure ring-ink`
 - `focus:ring-forest` → `focus:ring-ink/30`
 
-**Resultado final del design system**: 2 universos coexistiendo cleanly en globals.css:
-1. **Design system Waves 1+2** (`app/design-system/*` imports): ink, cream-pure, gold, brand tokens, scales, primitives — consumido por landing, entrevista, **y ahora admin** (via classNames directos).
-2. **Shadcn role mapping** (`:root` en globals.css): `--primary`, `--accent`, `--ring`, `--chart-*`, `--sidebar*` referenciando lime/forest. Powers shadcn/ui primitives en `components/ui/`.
+**Resultado final del design system**: **1 universo** post-Wave 5 remap (ver ADR-011).
 
-Los tokens legacy (`--forest`, `--lime`, `--canvas`, `--cream`) NO se eliminan porque (a) shadcn role mapping los referencia, (b) eliminar requiere refactorear shadcn primitives — costo > beneficio dado que admin ya no los consume directo. Si en futuro se decide remap shadcn role mapping a ink/gold, los tokens legacy se pueden eliminar.
+Antes de Wave 5: 2 universos coexistiendo (design system tokens + shadcn role mapping legacy). Post Wave 5: shadcn role mapping también consume brand tokens (ink/gold/cream-pure/burgundy). Los tokens legacy `--forest`/`--lime` siguen definidos en globals.css pero ya NO los referencia ningún consumer activo — quedan como dead definitions hasta sweep posterior si se decide hacerlo.
 
-Design system queda cerrado app-wide. No habrá Wave 4 salvo necesidad concreta nueva.
+---
+
+## ADR-011: Shadcn role mapping remapped a brand tokens (Wave 5)
+
+**Date**: 2026-05-11
+**Status**: Active
+
+**Context**: ADR-010 dejó shadcn role mapping (`--primary: var(--forest)`, `--accent: var(--lime)`, `--ring: var(--forest)`, `--chart-*`, `--sidebar*`) apuntando a tokens legacy. Esto causaba que shadcn primitives (`<Select>` en landing, `<Textarea>` en HeroPregunta) renderizaran con colores forest/lime que no matchean el design system.
+
+**Audit**:
+- `bg-primary` / `text-primary` / `bg-accent` / `text-accent` / `ring-primary` directos: **cero usages** en `app/admin/*`, `app/entrevista/*`, ya migrados via admin sweep + entrevista refactor.
+- `text-primary-foreground` (consumed por admin classes): cream-ish color. Post remap = `var(--cream-pure)` = mismo hue. Cero visual diff.
+- Shadcn primitives importados: solo `<Select>` en `app/page.tsx` y `<Textarea>` en `HeroPregunta.tsx`. Post remap: focus rings y dropdowns rendering en ink/gold en vez de forest/lime. Brand-aligned.
+
+**Decision**: remap completo de shadcn role mapping a brand tokens.
+
+**Light theme (`:root`)**:
+- `--primary: var(--ink)` (was forest)
+- `--primary-foreground: var(--cream-pure)` (was cream-ish oklch)
+- `--accent: var(--gold)` (was lime)
+- `--accent-foreground: var(--ink)` (was lime-foreground)
+- `--ring: var(--ink)` (was forest)
+- `--destructive: var(--burgundy)` (was oklch red)
+- `--border: rgb(10 15 28 / 0.12)` (ink/12)
+- `--input: rgb(10 15 28 / 0.08)` (ink/8)
+- `--card-foreground` / `--popover-foreground` / `--secondary-foreground: var(--ink)`
+- `--chart-1..5`: ink, gold, gold-deep, gold-bright, burgundy
+- `--sidebar*`: ink + cream-pure + gold (dark sidebar like landing dark surface)
+
+**Dark theme (`.dark`)**:
+- `--background: var(--ink)`, `--foreground: var(--cream-pure)` (inverse del light)
+- `--primary: var(--cream-pure)` (espejo del landing CTA: cream pill sobre ink)
+- `--primary-foreground: var(--ink)`
+- `--accent: var(--gold-bright)` (gold-bright pops más sobre ink)
+- `--ring: var(--gold)`
+
+**Reasoning**:
+- Cierra el último gap: TODO el app consume brand tokens via design system O shadcn role mapping remapped.
+- Cero refactor de consumer code requerido.
+- Los componentes shadcn primitives ahora renderizan brand-aligned automáticamente.
+- Tokens legacy `--forest`/`--lime`/`--canvas`/`--cream` quedan como dead definitions sin consumer activo. Pueden eliminarse en sweep posterior si se decide hacerlo (low priority — no causan visual issue).
+
+**Resultado**: design system **completamente cerrado**. 1 universo de brand tokens consumido por (a) `app/design-system/*` imports, (b) shadcn role mapping en globals.css, (c) classNames directos. No habrá Wave 6.
