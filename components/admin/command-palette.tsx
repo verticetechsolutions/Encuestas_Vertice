@@ -247,7 +247,7 @@ function ResultRow({
         onClick={onClick}
         onMouseEnter={onMouseEnter}
         className={`flex w-full items-center gap-3 px-4 py-2.5 text-left transition ${
-          selected ? 'bg-forest/10' : 'hover:bg-foreground/[0.02]'
+          selected ? 'bg-ink/8' : 'hover:bg-foreground/[0.02]'
         }`}
       >
         <span className="text-muted-foreground">{icon}</span>

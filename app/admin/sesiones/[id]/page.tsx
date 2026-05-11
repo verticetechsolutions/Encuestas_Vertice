@@ -157,7 +157,7 @@ export default async function AdminSesionDetailPage({ params }: Props) {
                 key={t.id}
                 className={`grid grid-cols-[auto_1fr_auto] gap-4 px-5 py-4 ${
                   t.rol === 'agente'
-                    ? 'bg-forest/[0.04]'
+                    ? 'bg-ink/[0.03]'
                     : 'bg-background/30'
                 }`}
               >
@@ -294,7 +294,7 @@ export default async function AdminSesionDetailPage({ params }: Props) {
                   </span>
                 </p>
                 <details className="mt-2">
-                  <summary className="cursor-pointer text-[11px] font-medium text-forest hover:underline">
+                  <summary className="cursor-pointer text-[11px] font-medium text-gold-deep hover:underline">
                     Ver contenido
                   </summary>
                   <pre className="mt-2 max-h-64 overflow-auto rounded-xl bg-foreground/[0.04] p-3 font-mono text-[11px] leading-relaxed text-foreground/85">
@@ -500,10 +500,10 @@ function Tag({
   muted?: boolean;
 }) {
   const cls = accent
-    ? 'bg-forest text-primary-foreground ring-forest'
+    ? 'bg-ink text-cream-pure ring-ink'
     : muted
       ? 'bg-foreground/8 text-muted-foreground ring-foreground/15'
-      : 'bg-forest/12 text-forest ring-forest/25';
+      : 'bg-ink/8 text-gold-deep ring-ink/20';
   return (
     <span
       className={`inline-flex items-center gap-1 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ring-1 ${cls}`}
@@ -518,8 +518,8 @@ function RolBadge({ rol }: { rol: 'agente' | 'usuario' }) {
     <span
       className={`rounded-full px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wide ring-1 ${
         rol === 'agente'
-          ? 'bg-forest text-primary-foreground ring-forest'
-          : 'bg-lime text-lime-foreground ring-lime'
+          ? 'bg-ink text-cream-pure ring-ink'
+          : 'bg-gold text-ink ring-gold'
       }`}
     >
       {rol}

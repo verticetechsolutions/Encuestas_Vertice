@@ -166,27 +166,37 @@ Si surge necesidad de un icono que Lucide no tenga: (a) elegir el más cercano d
 
 ## ADR-010: Legacy --lime/--forest se quedan (Wave 3 cleanup outcome)
 
-**Date**: 2026-05-11
-**Status**: Active
+**Date**: 2026-05-11 (Wave 3 original) / 2026-05-11 later (admin sweep)
+**Status**: Active (admin migrated)
 
-**Context**: La spec original prometía un Wave 3 sweep de `--lime`/`--forest` fuera de entrevista. La intención era cementar gold como único acento.
+**Context**: La spec original prometía un Wave 3 sweep de `--lime`/`--forest` fuera de entrevista. Wave 3 audit reveló que entrevista/preview ya estaban limpios desde PR #11 — pero admin todavía usaba lime/forest directamente (~45 occurrencias en 12 archivos). El founder pidió migrar admin también para consistencia visual app-wide.
 
-**Audit realizado en Wave 3 (branch `chore/design-system-legacy-sweep`):**
-- `app/entrevista/*`, `app/preview/*`, `components/entrevista/*`: **ZERO** references a lime/forest. La migración ya ocurrió en PR #11 (refactor visual entrevista 2026-05-10) cuando se unificaron tokens a gold/cream.
-- `app/admin/*` y `components/admin/*`: usan lime/forest directamente (out of design system scope per spec).
-- `app/globals.css`: define lime/forest + Shadcn role mapping (`--primary: var(--forest)`, `--accent: var(--lime)`, `--ring: var(--forest)`, `--chart-*`, `--sidebar*`) usado app-wide.
+**Audit completo:**
+- `app/entrevista/*`, `app/preview/*`, `components/entrevista/*`: ZERO references. Migración pre-existente (PR #11).
+- `app/admin/*` (8 files) + `components/admin/*` (3 files): **migrated en PR del admin sweep** (forest/lime → ink/gold). Ver mapping abajo.
+- `app/globals.css`: define lime/forest + Shadcn role mapping (`--primary: var(--forest)`, `--accent: var(--lime)`, `--ring`, `--chart-*`, `--sidebar*`). **Estos siguen vivos** porque powers shadcn/ui primitives en `components/ui/` (Button, Card, Progress, Select, Textarea) que pueden ser usados en código futuro.
 
-**Decision**: **NO sweep**. Los legacy tokens se quedan en globals.css permanentemente.
+**Decision**: 
+- Admin consumer code (classNames): migrated.
+- Globals.css source of truth (--forest, --lime, --canvas, --cream): se quedan permanentemente por shadcn role mapping.
 
-**Reasoning**:
-- No hay código consumidor en entrevista/preview que sweep limpiaría.
-- Remover los tokens rompería admin + Shadcn role mapping (--primary etc usados por shadcn/ui).
-- La separación "design system new tokens vs legacy/shadcn tokens" en globals.css ya es clara.
-- Renombrar `--forest` a algo neutro (`--admin-primary`) sería churn sin ganancia.
+**Admin migration mapping** (ver commit del admin sweep para detalle):
+- `bg-forest-deep` / `bg-forest` (dark surfaces, primary CTAs) → `bg-ink`
+- `hover:bg-forest-soft` → `hover:bg-[var(--ink-raised)]`
+- `bg-forest/X` on dark bg → `bg-cream-pure/X` (transparent pills on header)
+- `bg-forest/X` on light bg → `bg-ink/8` (tinted hover states)
+- `text-forest` (links) → `text-gold-deep` (AA on white)
+- `bg-lime` (V badge, accent button) → `bg-gold text-ink`
+- Status badges 3-state:
+  - abierta/vigente (fresh): `bg-gold-bright/30 text-gold-deep ring-gold-bright/50`
+  - sintetizando/in-progress: `bg-ink/8 text-ink/72 ring-ink/15`
+  - completa/consumido (done): `bg-ink text-cream-pure ring-ink`
+- `focus:ring-forest` → `focus:ring-ink/30`
 
-**Resultado del design system**: 3 universos coexistiendo cleanly en globals.css:
-1. **Design system Wave 1+2** (`app/design-system/*` imports): ink, cream-pure, gold, brand tokens, type/space/motion scales, radius, shadow, icons.
-2. **Shadcn role mapping** (`:root` en globals.css): `--primary`, `--accent`, `--ring`, `--chart-*`, `--sidebar*` referenciando lime/forest. Powers shadcn/ui components.
-3. **Legacy admin** (`--forest`, `--lime`, `--canvas`, `--cream`): definiciones que admin consume directo.
+**Resultado final del design system**: 2 universos coexistiendo cleanly en globals.css:
+1. **Design system Waves 1+2** (`app/design-system/*` imports): ink, cream-pure, gold, brand tokens, scales, primitives — consumido por landing, entrevista, **y ahora admin** (via classNames directos).
+2. **Shadcn role mapping** (`:root` en globals.css): `--primary`, `--accent`, `--ring`, `--chart-*`, `--sidebar*` referenciando lime/forest. Powers shadcn/ui primitives en `components/ui/`.
 
-Wave 3 cierra el design system. No habrá Wave 4 salvo necesidad concreta nueva.
+Los tokens legacy (`--forest`, `--lime`, `--canvas`, `--cream`) NO se eliminan porque (a) shadcn role mapping los referencia, (b) eliminar requiere refactorear shadcn primitives — costo > beneficio dado que admin ya no los consume directo. Si en futuro se decide remap shadcn role mapping a ink/gold, los tokens legacy se pueden eliminar.
+
+Design system queda cerrado app-wide. No habrá Wave 4 salvo necesidad concreta nueva.

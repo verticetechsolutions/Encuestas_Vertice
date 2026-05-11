@@ -57,7 +57,7 @@ export function NuevaInstitucionForm() {
               name="tipo"
               required
               defaultValue="banco"
-              className="rounded-xl border-0 bg-background px-3 py-2.5 text-sm text-foreground ring-1 ring-foreground/10 outline-none focus:ring-2 focus:ring-forest"
+              className="rounded-xl border-0 bg-background px-3 py-2.5 text-sm text-foreground ring-1 ring-foreground/10 outline-none focus:ring-2 focus:ring-ink/30"
             >
               {TIPOS.map((t) => (
                 <option key={t.value} value={t.value}>
@@ -77,7 +77,7 @@ export function NuevaInstitucionForm() {
         <button
           type="submit"
           disabled={pending}
-          className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-forest px-5 text-sm font-semibold tracking-tight text-primary-foreground transition hover:bg-forest-soft active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+          className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-ink px-5 text-sm font-semibold tracking-tight text-primary-foreground transition hover:bg-[var(--ink-raised)] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
         >
           {pending ? (
             <>
@@ -121,7 +121,7 @@ function Field({
         type={type}
         placeholder={placeholder}
         required={required}
-        className="rounded-xl border-0 bg-background px-3 py-2.5 text-sm text-foreground ring-1 ring-foreground/10 outline-none focus:ring-2 focus:ring-forest"
+        className="rounded-xl border-0 bg-background px-3 py-2.5 text-sm text-foreground ring-1 ring-foreground/10 outline-none focus:ring-2 focus:ring-ink/30"
       />
     </div>
   );
@@ -185,9 +185,9 @@ function SuccessPanel({
   }
 
   return (
-    <aside className="rounded-3xl bg-forest p-6 text-primary-foreground shadow-md ring-1 ring-forest/40">
+    <aside className="rounded-3xl bg-ink p-6 text-cream-pure shadow-md ring-1 ring-ink/40">
       <div className="flex items-center gap-2">
-        <Check className="size-4 text-lime" />
+        <Check className="size-4 text-gold" />
         <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-primary-foreground/70">
           Magic link listo
         </p>
@@ -200,12 +200,12 @@ function SuccessPanel({
         readOnly
         value={state.magic_url}
         rows={3}
-        className="mt-3 w-full rounded-xl bg-forest-deep/60 px-3 py-2 font-mono text-[11px] leading-relaxed text-primary-foreground ring-1 ring-primary-foreground/10 outline-none"
+        className="mt-3 w-full rounded-xl bg-[var(--ink-raised)]/60 px-3 py-2 font-mono text-[11px] leading-relaxed text-primary-foreground ring-1 ring-primary-foreground/10 outline-none"
       />
       <button
         type="button"
         onClick={copy}
-        className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-full bg-lime text-sm font-semibold tracking-tight text-lime-foreground transition hover:bg-lime/90 active:scale-[0.98]"
+        className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-full bg-gold text-sm font-semibold tracking-tight text-ink transition hover:bg-gold-bright active:scale-[0.98]"
       >
         {copied ? (
           <>
@@ -221,7 +221,7 @@ function SuccessPanel({
       </button>
       <a
         href={`/admin/instituciones/${state.institucion_id}`}
-        className="mt-2 inline-flex h-9 w-full items-center justify-center rounded-full bg-forest-deep/40 text-xs font-medium text-primary-foreground/85 ring-1 ring-primary-foreground/10 transition hover:bg-forest-deep/70"
+        className="mt-2 inline-flex h-9 w-full items-center justify-center rounded-full bg-[var(--ink-raised)]/40 text-xs font-medium text-primary-foreground/85 ring-1 ring-primary-foreground/10 transition hover:bg-[var(--ink-raised)]/70"
       >
         Ver detalle de la institución
       </a>

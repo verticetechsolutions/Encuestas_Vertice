@@ -59,7 +59,7 @@ export default async function AdminDashboardPage() {
         </div>
         <Link
           href="/admin/instituciones/nueva"
-          className="inline-flex items-center gap-2 rounded-full bg-forest px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-forest-soft active:scale-[0.98]"
+          className="inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-sm font-semibold text-primary-foreground transition hover:bg-[var(--ink-raised)] active:scale-[0.98]"
         >
           <Building2 className="size-4" />
           Nueva institución
@@ -115,7 +115,7 @@ export default async function AdminDashboardPage() {
               <div className="flex items-center gap-1.5">
                 <a
                   href={`/admin/api/export/${e}?format=csv`}
-                  className="flex-1 rounded-full bg-forest px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.16em] text-primary-foreground transition hover:bg-forest-soft"
+                  className="flex-1 rounded-full bg-ink px-2.5 py-1 text-center text-[10px] font-semibold uppercase tracking-[0.16em] text-primary-foreground transition hover:bg-[var(--ink-raised)]"
                 >
                   CSV
                 </a>
@@ -138,7 +138,7 @@ export default async function AdminDashboardPage() {
           </h2>
           <Link
             href="/admin/instituciones"
-            className="inline-flex items-center gap-1 text-xs font-medium text-forest hover:underline"
+            className="inline-flex items-center gap-1 text-xs font-medium text-gold-deep hover:underline"
           >
             Ver todas las instituciones <ArrowRight className="size-3.5" />
           </Link>
@@ -167,7 +167,7 @@ export default async function AdminDashboardPage() {
                     <Td>
                       <Link
                         href={`/admin/instituciones/${s.institucion_id}`}
-                        className="font-medium text-foreground hover:text-forest hover:underline"
+                        className="font-medium text-foreground hover:text-gold-deep hover:underline"
                       >
                         {s.razon_social}
                       </Link>
@@ -190,7 +190,7 @@ export default async function AdminDashboardPage() {
                     <Td className="text-right">
                       <Link
                         href={`/admin/sesiones/${s.sesion_id}`}
-                        className="inline-flex items-center gap-1 text-xs font-medium text-forest hover:underline"
+                        className="inline-flex items-center gap-1 text-xs font-medium text-gold-deep hover:underline"
                       >
                         Ver <ArrowRight className="size-3" />
                       </Link>
@@ -251,10 +251,10 @@ function Td({
 }
 
 const STATUS_STYLE: Record<string, string> = {
-  abierta: 'bg-lime/30 text-lime-foreground ring-lime/40',
+  abierta: 'bg-gold-bright/30 text-gold-deep ring-gold-bright/50',
   pausada: 'bg-amber-100 text-amber-900 ring-amber-200',
-  sintetizando: 'bg-forest/15 text-forest ring-forest/30',
-  completa: 'bg-forest text-primary-foreground ring-forest',
+  sintetizando: 'bg-ink/8 text-ink/72 ring-ink/15',
+  completa: 'bg-ink text-cream-pure ring-ink',
   abandonada: 'bg-foreground/8 text-muted-foreground ring-foreground/15',
 };
 

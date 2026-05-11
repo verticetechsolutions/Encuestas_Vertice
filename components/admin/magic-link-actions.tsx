@@ -35,13 +35,13 @@ export function ReenviarPorCorreoButton({
             }
           });
         }}
-        className="inline-flex items-center gap-2 rounded-full bg-forest px-4 py-2 text-xs font-medium text-primary-foreground transition hover:bg-forest-soft disabled:opacity-50"
+        className="inline-flex items-center gap-2 rounded-full bg-ink px-4 py-2 text-xs font-medium text-primary-foreground transition hover:bg-[var(--ink-raised)] disabled:opacity-50"
       >
         <Mail className="size-3.5" />
         {pending ? 'Enviando…' : 'Reenviar por correo'}
       </button>
       {feedback && (
-        <p className="text-xs text-forest">{feedback}</p>
+        <p className="text-xs text-gold-deep">{feedback}</p>
       )}
       {error && (
         <p className="rounded-lg bg-amber-50 p-2 text-xs text-amber-900 ring-1 ring-amber-200/70">
