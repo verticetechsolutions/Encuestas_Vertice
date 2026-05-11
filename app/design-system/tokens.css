@@ -28,8 +28,8 @@
   --burgundy:    #8B3A3A;   /* burgundy desat — error states */
 
   /* === Type families ============================================== */
-  --font-display: 'General Sans', 'Satoshi', ui-sans-serif, sans-serif;
-  --font-sans:    'Satoshi', ui-sans-serif, sans-serif;
+  --font-display: 'General Sans', 'Satoshi', ui-sans-serif, system-ui, sans-serif;
+  --font-sans:    'Satoshi', ui-sans-serif, system-ui, sans-serif;
 
   /* === Survey surface tokens (entrevista) =========================
    * Off-white pure + hairlines finísimos + accent oro solo en 1px.
@@ -43,7 +43,7 @@
   --survey-card-1-hairline:        rgb(244 241 234 / 0.10);
   --survey-card-1-hairline-strong: rgb(244 241 234 / 0.20);
   --survey-card-2:              #FFFFFF;
-  --survey-text:                #0A0F1C;
+  --survey-text:                var(--ink);
   --survey-text-72:             rgb(10 15 28 / 0.72);
   --survey-text-65:             rgb(10 15 28 / 0.65);
   --survey-text-45:             rgb(10 15 28 / 0.45);
