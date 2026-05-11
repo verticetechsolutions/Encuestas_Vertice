@@ -1,5 +1,31 @@
 # Vértice · Design System (Mayo 2026)
 
+> **Update 2026-05-10** — Wave 1 formalizado y mergeado (ver `feat/design-system-wave-1`).
+>
+> Tokens vivos en:
+> - `app/design-system/{tokens,type,space,motion}.css` (Layer 0 brand + Layer 1 scales)
+> - `lib/design-system/{motion/*,tokens}.ts` (TS exports: springs, easings, durations, brand)
+>
+> Primitives:
+> - `components/landing/{Section,Stack,Eyebrow,Button,Card,Hairline,Atmosphere}.tsx` (surface ink)
+> - `components/entrevista/{Section,Stack,Eyebrow,Button,Card,Hairline}.tsx` (surface cream)
+>
+> Reusables existentes migrados:
+> - `HeaderCTA` usa `springs.elegant` (fillSpring)
+> - `SectionIndicator` usa `springs.indicator`
+>
+> Componentes existentes NO retrofiteados (per ADR-006):
+> - `app/page.tsx` manifest section (estructura no-cleanly-mappable)
+> - `HeroPregunta`, `BatchNav` (design intent bespoke)
+>
+> Recipes para pages nuevas: `docs/design/recipes/{NEW_LANDING_PAGE,NEW_SURVEY_SCREEN}.md`.
+> ADRs de decisiones: `docs/design/tokens/DECISIONS.md`.
+>
+> Wave 2 (próxima): radius semantic, shadow scale, atmosphere variants, icon library decision.
+> Wave 3 (cleanup): sweep legacy `--lime`/`--forest` de entrevista.
+
+---
+
 Documenta el design system **actual** vivo en producción landing (`app/page.tsx` + `app/globals.css`). Esta es la base que reusaremos para construir la nueva UI de encuestas.
 
 > **Estado**: tokens cementados en `globals.css` el 2026-05-08 ("paleta unificada landing+entrevista"). Landing los aplica de manera consistente. Entrevista (`/preview/ui`) los aplica parcialmente — mezcla con legacy `--lime` / `--forest` que deben migrar a `--gold`.
