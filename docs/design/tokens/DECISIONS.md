@@ -59,14 +59,22 @@ NO se intenta extender Tailwind config con custom utilities salvo para colores q
 
 ---
 
-## ADR-004: Lucide-only para iconos (Wave 1)
+## ADR-004: Lucide-only para iconos
 
-**Date**: 2026-05-10
-**Status**: Active, pendiente de revisar en Wave 2
+**Date**: 2026-05-10 (original) / 2026-05-11 (resolved Wave 2)
+**Status**: Active
 
-**Context**: CLAUDE.md sugiere mezclar Lucide + Phosphor + Tabler + Hero + Iconoir según contexto. Pero hoy todo es Lucide.
+**Context**: CLAUDE.md sugiere mezclar Lucide + Phosphor + Tabler + Hero + Iconoir según contexto. Wave 1 mantuvo Lucide-only pending revisión.
 
-**Decision**: Wave 1 mantiene Lucide-only. Wave 2 evalúa introducir secondary library para casos específicos (ej. financial glyphs en BrandSuccessGlyph) sin reemplazar Lucide.
+**Decision (Wave 2 final)**: **Lucide-only confirmado.**
+- Tree-shakeable, ya en bundle.
+- Strokes consistentes.
+- Cubre 99% de los casos.
+- Casos brand-y (V mark, success glyph, vertex sigil) tienen sus propios SVG inline.
+
+Wave 2 agrega `<Icon>` wrapper en `components/{landing,entrevista}/Icon.tsx` + tokens `--icon-{sm,md,lg,xl}` y `--icon-stroke{-thin|-bold}` para enforced consistency.
+
+Si surge necesidad de un icono que Lucide no tenga: (a) elegir el más cercano disponible, (b) si realmente no encaja, agregarlo a `components/{landing,entrevista}/*SVG.tsx` inline antes que introducir secondary library.
 
 ---
 
@@ -116,3 +124,40 @@ NO se intenta extender Tailwind config con custom utilities salvo para colores q
 **Decision**: Aceptar el override. El único consumer (`app/entrevista/[sesion_id]/entrevista-shell.tsx:280`) usa `text-display text-[28px]` lo que override la clamp font-size; el net visual change es minimo (tracking hairline-tighter).
 
 **Reasoning**: el nombre `.text-display` ya estaba en uso — definirlo con valores diferentes en design system requería override O rename. Override es la decisión menos disruptiva.
+
+---
+
+## ADR-008: Radius + shadow tokens layered, NOT exhaustive
+
+**Date**: 2026-05-11
+**Status**: Active
+
+**Context**: Wave 2 introduce 5 radius tokens (--radius-{sm,md,card,section,pill}) y 7 shadow tokens (hairlines + compositions). El instinct natural sería crear todas las permutaciones (--radius-card-compact, --shadow-card-cream-strong, etc).
+
+**Decision**: tokens cubren los **casos canónicos**, no permutaciones especulativas.
+
+**Reasoning**:
+- Token explosion mata el sistema. Mejor 5 radius bien-nombrados que 12 con drift.
+- Para casos especiales (ej. hero asset con `rounded-[42px]`), inline + comentario es OK.
+- Promote-to-token solo cuando el caso aparece en ≥2 lugares con el mismo valor.
+
+**Aplica también a shadows**. Tenemos `--shadow-cta-glow` y `--shadow-cta-glow-cream` (las 2 surfaces canónicas). NO tenemos `--shadow-cta-glow-warm` ni variantes en cool — eso sería over-engineering.
+
+---
+
+## ADR-009: Atmosphere variants — paleta limitada por intención
+
+**Date**: 2026-05-11
+**Status**: Active
+
+**Context**: Wave 2 expande Atmosphere de 1 variant (default `both`) a 5+aliases:
+- `radial-gold-warm`: radial amplio 1100x800 amber, sensación cálida
+- `radial-gold-cool`: radial 700x500 + frosted blue tint, sensación morning brief frío
+- `noise-dense`: noise 2.5% (vs default 1.2%)
+
+**Decision**: 3 variants funcionales nuevas. Aliases (`warm`, `cool`) combinan radial + noise para single-prop simplicity.
+
+**Reasoning**:
+- Diferenciar secciones por mood es valor real (hero vs trust section vs detail card).
+- Más de 3 atmospheres confunde — la atmósfera debe ser sutil, no temática.
+- Cool variant introduce blue tint sutilmente; si choca con gold se removerá.

@@ -26,6 +26,23 @@
 
 ---
 
+> **Update 2026-05-11** — Wave 2 mergeado (ver `feat/design-system-wave-2`).
+>
+> Polish adicional:
+> - **Radius tokens**: `--radius-{sm,md,card,section,pill}` (`app/design-system/tokens.css`)
+> - **Shadow tokens**: `--shadow-hairline-{ink,cream}`, `--shadow-gold-seam`, `--shadow-card-ink`, `--shadow-cta-glow{-cream}`, `--shadow-dialog`
+> - **Icon system**: `--icon-{sm,md,lg,xl}` + `--icon-stroke{-thin|-bold}` + `<Icon>` wrapper en `components/{landing,entrevista}/Icon.tsx`. ADR-004 cementado: Lucide-only.
+> - **Atmosphere variants**: warm, cool, dense + aliases `warm`/`cool` combinados.
+> - **Primitivos refactorizados** para consumir tokens: `Card` (radius + shadow), `Button` (radius pill + cta-glow), `Atmosphere` (variant prop expanded).
+>
+> Refs:
+> - Token docs: `docs/design/tokens/{RADIUS,SHADOW,ICON}.md` (nuevos)
+> - ADRs: ADR-008 (radius/shadow layered no exhaustive), ADR-009 (atmosphere intentional).
+>
+> Wave 3 (próxima): sweep legacy `--lime`/`--forest` de entrevista (admin sigue intocado).
+
+---
+
 Documenta el design system **actual** vivo en producción landing (`app/page.tsx` + `app/globals.css`). Esta es la base que reusaremos para construir la nueva UI de encuestas.
 
 > **Estado**: tokens cementados en `globals.css` el 2026-05-08 ("paleta unificada landing+entrevista"). Landing los aplica de manera consistente. Entrevista (`/preview/ui`) los aplica parcialmente — mezcla con legacy `--lime` / `--forest` que deben migrar a `--gold`.

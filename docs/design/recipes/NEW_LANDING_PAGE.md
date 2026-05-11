@@ -14,6 +14,8 @@ import { Hairline } from '@/components/landing/Hairline';
 import { Button } from '@/components/landing/Button';
 import { Card } from '@/components/landing/Card';
 import { Atmosphere } from '@/components/landing/Atmosphere';
+import { Icon } from '@/components/landing/Icon';
+import { ArrowRight, ShieldCheck } from 'lucide-react';
 
 export default function AboutPage() {
   return (
@@ -67,6 +69,7 @@ export default function AboutPage() {
 - [ ] NO usar `cubic-bezier(...)` inline, usar `var(--ease-*)` o `easings.*`.
 - [ ] NO usar `{ stiffness: ..., damping: ... }` inline, usar `springs.*`.
 - [ ] Si necesitas color brand desde JS: `import { brand } from '@/lib/design-system/tokens'`.
+- [ ] Iconos usan `<Icon icon={X} size="md|sm|lg|xl" stroke="default|thin|bold" />`. Nunca `<X strokeWidth={...} className="size-4" />` directo.
 
 ## Important note: `<main>` con container
 
@@ -80,3 +83,12 @@ Alternativa: si tu page nueva no tiene container en `<main>`, deja que cada `<Se
 - `<h1 className="text-[46px] sm:text-[64px] lg:text-[108px] font-medium">` → `<h1 className="text-hero">`.
 - `<button className="rounded-full bg-cream-pure h-12 ...">` → `<Button variant="primary">`.
 - Iconos: usa siempre Lucide (Wave 1). Para iconos especiales tipo VertexMark, no inventar — discutir antes.
+
+## Atmosphere variants (Wave 2)
+
+Atmosphere ahora soporta 3 moods nuevos:
+- `<Atmosphere variant="warm" />` — radial gold amplio + noise. Hero impactante, manifest panels.
+- `<Atmosphere variant="cool" />` — radial gold compacto + blue tint frosted + noise. Trust sections, morning brief, security copy.
+- `<Atmosphere variant="noise-dense" />` — solo noise 2.5%. Cards de detalle dentro de páginas largas.
+
+Wave 1 originales siguen funcionando: `<Atmosphere />` (default = `both` = radial-gold + noise), `<Atmosphere variant="radial-gold" />`, `<Atmosphere variant="noise" />`.

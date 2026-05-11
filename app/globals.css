@@ -667,4 +667,27 @@
     opacity: 0.012;
     mix-blend-mode: multiply;
   }
+
+  /* Atmosphere variants (Wave 2 2026-05-11) — 3 nuevas para diferenciar
+     secciones por mood. warm = amber amplio, cool = compacto + blue tint
+     frosted, dense = noise 2.5%. <Atmosphere variant="warm|cool|dense"> */
+  .atmosphere-radial-gold-warm {
+    background-image: radial-gradient(
+      1100px 800px at 78% 12%,
+      rgb(200 168 100 / 0.06),
+      transparent 65%
+    );
+  }
+
+  .atmosphere-radial-gold-cool {
+    background-image:
+      radial-gradient(700px 500px at 90% -8%, rgb(200 168 100 / 0.035), transparent 60%),
+      radial-gradient(900px 600px at 0% 110%, rgb(120 140 180 / 0.025), transparent 65%);
+  }
+
+  .atmosphere-noise-dense {
+    background-image: url("data:image/svg+xml,%3Csvg viewBox='0 0 200 200' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='n'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.85' numOctaves='2' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23n)' opacity='0.7'/%3E%3C/svg%3E");
+    opacity: 0.025;
+    mix-blend-mode: multiply;
+  }
 }

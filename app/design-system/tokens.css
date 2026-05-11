@@ -51,4 +51,41 @@
   --survey-hairline-strong:     rgb(10 15 28 / 0.10);
   --survey-hover:               rgb(10 15 28 / 0.03);
   --survey-active-bg:           rgb(200 168 100 / 0.08);
+
+  /* === Radius semantic ===========================================
+   * Naming intent: --radius-sm (inputs, tags pequeños), --radius-md
+   * (small cards, buttons cuadrados), --radius-card (card default),
+   * --radius-section (manifest section, hero cards), --radius-pill
+   * (CTAs, ghost buttons, eyebrow chips). Los literales rounded-[18px],
+   * rounded-[28px], rounded-full en primitives se migran a estos
+   * tokens en pasos posteriores. */
+  --radius-sm:      8px;
+  --radius-md:      12px;
+  --radius-card:    18px;
+  --radius-section: 28px;
+  --radius-pill:    9999px;
+
+  /* === Shadow scale ==============================================
+   * Inset hairlines + outer glows para CTAs y dialogs. Centralizados
+   * para que cuando cambien valores brand (ej. el gold blur radius),
+   * se actualizan ambos surfaces a la vez. */
+  --shadow-hairline-ink:   inset 0 0 0 1px rgb(244 241 234 / 0.06);
+  --shadow-hairline-cream: inset 0 0 0 1px rgb(10 15 28 / 0.06);
+  --shadow-gold-seam:      inset 0 1px 0 rgb(200 168 100 / 0.18);
+  --shadow-card-ink:       inset 0 0 0 1px rgb(244 241 234 / 0.055), inset 0 1px 0 rgb(200 168 100 / 0.18);
+  --shadow-cta-glow:       0 0 0 1px rgb(244 241 234 / 0.04), 0 30px 70px -20px rgb(200 168 100 / 0.45);
+  --shadow-cta-glow-cream: 0 0 0 1px rgb(10 15 28 / 0.04), 0 20px 50px -20px rgb(10 15 28 / 0.35);
+  --shadow-dialog:         0 30px 90px -20px rgb(0 0 0 / 0.5);
+
+  /* === Icon system ===============================================
+   * Lucide-only (ADR-004 final). Tokens de size + stroke para
+   * consistency. Wrapper component <Icon> en components/{landing,
+   * entrevista}/Icon.tsx enforces estos tokens. */
+  --icon-sm:           14px;
+  --icon-md:           18px;
+  --icon-lg:           24px;
+  --icon-xl:           32px;
+  --icon-stroke:       2;     /* default strokeWidth */
+  --icon-stroke-thin:  1.5;   /* delicate cases */
+  --icon-stroke-bold:  2.5;   /* arrows, ChevronRight nav */
 }
