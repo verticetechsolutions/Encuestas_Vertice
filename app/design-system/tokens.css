@@ -51,4 +51,17 @@
   --survey-hairline-strong:     rgb(10 15 28 / 0.10);
   --survey-hover:               rgb(10 15 28 / 0.03);
   --survey-active-bg:           rgb(200 168 100 / 0.08);
+
+  /* === Radius semantic ===========================================
+   * Naming intent: --radius-sm (inputs, tags pequeños), --radius-md
+   * (small cards, buttons cuadrados), --radius-card (card default),
+   * --radius-section (manifest section, hero cards), --radius-pill
+   * (CTAs, ghost buttons, eyebrow chips). Los literales rounded-[18px],
+   * rounded-[28px], rounded-full en primitives se migran a estos
+   * tokens en pasos posteriores. */
+  --radius-sm:      8px;
+  --radius-md:      12px;
+  --radius-card:    18px;
+  --radius-section: 28px;
+  --radius-pill:    9999px;
 }
