@@ -202,16 +202,12 @@ tipo_institucion: sofom_er
   "pasa": false,
   "razones_falla": [
     "monto_solicitado_mxn=95000000 excede credit_box_parcial.ru_monto_max=80000000 — fuera de boundary",
-    "garantias.suma_mxn=50000000 no coincide con sum(items.valor_mxn)=20000000 — inconsistencia numérica",
-    "garantias.cobertura_x=0.5 no coincide con suma_mxn/monto_solicitado=0.53; además cobertura <1 no destraba caso",
-    "complicaciones=[] vacío — caso trivial sin tensión, no destraba señales",
-    "opinion_sat_32d=negativa pero complicaciones no menciona motivo (convenio, crédito firme, etc.) — huérfano",
-    "decision_esperada_por_tipo todos rechazan → no hay boundary real"
+    "garantias.suma_mxn=50000000 no coincide con sum(items.valor_mxn)=20000000 — inconsistencia numérica"
   ]
 }
 </output>
 <razonamiento_interno>
-Falla 5 chequeos: boundary monto, consistencia garantías, cobertura, complicaciones vacías + 32-D huérfana, todos rechazan. Reporta los más graves (boundary y consistencia) y los semánticos.
+Aplica regla "primer fallo encontrado": check #3 (boundary) detecta monto fuera de rango — falla inmediato. Adicional reporta inconsistencia numérica de garantías porque el motor ya verá ambos en una sola pasada del rubric. No enumera los otros 4 defectos (complicaciones vacías, 32-D huérfana, todos rechazan); el caso se regenera y esos no se acumulan.
 </razonamiento_interno>
 </ejemplo>
 

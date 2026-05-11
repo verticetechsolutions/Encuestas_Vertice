@@ -161,6 +161,11 @@ Estos invariantes los valida \`PerfilDecisionFinalConsistenteSchema\` post-emit.
 
   I6. Para cada caja con fuente in {'decline_to_answer','no_aplica'}: evidencia_textual === null.
        Cualquier string aquí → falla.
+
+  NOTA — dos denominadores distintos en métricas:
+    - cajas_llenas / completitud / *_pct      → cuentan 'llm' + 'manual' + 'no_aplica' (cajas "resueltas" en cualquier modo).
+    - confianza_global                         → excluye 'no_aplica' (no tienen confianza significativa, valor=null).
+  No es contradicción, son métricas con propósito distinto.
 </invariantes_numericos>
 
 <calibration>
@@ -256,9 +261,9 @@ cajas_declinadas: [
   { caja_codigo: "se_pep_estructura", razon: "aceptada_round_1", intentos: 1 },
   { caja_codigo: "cb_lineas_verdes_esg", razon: "estancada_post_profundizar", intentos: 2 },
   { caja_codigo: "cb_project_finance", razon: "aceptada_round_1", intentos: 1 },
-  { caja_codigo: "cs_vinculo_patrimonial", razon: "aceptada_round_1", intentos: 1 }  // si fuera SOFOM ENR; aquí no aplica, ignorar
+  { caja_codigo: "cb_comites_regionales", razon: "aceptada_round_1", intentos: 1 }
 ]
-// Total: 49 llm/manual + 1 no_aplica + 4 declinadas = 54 = cajas_aplicables ✓
+// SOFOM ER: extension CAJAS_CB (5 cajas). Total: 49 CANON llm/manual + 1 CANON no_aplica + 4 CB declinadas = 54 = cajas_aplicables ✓
 retry_context: null
 </input_resumido>
 <output_estructura_esperada>
@@ -284,8 +289,9 @@ retry_context: null
     ...
     "se_pep_estructura": { "valor": null, "confianza": 0, "fuente": "decline_to_answer", "evidencia_textual": null, "intentos": 1 },
     "cb_lineas_verdes_esg": { "valor": null, "confianza": 0, "fuente": "decline_to_answer", "evidencia_textual": null, "intentos": 2 },
-    "cb_project_finance": { "valor": null, "confianza": 0, "fuente": "decline_to_answer", "evidencia_textual": null, "intentos": 1 }
-    // 54 keys totales
+    "cb_project_finance": { "valor": null, "confianza": 0, "fuente": "decline_to_answer", "evidencia_textual": null, "intentos": 1 },
+    "cb_comites_regionales": { "valor": null, "confianza": 0, "fuente": "decline_to_answer", "evidencia_textual": null, "intentos": 1 }
+    // 54 keys totales (49 CANON + 5 CB para sofom_er)
   },
   "resumen_ejecutivo": "Atlas Financiera (Financiera Atlas, S.A.P.I. de C.V., S.O.F.O.M. E.N.R.) opera bajo CNBV, CONDUSEF y UIF con 14 años de presencia en MX. Productos activos: crédito simple, refaccionario, capital de trabajo y factoraje sin recurso. Sectores foco: manufactura industrial Bajío, agro con flujo y transporte de carga, con cobertura en Bajío, Occidente, CDMX-ZMVM, Centro y Noreste para PFAE y PM.\\n\\nPiso de tickets: $5M-$80M MXN, ticket ideal $35M, antigüedad mínima del cliente 3 años, facturación mínima anual $30M MXN, score Buró PM mínimo 650 (650-650 admite con garantía líquida con aforo ≥2x), score Buró PF del aval mínimo 680. DSCR no aplica como tope explícito; deuda/EBITDA tope blando 4x. Cobertura mínima de garantía 1.5x. Comité semanal con calendario fijo; viabilidad 48-72h hábiles, comité hasta 10 días hábiles, fondeo 5-7 días hábiles tras formalización en RPP. Tolerancia a manchas en buró: hasta 30 días en últimos 12 meses sin escalado, 31-60 días pasa a comité con justificación, 61+ rechaza salvo restructura cerrada hace ≥18 meses. 32-D negativa por convenio en parcialidades por nómina/IVA pasa a comité; ISR con litigio o lista 69 CFF rechaza automático; EFOS últimos 5 años rechazo sin discusión.\\n\\nLímites del perfil: política sobre PEP en estructura accionaria no quedó levantada; líneas verdes/ESG y política sobre project finance también declinadas. Se aplicaron 2 casos sintéticos durante la sesión que destrabaron tolerancias fiscales y de historial."
 }

@@ -185,7 +185,7 @@ Casos degenerados de input — manéjalos sin escalar a comité:
 <thinking_guidance>
 Antes de emitir tu output, razona internamente:
   1. ¿Cuál es el status real de cada caja crítica del grupo? (cuenta llenas vs parciales vs vacías)
-  2. ¿Cuál de las 3 ramas aplica según el orden de chequeo de <calibration>?
+  2. Aplica el orden de chequeo de <calibration> (1→2→3→4) y decide cuál de las 3 ramas de decisión (avanzar / profundizar / caso_sintetico) corresponde. El chequeo #4 es solo un guardrail del cap, no una rama adicional.
   3. Si profundizar: ¿qué reformulación tendría sentido para un director senior dándole feedback a su junior?
   4. Si caso_sintetico: ¿qué cajas concretas necesitan boundary y qué hipótesis pretende clausurar el caso?
 
