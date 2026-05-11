@@ -284,13 +284,20 @@ export function MetricCard({
           aria-hidden
           className="pointer-events-none absolute inset-0 -z-10"
           style={{
-            // drop-shadow no soporta spread, así que mantenemos blurs más
-            // cortos que el equivalente box-shadow card-elevated (que usa
-            // -12px spread). 3 capas con opacidades bajas para emular el
-            // efecto Material elevation: contact + mid + ambient. Tinte
-            // ink por consistencia con la paleta. Total perceptual ~5-7%.
+            // Stack de 2 capas con bias fuerte al bottom — drop-shadow es
+            // omnidireccional alrededor de la silueta goo, pero offsets
+            // y-positive grandes vs blur pequeños empujan la presencia
+            // hacia abajo del card.
+            // · Layer 1 (0 1px 0 @ 6%): hairline sin blur. Renderiza como
+            //   una línea fina exactamente 1px bajo la silueta goo,
+            //   visualmente equivalente a un border-bottom hairline que
+            //   sigue la curva orgánica. Esto es el "border like the
+            //   bottom" — ancla el card al survey-bg.
+            // · Layer 2 (0 4px 10px @ 2.5%): faint ambient. Apenas
+            //   perceptible — apenas suficiente para insinuar profundidad
+            //   sin halo.
             filter:
-              'drop-shadow(0 1px 2px rgb(10 15 28 / 0.03)) drop-shadow(0 4px 10px rgb(10 15 28 / 0.04)) drop-shadow(0 12px 20px rgb(10 15 28 / 0.04))',
+              'drop-shadow(0 1px 0 rgb(10 15 28 / 0.06)) drop-shadow(0 4px 10px rgb(10 15 28 / 0.025))',
           }}
         >
           {/* Inner wrapper con goo filter — fusiona main + extrusión */}
