@@ -43,6 +43,16 @@
 
 ---
 
+> **Update 2026-05-11 (later)** — Wave 3 cerrado (ver `chore/design-system-legacy-sweep`).
+>
+> Wave 3 era "sweep legacy `--lime`/`--forest` fuera de entrevista". Audit reveló que la migración ya había ocurrido en PR #11 (refactor entrevista 2026-05-10): cero references en `app/entrevista`, `app/preview`, `components/entrevista`.
+>
+> Los legacy tokens se mantienen permanentemente en `globals.css` porque (a) admin scope los usa, (b) Shadcn role mapping (`--primary: var(--forest)`, `--accent: var(--lime)`, `--ring`, `--chart-*`, `--sidebar*`) los referencia y eso es app-wide vía shadcn/ui.
+>
+> Ver ADR-010 para detalle. **El design system queda cerrado** con Waves 1-3. No habrá Wave 4 salvo necesidad concreta nueva.
+
+---
+
 Documenta el design system **actual** vivo en producción landing (`app/page.tsx` + `app/globals.css`). Esta es la base que reusaremos para construir la nueva UI de encuestas.
 
 > **Estado**: tokens cementados en `globals.css` el 2026-05-08 ("paleta unificada landing+entrevista"). Landing los aplica de manera consistente. Entrevista (`/preview/ui`) los aplica parcialmente — mezcla con legacy `--lime` / `--forest` que deben migrar a `--gold`.

@@ -161,3 +161,32 @@ Si surge necesidad de un icono que Lucide no tenga: (a) elegir el más cercano d
 - Diferenciar secciones por mood es valor real (hero vs trust section vs detail card).
 - Más de 3 atmospheres confunde — la atmósfera debe ser sutil, no temática.
 - Cool variant introduce blue tint sutilmente; si choca con gold se removerá.
+
+---
+
+## ADR-010: Legacy --lime/--forest se quedan (Wave 3 cleanup outcome)
+
+**Date**: 2026-05-11
+**Status**: Active
+
+**Context**: La spec original prometía un Wave 3 sweep de `--lime`/`--forest` fuera de entrevista. La intención era cementar gold como único acento.
+
+**Audit realizado en Wave 3 (branch `chore/design-system-legacy-sweep`):**
+- `app/entrevista/*`, `app/preview/*`, `components/entrevista/*`: **ZERO** references a lime/forest. La migración ya ocurrió en PR #11 (refactor visual entrevista 2026-05-10) cuando se unificaron tokens a gold/cream.
+- `app/admin/*` y `components/admin/*`: usan lime/forest directamente (out of design system scope per spec).
+- `app/globals.css`: define lime/forest + Shadcn role mapping (`--primary: var(--forest)`, `--accent: var(--lime)`, `--ring: var(--forest)`, `--chart-*`, `--sidebar*`) usado app-wide.
+
+**Decision**: **NO sweep**. Los legacy tokens se quedan en globals.css permanentemente.
+
+**Reasoning**:
+- No hay código consumidor en entrevista/preview que sweep limpiaría.
+- Remover los tokens rompería admin + Shadcn role mapping (--primary etc usados por shadcn/ui).
+- La separación "design system new tokens vs legacy/shadcn tokens" en globals.css ya es clara.
+- Renombrar `--forest` a algo neutro (`--admin-primary`) sería churn sin ganancia.
+
+**Resultado del design system**: 3 universos coexistiendo cleanly en globals.css:
+1. **Design system Wave 1+2** (`app/design-system/*` imports): ink, cream-pure, gold, brand tokens, type/space/motion scales, radius, shadow, icons.
+2. **Shadcn role mapping** (`:root` en globals.css): `--primary`, `--accent`, `--ring`, `--chart-*`, `--sidebar*` referenciando lime/forest. Powers shadcn/ui components.
+3. **Legacy admin** (`--forest`, `--lime`, `--canvas`, `--cream`): definiciones que admin consume directo.
+
+Wave 3 cierra el design system. No habrá Wave 4 salvo necesidad concreta nueva.
