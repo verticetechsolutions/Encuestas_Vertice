@@ -53,6 +53,16 @@
 
 ---
 
+> **Update 2026-05-11 (admin sweep)** — Admin panel migrado a ink/gold.
+>
+> Tras Wave 3 cerrarse "como no-op", founder pidió migrar admin panel también para consistencia visual. ~45 occurrences de forest/lime en `app/admin/*` + `components/admin/*` migradas a ink/gold (cero shadcn primitives importados en admin, solo classNames directos, así que la migración fue clean).
+>
+> Mapping completo en ADR-010 actualizado. Tokens legacy `--forest`/`--lime` se mantienen en globals.css por shadcn role mapping (que sigue usado por shadcn/ui primitives en `components/ui/`).
+>
+> **Design system completo app-wide**: landing + entrevista + admin todos consumen los tokens del design system. Shadcn primitives quedan en su universo paralelo con role mapping legacy.
+
+---
+
 Documenta el design system **actual** vivo en producción landing (`app/page.tsx` + `app/globals.css`). Esta es la base que reusaremos para construir la nueva UI de encuestas.
 
 > **Estado**: tokens cementados en `globals.css` el 2026-05-08 ("paleta unificada landing+entrevista"). Landing los aplica de manera consistente. Entrevista (`/preview/ui`) los aplica parcialmente — mezcla con legacy `--lime` / `--forest` que deben migrar a `--gold`.
