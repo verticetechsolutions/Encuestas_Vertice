@@ -901,7 +901,7 @@ Approach: **Zod como source of truth, types derivados con `z.infer`** (decisión
 - [x] **#3** `lib/schemas/extracciones.ts` — `ExtraccionSchema` (envelope con `id`, `sesion_id`, `turno_id`, `caja_codigo`, `valor: z.unknown()`, `confianza 0-1`, `fuente: 'llm' | 'manual'`, `evidencia_textual`, `version` explícito (founder D-extra), `superseded_by` self-FK). Sub-schemas: `ToleranciaSchema` (to_* × 5), `SituacionEspecialSchema` con refine (se_* × 5), `EmailTelefonoSchema` (co_email_telefono), `EeffAuditadosSchema` con refine (op_eeff_auditados), `TasasPorProductoSchema` + `PlazosPorProductoSchema` (pc_* × 2). Resolver `valorSchemaFor(caja_codigo)` consulta CANON+EXTENSION vía `getCajaAny`; despacha por `tipo_dato` cuando no hay caso especial. `parseExtraccion(raw)` valida envelope + valor en un paso.
 - [x] **#4** `lib/schemas/perfil_decision_final.ts` — `PerfilDecisionFinalSchema` keyed por `caja_codigo` (cada entry: `valor, confianza, fuente, evidencia_textual, intentos`). `FuenteCajaFinalSchema` extiende a `'decline_to_answer' | 'no_aplica'` para cajas que cerraron por cap o por respuesta explícita. Métricas usan denominador pinned (`sesiones.cajas_aplicables`). `PerfilDecisionFinalConsistenteSchema` agrega refines cross-field (`completitud === cajas_llenas / cajas_aplicables`, `cajas_llenas ≤ cajas_aplicables`).
 - [x] **Catálogo extensión por tipo** — `CAJAS_EXTENSION_POR_TIPO: Record<TipoInstitucion, CajaCanon[]>` con 32 cajas distintas (cb_×5 compartido banco/sofom_er, cs_×5, csp_×3, cc_×3, ca_×6, cf_×6, cif_×4; `otro` = []). Todas marcadas `// !inferida` (criticidad y tipo_dato no especificados en §5.3 — pendientes de un sweep founder al cerrar Fase 3). Helpers nuevos: `getCajaExtension`, `getCajaAny`, `getCajasAplicables(tipo)`. Sanity-check al cargar (throw si distintas ≠ 32).
-- [ ] **TODO cierre Fase 3 (D2 follow-up):** agregar `permite_no_aplica: boolean` a `CajaCanonSchema`. Lo usa el form lateral (toggle "no aplica") y la lógica de completitud (cuenta `null` como llena solo si la bandera es `true`). Cajas afectadas: `ru_score_pm_min`, `ru_score_pf_min`, `ru_antiguedad_min`, `ru_facturacion_min`, `gr_dscr_min`, `gr_deuda_ebitda_max`. Founder dijo agregarlo al cerrar Fase, no mid-fase.
+- [x] **TODO cierre Fase 3 (D2 follow-up):** `permite_no_aplica: boolean` agregado a `CajaCanonSchema` (`lib/schemas/cajas.ts:56`, optional). Las 6 cajas afectadas (`ru_score_pm_min`, `ru_score_pf_min`, `ru_antiguedad_min`, `ru_facturacion_min`, `gr_dscr_min`, `gr_deuda_ebitda_max`) declaran `permite_no_aplica: true` en `CAJAS_CANON`. Lógica de completitud en `lib/motor/mapa.ts:226` (`aceptaNull = canon.permite_no_aplica === true`); `null` solo terminal con manual+null+threshold sobre cajas con la bandera. 4 tests en `mapa.test.ts:175-230` cubren los paths (manual+null+flag=true→no_aplica, flag omitido→parcial, llm+null sigue parcial, cajas con flag cuentan en críticas_pct).
 - [ ] **TODO cierre Fase 3:** founder sweep sobre criticidad/tipo de las 32 extension cajas (todas `// !inferida` actualmente).
 - [ ] Tests básicos de los schemas con datos válidos e inválidos (smoke runtime ya pasa: 18/18; falta wiring a vitest/jest).
 
@@ -980,14 +980,14 @@ Estructura de la Fase 5 en pasos discretos para auditabilidad:
 - [x] **Persistencia de extracciones con supersede chain** y persistencia de turnos en DB. Cerrada: `app/api/turn/route.ts` invoca `persistirExtraccionesBatch` (con prefiltro `valorSchemaFor` partial-on-failure) + `listarExtraccionesActivas` (snapshot mapa al cliente) + `persistirTurnoUsuario`/`persistirTurnoAgente` placeholder + `actualizarContenidoTurnoAgente` en `onFinish`. Cubierto por `lib/motor/persistence.test.ts` (unit), `lib/motor/conversation.e2e.test.ts` (motor-level con stateful mock) y `lib/motor/review.integration.test.ts` (DB real).
 - [x] **Aplicar migración 0002 a Neon `vertice-mvp/main`.** Aplicada (verificada 2026-05-07: 15 cols `reviews_seccion`, 7 cols `cajas_declinadas`, FKs, índices, `sesiones.secciones_cerradas`).
 - [x] **Tests integración con DB real** — `lib/motor/review.integration.test.ts` (12 tests) contra branch `test-integration` (`br-noisy-credit-amkaj2or`). Cubre: `mergeSeccionCerrada` race + idempotencia, `transicionarSesionASintetizando` guard atómico + race, `declinarCaja` ON CONFLICT + FK 23503, unique index 23505. Skip-if-missing si `DATABASE_URL_TEST` no está set. Pattern vi.hoisted + vi.mock para redirigir `@/lib/db` al test branch.
-- [ ] **Inngest wiring real** (`app/api/inngest/route.ts` + cliente Inngest + handler `sesion/lista_para_sintesis`). Hoy es placeholder vía `logger.sesion.listaParaSintesis` con `pendiente_inngest: true` en payload — ver `lib/motor/review.ts:dispatchSesionListaParaSintesis`. Documentado en deuda técnica conocida (sección 16).
+- [x] **Inngest wiring real** — resuelto 2026-05-02 (ver §20 §1366). `lib/inngest/client.ts` singleton + `app/api/inngest/route.ts` serve handler + `lib/inngest/functions/sintetizarSesion.ts` createFunction con `triggers: [{ event: 'sesion/lista_para_sintesis' }]` + `retries: 4`. `dispatchSesionListaParaSintesis` en `lib/motor/review.ts:579` hace `await inngest.send()` real con `event_id` correlacionado en payload Axiom. 2 tests en `review.test.ts` verifican shape correcto + no-call cuando `transicionExitosa=false`.
 
 ### Fase 6 · Integración Deepgram (4 horas) — ✅ STT base + 🟡 cableado al motor pendiente
 - [x] Token efímero server-side (`/api/stt/token`) con cookie auth
 - [x] WebRTC client + `useDeepgramStream` hook
 - [x] `MicButton` + `TranscriptionPanel` componentes en `/demo/stt`
 - [x] Config Nova-3 cementada (`STT_LIVE_CONFIG` en `lib/stt/client.ts`)
-- [ ] **Cableado al shell de entrevista** — STT existe en `/demo/stt` pero el `MicButton` del `PreguntaCard` está disabled. Hay que conectar `useDeepgramStream` al `setRespuesta` del store. Founder agendó como deuda explícita §21.
+- [x] **Cableado al shell de entrevista** — resuelto en PR #11 (refactor visual entrevista). `useDeepgramStream` importado y consumido en `components/entrevista/HeroPregunta.tsx:27,95`; `MicButton` ya no está disabled fuera de preview mode. Append de transcripts al textarea via util pura `lib/stt/append-transcript.ts` extraída en PR #13 con 10 unit tests. Smoke real contra Deepgram queda gated por `DEEPGRAM_API_KEY` (instrucciones en body de PR #13).
 - [ ] Test con voz real en español MX (smoke STT validado en `/demo/stt`)
 
 ### Fase 7 · UI de la entrevista (8 horas) — 🟡 EN PROGRESO (shell + autosave + /api/turn cableado; rediseño fintech en curso)
@@ -1001,14 +1001,14 @@ Estructura de la Fase 5 en pasos discretos para auditabilidad:
 - [x] **Pregunta-as-hero (2026-05-05)** — refactor del shell para que UNA pregunta domine la pantalla. Componentes nuevos: `<HeroPregunta>` (text-display 28-44px + textarea generosa), `<BatchNav>` (dots numerados + arrows prev/next para moverse entre preguntas del batch sin stack visual), `<Stepper>` (top-of-card horizontal). Panel progreso colapsado a `<details>` para no robar foco.
 - [x] **Modo preview UI (2026-05-05)** — `app/preview/ui/page.tsx` (fuera de `/entrevista/*` así esquiva middleware). Renderiza `<EntrevistaShell preview>` con sesion_id fake. Flag `preview_mode` en el store apaga autosave + stub-ea `enviarBatch` (simula enviando→procesando→nuevo batch + bumpea panel). Badge lime "Preview UI" en header. 404 en producción. Razón: dev JIT compile lag (~70-90s acumulados primer hit) + token magic link single-use rompía el loop "edita CSS → recarga → ve cambios". Deuda paralela: `app/dev/preview/route.ts` que toma la última sesión real abierta y bypasea solo el token (útil para probar autosave real sin token).
 - [ ] **Animación de campos en verde al cerrar caja** — pendiente (necesita extracción real de Sonnet con ANTHROPIC_API_KEY).
-- [ ] **Indicador adaptativo "Sección X · Pregunta Y"** — el `<BatchNav>` ya cubre Pregunta Y (dot activo con label P0X); la sección viene del Stepper + eyebrow del hero.
+- [x] **Indicador adaptativo "Sección X · Pregunta Y"** — `components/entrevista/BatchNav.tsx` cubre Pregunta Y con dot activo + label `P0X`; Sección X viene del `Stepper` (spine vertical con iconos por sección, PR #11) + eyebrow del hero.
 
-### Fase 8 · Síntesis final con Inngest (4 horas)
-- [ ] Inngest function `sintetizar_perfil`
-- [ ] Validación Zod con retry
-- [ ] Generación de PDF con Puppeteer (plantilla simple)
-- [ ] Storage del PDF (Vercel Blob o link de descarga directo del JSON)
-- [ ] Notificación admin
+### Fase 8 · Síntesis final con Inngest (4 horas) — 🟡 EN PROGRESO (PDF generator cerrado en PR #5; storage + notif pendientes de keys/diseño)
+- [x] **Inngest function `sintetizarSesion`** — `lib/inngest/functions/sintetizarSesion.ts` con `triggers: [{ event: 'sesion/lista_para_sintesis' }]`, `retries: 4`, 2 step.run aislados (`procesar-sintesis-final` + `generar-pdf`). Wirado vía `dispatchSesionListaParaSintesis` (lib/motor/review.ts:579).
+- [x] **Validación Zod con retry** — `procesarSintesisFinal` (lib/motor/sintesis_final.ts:389) hace validación Zod del `PerfilDecisionFinal`; errores transitorios propagan para que Inngest retry con backoff exponencial (4 intentos). Errores tipados `OpusSintesisPromptNotReady` + `SesionNoEncontradaError` envueltos en `NonRetriableError` para abortar sin retry inútil.
+- [x] **Generación de PDF con Puppeteer** — PR #5 (commit `220c7a4`). Stack: `puppeteer-core@23` + `@sparticuz/chromium@131` + `geist@1`. Módulo en `lib/motor/sintesis_pdf/` (6 archivos: index.tsx, template.tsx, styles.ts, chromium.ts, fonts.ts, sintesis_pdf.test.ts). `generarPdfSintesis(perfil)` retorna buffer + bytes; step.run aislado del step Opus así un PDF fallido no rehace la síntesis.
+- [ ] **Storage del PDF** (Vercel Blob) — pendiente de `BLOB_READ_WRITE_TOKEN`. Hoy step `generar-pdf` mide bytes y loguea; cuando aterrice la key, este step llama `blobStorage.put(buffer)` y persiste `pdf_url` en `perfil_decision_final.pdf_url`. Hook ya marcado con TODO en sintetizarSesion.ts:138-139.
+- [ ] **Notificación admin** — pendiente de decisión de diseño (email vs in-app vs ambos). Hoy la admin lista sesiones recientes en `/admin` con `StatusPill` por status; al transicionar a `completa` aparece naturalmente. Sin push notif explícita todavía — depende de elegir entre Resend (necesita key) o toast in-dashboard con polling/SWR.
 
 ### Fase 9 · Vista admin (4 horas) — ✅ CERRADA (Track 3 sin keys, 2026-05-07)
 - [x] **Auth admin separada** — `lib/auth/admin.ts` con cookie `vertice_admin` + `ADMIN_PANEL_TOKEN` env (constant-time compare). Middleware extendido a `/admin/:path*` con bypass de `/admin/login`. Server Actions `loginAdmin` / `logoutAdmin` (`app/actions/adminAuth.ts`). Form en `/admin/login` con FormData (sin URL param para no leak en logs).
@@ -1019,12 +1019,12 @@ Estructura de la Fase 5 en pasos discretos para auditabilidad:
 - [x] **Crear institución + magic link copiable** (`app/admin/instituciones/nueva/`) — `useActionState` con Server Action `crearInstitucionConLink` que llama `crearInstitucion` + `emitirMagicLink({ dryRun: true })`. Maneja duplicado 23505 con mensaje accionable. Panel forest con magic_url en textarea readonly + botón copiar al portapapeles. Sin envío de email (espera RESEND_API_KEY).
 - [x] **Export CSV/JSON** (`app/admin/api/export/[entity]/route.ts`) — GET handler con isAdminAuthenticated guard. 4 entidades: instituciones, sesiones, extracciones, perfiles. CSV RFC-4180 con escape de quotes/commas/newlines, jsonb objects via JSON.stringify. Content-Disposition attachment.
 
-### Fase 10 · Telemetría y deploy (3 horas)
-- [ ] Logs estructurados a Axiom en cada llamada LLM
-- [ ] Sentry capturando errores
-- [ ] Deploy a Vercel
-- [ ] Smoke test en producción
-- [ ] 2-3 entrevistas piloto
+### Fase 10 · Telemetría y deploy (3 horas) — 🟡 Logs ya wirados; deploy/Sentry/smoke/pilotos esperan keys + decisiones humanas
+- [x] **Logs estructurados a Axiom en cada llamada LLM** — `lib/observability/axiom.ts` con typed payload interfaces + namespaces `logger.review.*`, `logger.decline.*`, `logger.caso.*`, `logger.sesion.*`, `logger.extraccion.*`, `logger.info`, `logger.warn`, `logger.error`. Cada llamada LLM (Sonnet en `app/api/turn`, Opus director en `lib/motor/review.ts`, Opus síntesis en `lib/motor/sintesis_final.ts`) emite events tipados con `model`, `usage.tokens`, `latencia_ms`, `event_id`. Dashboard documentado en `docs/axiom_dashboard.md` (13 eventos crudos + 6 métricas derivadas APL + 3 alertas operacionales).
+- [ ] Sentry capturando errores (necesita `SENTRY_DSN`).
+- [ ] Deploy a Vercel (depende de keys: ANTHROPIC, RESEND, DEEPGRAM, BLOB, INNGEST_EVENT_KEY, INNGEST_SIGNING_KEY, AXIOM_TOKEN).
+- [ ] Smoke test en producción (post-deploy).
+- [ ] 2-3 entrevistas piloto (post-smoke).
 
 ---
 
