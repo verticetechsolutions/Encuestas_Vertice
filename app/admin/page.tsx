@@ -356,15 +356,17 @@ export default async function AdminDashboardPage() {
             <EmptyStateMessage message="Sin pendientes. Todo bajo control." />
           ) : (
             // max-h calibrada para ~6 items: item ≈ 73px (p-4 + 17px title +
-            // 2px mt + 16px desc) + gap-3 (12px) → 6·73 + 5·12 = 498. 520px de
-            // holgura para que el último item respire bajo la curva del
-            // scroll. pb-3 en contentClassName reserva espacio para que el
-            // shadow del último card no quede clipeado por el viewport del
-            // scroll area. AdminScrollArea ya incluye `data-lenis-prevent`
-            // y el scrollbar overlay del command palette.
+            // 2px mt + 16px desc) + gap-3 (12px) → 6·73 + 5·12 = 498. 540px
+            // de holgura para que el último item respire bajo la curva del
+            // scroll. py-3 simétrico: pt-3 evita que el primer card quede
+            // flush contra el top del Viewport (overflow-hidden lo recorta
+            // visualmente, sin aire entre el section header y el card);
+            // pb-3 reserva espacio para que el shadow del último card no se
+            // clipee. AdminScrollArea ya incluye `data-lenis-prevent` y el
+            // scrollbar overlay del command palette.
             <AdminScrollArea
-              maxHeight="max-h-[520px]"
-              contentClassName="flex flex-col gap-3 px-1 pb-4"
+              maxHeight="max-h-[540px]"
+              contentClassName="flex flex-col gap-3 px-1 py-3"
             >
               {actionItems.map((item, i) => (
                 <ActionItem
