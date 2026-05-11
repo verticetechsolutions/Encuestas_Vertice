@@ -54,3 +54,7 @@ skills-lock.json
 # Output local de scripts de preview (PDF, HTML, etc).
 # scripts/preview_sintesis_pdf.ts genera PDFs aquí para revisión visual.
 /tmp/
+
+# Brainstorming companion mockups + local audit (no van al repo).
+/.superpowers/
+/.audit/

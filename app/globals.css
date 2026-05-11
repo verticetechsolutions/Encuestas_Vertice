@@ -2,6 +2,14 @@
 @import "tw-animate-css";
 @import "shadcn/tailwind.css";
 
+/* Design system tokens y utilities (Wave 1 2026-05-10). Importados en
+   este orden para que las utilities (type.css) puedan consumir las
+   vars (tokens.css, space.css, motion.css). */
+@import "./design-system/tokens.css";
+@import "./design-system/type.css";
+@import "./design-system/space.css";
+@import "./design-system/motion.css";
+
 @custom-variant dark (&:is(.dark *));
 
 @theme inline {
@@ -92,20 +100,11 @@
 }
 
 :root {
-  /* === Brand tokens unificados (espejo del landing) ============================
-     Hex matching exacto con app/page.tsx para zero drift entre productos. */
-  --ink: #0A0F1C;            /* navy ink — fondo dark editorial del landing */
-  --ink-raised: #1a2236;     /* navy raised — hover sobre ink */
-  --cream-pure: #F4F1EA;     /* cream off-white — texto sobre ink + surface clara */
-  --gold: #C8A864;           /* champán — acento principal, pills, hairlines */
-  --gold-deep: #866D38;      /* gold deep — brand "tu política", labels acento (AA on white) */
-  --gold-bright: #F2D89C;    /* gold bright — highlight scrub, focus, glow */
-  --gold-light: #E0BE7C;     /* gold light — gradient base de la V */
-  --burgundy: #8B3A3A;       /* burgundy desat — error states landing-aligned */
-
   /* === Surface entrevista ===================================================
      La encuesta es light por decisión UX (sesión 12 min, lectura larga).
-     canvas se mantiene taupe pero los acentos migran a navy/gold. */
+     canvas se mantiene taupe pero los acentos migran a navy/gold.
+     Brand primitives (--ink, --cream-pure, --gold*, --burgundy) viven ahora
+     en app/design-system/tokens.css; importados arriba. */
   --canvas: oklch(0.62 0.025 75);
   --cream: oklch(0.965 0.012 90);
   --background: var(--cream);
@@ -155,31 +154,8 @@
   --sidebar-border: oklch(0.42 0.07 145);
   --sidebar-ring: var(--lime);
 
-  /* Tipografía display — General Sans (Fontshare). */
-  --font-display: 'General Sans', 'Satoshi', ui-sans-serif, sans-serif;
-
-  /* Survey surface tokens — Paleta A (2026-05-09 refactor).
-     Off-white pure + hairlines finísimos + accent oro solo en 1px lines.
-     Scope: /entrevista/* y /preview/ui. Uso fuera de ese scope = bug. */
-  --survey-bg: #FAF8F4;                  /* off-white page background */
-  --survey-surface: #FFFFFF;             /* textarea, modals, white surfaces */
-  /* Card 1 (brand + stepper) — navy ink, espejo del landing dark.
-     Logo_white + colores fg cream-pure. Conversación tonal con card-2 white. */
-  --survey-card-1: #0A0F1C;              /* navy ink — brand surface dark */
-  --survey-card-1-fg: #F4F1EA;           /* cream-pure — texto sobre dark */
-  --survey-card-1-fg-muted: rgb(244 241 234 / 0.55);
-  --survey-card-1-fg-faint: rgb(244 241 234 / 0.35);
-  --survey-card-1-hairline: rgb(244 241 234 / 0.10);
-  --survey-card-1-hairline-strong: rgb(244 241 234 / 0.20);
-  --survey-card-2: #FFFFFF;              /* card workspace — white pure */
-  --survey-text: var(--ink);
-  --survey-text-72: rgb(10 15 28 / 0.72);
-  --survey-text-65: rgb(10 15 28 / 0.65);
-  --survey-text-45: rgb(10 15 28 / 0.45);
-  --survey-hairline: rgb(10 15 28 / 0.06);        /* default hairline (más fino que antes) */
-  --survey-hairline-strong: rgb(10 15 28 / 0.10); /* hover/focus hairline */
-  --survey-hover: rgb(10 15 28 / 0.03);
-  --survey-active-bg: rgb(200 168 100 / 0.08);
+  /* Tipografía display — vive en app/design-system/tokens.css.
+     Survey surface tokens (--survey-*) viven en app/design-system/tokens.css. */
 }
 
 .dark {
@@ -227,59 +203,9 @@
   }
 }
 
-/* Microanimaciones reutilizables — keyframes + utilities. */
-@keyframes vertice-fade-up {
-  from {
-    opacity: 0;
-    transform: translateY(8px);
-  }
-  to {
-    opacity: 1;
-    transform: translateY(0);
-  }
-}
-
-@keyframes vertice-pulse-ring {
-  0% {
-    box-shadow: 0 0 0 0 oklch(0.78 0.14 80 / 0.5);
-  }
-  70% {
-    box-shadow: 0 0 0 8px oklch(0.78 0.14 80 / 0);
-  }
-  100% {
-    box-shadow: 0 0 0 0 oklch(0.78 0.14 80 / 0);
-  }
-}
-
-@keyframes vertice-shimmer {
-  from {
-    background-position: -200% 0;
-  }
-  to {
-    background-position: 200% 0;
-  }
-}
-
-/* Cierre de caja — celebración corta cuando llenas_por_grupo[g] incrementa.
-   Gold-bright ring expand + scale sutil; out-expo per CLAUDE.md easing guidance.
-   Migrado de lime (oklch 0.92 0.16 125) a gold-bright equivalente (2026-05-09). */
-@keyframes vertice-cierre-caja {
-  0% {
-    box-shadow: 0 0 0 0 oklch(0.78 0.14 80 / 0.55);
-    transform: translateZ(0) scale(1);
-  }
-  35% {
-    box-shadow: 0 0 0 10px oklch(0.78 0.14 80 / 0);
-    transform: scale(1.015);
-  }
-  100% {
-    box-shadow: 0 0 0 0 oklch(0.78 0.14 80 / 0);
-    transform: scale(1);
-  }
-}
-.animate-cierre-caja {
-  animation: vertice-cierre-caja 900ms cubic-bezier(0.16, 1, 0.3, 1) both;
-}
+/* Microanimaciones reutilizables — keyframes (vertice-fade-up, vertice-pulse-ring,
+   vertice-shimmer, vertice-cierre-caja) y utilities (.animate-*) viven en
+   app/design-system/motion.css. */
 
 /* Tabular numerics — alinea counters, paginación, percentages.
    Aplicar a cualquier número que necesite alineación vertical estable. */
@@ -692,31 +618,10 @@
 }
 
 @layer utilities {
-  .animate-fade-up {
-    animation: vertice-fade-up 0.4s cubic-bezier(0.16, 1, 0.3, 1) both;
-  }
-  .animate-pulse-ring {
-    animation: vertice-pulse-ring 1.6s cubic-bezier(0.4, 0, 0.6, 1) infinite;
-  }
-  .animate-shimmer {
-    background-image: linear-gradient(
-      90deg,
-      transparent 0%,
-      oklch(0.92 0.16 125 / 0.18) 50%,
-      transparent 100%
-    );
-    background-size: 200% 100%;
-    animation: vertice-shimmer 1.6s linear infinite;
-  }
-
-  /* Tipografía hero — bold tracking apretado, estilo fintech. */
-  .text-display {
-    font-family: var(--font-heading);
-    font-feature-settings: "ss01", "cv11";
-    letter-spacing: -0.02em;
-    font-weight: 600;
-    line-height: 1.05;
-  }
+  /* .animate-fade-up, .animate-pulse-ring, .animate-shimmer, .animate-cierre-caja
+     viven en app/design-system/motion.css.
+     .text-display vive en app/design-system/type.css (clamp font-size + tracking
+     -0.03em, font-weight 600). */
 
   /* === Brand utilities (espejo del landing, scope: entrevista) ================ */
 

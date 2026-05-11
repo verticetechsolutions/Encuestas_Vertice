@@ -1,0 +1,35 @@
+/* app/design-system/space.css
+ *
+ * LAYER 1 · Spacing scale (base 4px, Tailwind-compatible) + semantic
+ * compositions. Las raw scales --space-N matchean Tailwind defaults
+ * (1=4px, 2=8px, ...) por lo que se pueden usar como `gap-[var(--space-6)]`
+ * o seguir con la Tailwind `gap-6`. Las semantic compositions son las
+ * decisiones de alto nivel (section-y, card-padding, etc).
+ */
+
+:root {
+  /* Raw scale */
+  --space-1:  4px;
+  --space-2:  8px;
+  --space-3:  12px;
+  --space-4:  16px;
+  --space-6:  24px;
+  --space-8:  32px;
+  --space-10: 40px;
+  --space-14: 56px;
+  --space-20: 80px;
+  --space-28: 112px;
+  --space-36: 144px;
+
+  /* Semantic compositions (responsive) */
+  --section-y:         clamp(56px, 9vw, 144px);
+  --section-padding-x: clamp(24px, 4vw, 56px);
+  --container-max:     1480px;
+  --card-padding:      clamp(24px, 3vw, 56px);
+
+  /* Stack gaps semánticos */
+  --stack-tight:    var(--space-2);   /* eyebrow → title */
+  --stack-default:  var(--space-6);   /* title → body */
+  --stack-loose:    var(--space-10);  /* secciones internas */
+  --stack-section:  var(--space-20);  /* entre secciones grandes */
+}

@@ -1,0 +1,94 @@
+/* app/design-system/type.css
+ *
+ * LAYER 1 · Type scale tokens + utilities. Consume primitives de
+ * tokens.css (font families). El type scale es shared landing+entrevista
+ * pero cada surface decide cuánto usar (HeroPregunta usa --type-display,
+ * no --type-hero; eso es decisión de uso, no de token).
+ *
+ * Utility classes:
+ *   .text-hero      → H1 hero landing (clamp 46-108)
+ *   .text-display   → H1 secondary, hero pregunta (clamp 34-64)
+ *   .text-h2        → manifest, sección (clamp 28-46)
+ *   .text-h3        → card title (clamp 20-28)
+ *   .text-body-lg   → 17px
+ *   .text-body      → 15.5px
+ *   .text-caption   → 13px
+ *   .text-eyebrow   → 10.5px microcaps tracked
+ */
+
+:root {
+  /* Display scale */
+  --type-hero:    clamp(46px, 7.4vw, 108px);
+  --type-display: clamp(34px, 4.8vw, 64px);
+  --type-h2:      clamp(28px, 3.6vw, 46px);
+  --type-h3:      clamp(20px, 2.4vw, 28px);
+
+  /* Body scale */
+  --type-body-lg: 17px;
+  --type-body:    15.5px;
+  --type-caption: 13px;
+  --type-eyebrow: 10.5px;
+
+  /* Leading + tracking */
+  --leading-tight:    0.95;
+  --leading-snug:     1.05;
+  --leading-default:  1.55;
+  --tracking-display: -0.03em;
+  --tracking-h2:      -0.022em;
+  --tracking-h3:      -0.02em;
+  --tracking-eyebrow: 0.32em;
+}
+
+@layer utilities {
+  .text-hero {
+    font-family: var(--font-display);
+    font-size: var(--type-hero);
+    line-height: var(--leading-tight);
+    letter-spacing: var(--tracking-display);
+    font-weight: 500;
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  .text-display {
+    font-family: var(--font-display);
+    font-size: var(--type-display);
+    line-height: var(--leading-snug);
+    letter-spacing: var(--tracking-display);
+    font-weight: 600;
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  .text-h2 {
+    font-family: var(--font-display);
+    font-size: var(--type-h2);
+    line-height: var(--leading-snug);
+    letter-spacing: var(--tracking-h2);
+    font-weight: 500;
+    font-feature-settings: "ss01", "cv11";
+  }
+
+  .text-h3 {
+    font-family: var(--font-display);
+    font-size: var(--type-h3);
+    line-height: 1.15;
+    letter-spacing: var(--tracking-h3);
+    font-weight: 600;
+  }
+
+  .text-body-lg {
+    font-size: var(--type-body-lg);
+    line-height: var(--leading-default);
+  }
+
+  .text-body {
+    font-size: var(--type-body);
+    line-height: var(--leading-default);
+  }
+
+  .text-caption {
+    font-size: var(--type-caption);
+    line-height: 1.5;
+  }
+
+  /* .text-eyebrow vive en globals.css por ahora; se mueve aquí en Task 5. */
+}

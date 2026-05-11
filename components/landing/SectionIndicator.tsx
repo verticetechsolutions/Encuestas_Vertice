@@ -11,13 +11,16 @@
 import { useEffect, useState } from 'react';
 import { motion } from 'motion/react';
 
+import { springs } from '@/lib/design-system/motion/springs';
+
 const SECTIONS = [
   { id: 'hero', num: '01', label: 'Producto' },
   { id: 'brief', num: '02', label: 'Brief' },
   { id: 'cierre', num: '03', label: 'Cierre' },
 ] as const;
 
-const SPRING = { type: 'spring' as const, stiffness: 360, damping: 26 };
+const SPRING = springs.indicator;  // 360 / 26 / 0.55 (preset adds mass=0.55, vs default 1)
+// SPRING_LINE (300/24, no mass) no matchea preset; se queda inline.
 const SPRING_LINE = { type: 'spring' as const, stiffness: 300, damping: 24 };
 
 export function SectionIndicator() {
