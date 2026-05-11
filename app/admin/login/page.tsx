@@ -28,7 +28,7 @@ export default async function AdminLoginPage({
   }
 
   return (
-    <main className="min-h-screen bg-canvas">
+    <main className="min-h-screen bg-survey-bg">
       <div className="mx-auto flex min-h-screen max-w-md flex-col justify-center px-6 py-16">
         <div className="rounded-3xl bg-cream p-8 shadow-xl shadow-foreground/5 ring-1 ring-foreground/5">
           <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">

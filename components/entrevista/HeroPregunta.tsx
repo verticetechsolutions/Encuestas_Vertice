@@ -165,6 +165,10 @@ export function HeroPregunta({
           readOnly={marcada}
           aria-readonly={marcada}
           aria-label={`Respuesta a la pregunta ${numero}`}
+          // El smooth-scroll global de Lenis intercepta wheel a nivel window.
+          // En respuestas largas que activan overflow-auto del textarea, sin
+          // este attr el wheel scrollearía la página en vez del textarea.
+          data-lenis-prevent
           className={cn(
             'min-h-[180px] max-h-[360px] resize-none overflow-auto rounded-xl px-5 py-4 text-base leading-relaxed transition-all',
             'placeholder:text-foreground/35 border shadow-none',

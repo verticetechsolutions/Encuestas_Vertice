@@ -5,15 +5,30 @@
 // header `x-pathname` (inyectado por `middleware.ts`) y, si es `/admin/login`,
 // renderizamos el form sin guard ni chrome admin.
 //
-// El header repite el branding del producto pero con un ribbon visible que
-// recuerda al operador que está en panel administrativo (evita confusión
-// entre admin y entrevistado vista).
+// Chrome admin = AdminHeader floating-pill (client component con usePathname
+// para active states + transición motion del active pill). Sticky top para
+// que la nav siga alcanzable en páginas con tablas largas.
+//
+// Scroll model: el documento NO scrollea en admin. En su lugar, todo vive
+// dentro de un AdminScrollArea (Base UI ScrollArea) que provee el mismo
+// thumb overlay pill del command palette — fade-in en hover/scrolling,
+// auto-hide al idle. Razones:
+//  - Scrollbar custom consistente con el palette (ink/25 thumb, w-1.5).
+//  - El scrollbar nativo del documento en Windows trae arrows pesados
+//    aunque esté thin-styled en globals.css.
+//  - `data-lenis-prevent` en el Viewport mantiene a Lenis (smooth-scroll
+//    global) fuera del admin sin afectar el resto del sitio.
+// El wrapper exterior usa `fixed inset-0` para cubrir el gutter de
+// `scrollbar-gutter: stable` del html, evitando un strip taupe a la
+// derecha. La AdminHeader sticky funciona normal porque sticky se ancla
+// al scrolling ancestor más cercano (el Viewport).
 
 import { headers } from 'next/headers';
-import Link from 'next/link';
 import { requireAdmin } from '@/lib/auth/admin';
-import { logoutAdmin } from '@/app/actions/adminAuth';
-import { CommandPaletteTrigger } from '@/components/admin/command-palette-trigger';
+import { AdminHeader } from '@/components/admin/admin-header';
+import { AdminSvgDefs } from '@/components/admin/svg-defs';
+import { AdminMotionProvider } from '@/components/admin/motion-provider';
+import { AdminScrollArea } from '@/components/admin/scroll-area';
 
 export default async function AdminLayout({
   children,
@@ -27,64 +42,30 @@ export default async function AdminLayout({
   await requireAdmin();
 
   return (
-    <div className="min-h-screen bg-canvas">
-      <header className="border-b border-foreground/10 bg-ink text-primary-foreground">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-6 py-3.5">
-          <div className="flex items-center gap-4">
-            <Link href="/admin" className="flex items-center gap-2.5">
-              <div className="flex size-8 items-center justify-center rounded-full bg-gold text-ink">
-                <span className="text-xs font-bold tracking-tight">V</span>
-              </div>
-              <div className="leading-tight">
-                <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-primary-foreground/60">
-                  Vértice
-                </p>
-                <p className="text-sm font-medium tracking-tight">
-                  Panel administrativo
-                </p>
-              </div>
-            </Link>
-            <nav className="ml-6 hidden items-center gap-1 md:flex">
-              <NavLink href="/admin">Resumen</NavLink>
-              <NavLink href="/admin/sesiones">Sesiones</NavLink>
-              <NavLink href="/admin/magic-links">Magic links</NavLink>
-              <NavLink href="/admin/instituciones">Instituciones</NavLink>
-              <NavLink href="/admin/instituciones/nueva">
-                Nueva institución
-              </NavLink>
-            </nav>
-          </div>
-          <div className="flex items-center gap-2">
-            <CommandPaletteTrigger />
-            <form action={logoutAdmin}>
-              <button
-                type="submit"
-                className="rounded-full bg-cream-pure/10 px-3 py-1.5 text-xs font-medium text-primary-foreground/85 ring-1 ring-primary-foreground/10 transition hover:bg-cream-pure/20"
-              >
-                Cerrar sesión
-              </button>
-            </form>
-          </div>
-        </div>
-      </header>
-      <main className="mx-auto max-w-7xl px-6 py-8">{children}</main>
-    </div>
-  );
-}
-
-function NavLink({
-  href,
-  children,
-}: {
-  href: string;
-  children: React.ReactNode;
-}) {
-  return (
-    <Link
-      href={href}
-      className="rounded-full px-3 py-1.5 text-xs font-medium text-primary-foreground/75 transition hover:bg-cream-pure/10 hover:text-primary-foreground"
-    >
-      {children}
-    </Link>
+    <AdminMotionProvider>
+      {/* fixed inset-0: cubre el viewport entero incluyendo el gutter de
+          scrollbar-gutter: stable del html (de otro modo quedaría un strip
+          de canvas taupe a la derecha porque el documento ya no scrollea
+          en admin). Fuera del document flow ⇒ body queda con altura 0 y
+          no compite con scrollbars. */}
+      <div data-admin-shell className="fixed inset-0 bg-survey-bg">
+        {/* SVG filter defs centralizados (goo para dot clusters, etc).
+            Single instance reused por todo el admin scope. */}
+        <AdminSvgDefs />
+        {/* resetOnPathChange: el AdminScrollArea persiste entre navegaciones
+            (mismo layout); sin reset la siguiente página aparecería al
+            scrollTop de la anterior. */}
+        <AdminScrollArea maxHeight="h-full" resetOnPathChange>
+          <AdminHeader />
+          {/* pt-8 adicional para dar aire bajo la extrusión de la nav
+              (cuelga ~20px por debajo del pill principal). El max-w del
+              header (6xl) coincide con este main, así que se alinean
+              verticalmente. */}
+          <main className="mx-auto max-w-6xl px-4 pt-8 pb-16 md:px-6 md:pt-10 md:pb-20">
+            {children}
+          </main>
+        </AdminScrollArea>
+      </div>
+    </AdminMotionProvider>
   );
 }

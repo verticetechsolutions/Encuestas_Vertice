@@ -297,7 +297,10 @@ export default async function AdminSesionDetailPage({ params }: Props) {
                   <summary className="cursor-pointer text-[11px] font-medium text-gold-deep hover:underline">
                     Ver contenido
                   </summary>
-                  <pre className="mt-2 max-h-64 overflow-auto rounded-xl bg-foreground/[0.04] p-3 font-mono text-[11px] leading-relaxed text-foreground/85">
+                  <pre
+                    data-lenis-prevent
+                    className="mt-2 max-h-64 overflow-auto rounded-xl bg-foreground/[0.04] p-3 font-mono text-[11px] leading-relaxed text-foreground/85"
+                  >
                     {JSON.stringify(c.contenido, null, 2)}
                   </pre>
                 </details>
@@ -411,7 +414,10 @@ export default async function AdminSesionDetailPage({ params }: Props) {
               <summary className="cursor-pointer rounded-2xl px-5 py-3 text-xs font-semibold tracking-tight text-primary-foreground/85 hover:text-primary-foreground [&::-webkit-details-marker]:hidden">
                 Ver JSON completo
               </summary>
-              <pre className="max-h-96 overflow-auto px-5 pb-5 font-mono text-[11px] leading-relaxed text-primary-foreground/85">
+              <pre
+                data-lenis-prevent
+                className="max-h-96 overflow-auto px-5 pb-5 font-mono text-[11px] leading-relaxed text-primary-foreground/85"
+              >
                 {JSON.stringify(perfilSesion.perfil_json, null, 2)}
               </pre>
             </details>
@@ -421,12 +427,18 @@ export default async function AdminSesionDetailPage({ params }: Props) {
 
       <Section title="Metadata bruto">
         <div className="grid gap-3 px-5 py-4 md:grid-cols-2">
-          <pre className="max-h-64 overflow-auto rounded-xl bg-foreground/[0.04] p-3 font-mono text-[11px] leading-relaxed text-foreground/85">
+          <pre
+            data-lenis-prevent
+            className="max-h-64 overflow-auto rounded-xl bg-foreground/[0.04] p-3 font-mono text-[11px] leading-relaxed text-foreground/85"
+          >
             <span className="text-muted-foreground">// secciones_cerradas</span>
             {'\n'}
             {JSON.stringify(row.sesion.secciones_cerradas, null, 2)}
           </pre>
-          <pre className="max-h-64 overflow-auto rounded-xl bg-foreground/[0.04] p-3 font-mono text-[11px] leading-relaxed text-foreground/85">
+          <pre
+            data-lenis-prevent
+            className="max-h-64 overflow-auto rounded-xl bg-foreground/[0.04] p-3 font-mono text-[11px] leading-relaxed text-foreground/85"
+          >
             <span className="text-muted-foreground">// metadata</span>
             {'\n'}
             {JSON.stringify(row.sesion.metadata ?? null, null, 2)}

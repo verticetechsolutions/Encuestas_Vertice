@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import { SmoothScroll } from "@/components/providers/smooth-scroll";
 
 export const metadata: Metadata = {
   title: "Vértice · Red de financieras aliadas",
@@ -22,7 +23,11 @@ export default function RootLayout({
         />
       </head>
       <body className="min-h-full bg-canvas text-foreground flex flex-col">
-        {children}
+        {/* Smooth scroll global (Lenis 1.3.x). Cubre landing, encuesta y
+            admin. Respeta prefers-reduced-motion: si está activo, devuelve
+            children sin Lenis (scroll nativo). Resetea scroll a top en cada
+            route change. */}
+        <SmoothScroll>{children}</SmoothScroll>
       </body>
     </html>
   );

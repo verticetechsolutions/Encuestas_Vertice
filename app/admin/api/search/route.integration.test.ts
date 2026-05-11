@@ -65,7 +65,7 @@ describe.skipIf(!url)('GET /admin/api/search (integration)', () => {
     const res = await callSearch('a');
     expect(res.status).toBe(200);
     const body = await res.json();
-    expect(body).toEqual({ instituciones: [], sesiones: [] });
+    expect(body).toEqual({ instituciones: [], sesiones: [], links: [] });
   });
 
   it('encuentra instituciones por razón social (ILIKE)', async () => {
@@ -155,16 +155,32 @@ describe.skipIf(!url)('GET /admin/api/search (integration)', () => {
     expect(found.razon_social).toBe('Banco Para Sesion');
   });
 
-  it('no consulta sesiones cuando q no es UUID-ish', async () => {
-    await db!.insert(instituciones).values({
-      razon_social: 'Banco XYZ',
-      tipo: 'banco',
-      email_contacto: 'xyz@test.test',
+  it('encuentra sesiones por nombre de institución cuando q no es UUID-ish', async () => {
+    const [inst] = await db!
+      .insert(instituciones)
+      .values({
+        razon_social: 'Banco XYZ',
+        tipo: 'banco',
+        email_contacto: 'xyz@test.test',
+      })
+      .returning({ id: instituciones.id });
+
+    await db!.insert(sesiones).values({
+      institucion_id: inst.id,
+      cajas_aplicables: 49,
     });
 
     const res = await callSearch('banco');
     const body = await res.json();
-    // 'banco' no es uuidish → sesiones vacío
-    expect(body.sesiones).toEqual([]);
+    // 'banco' → JOIN a instituciones, match por razón social. La sesión recién
+    // creada tiene que aparecer asociada a "Banco XYZ".
+    expect(body.sesiones.length).toBeGreaterThan(0);
+    expect(body.sesiones[0].razon_social).toBe('Banco XYZ');
+  });
+
+  it('incluye magic_links en la respuesta con shape estable', async () => {
+    const res = await callSearch('a');
+    const body = await res.json();
+    expect(Array.isArray(body.links)).toBe(true);
   });
 });

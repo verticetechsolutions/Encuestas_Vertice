@@ -263,7 +263,10 @@ export default async function AdminInstitucionDetailPage({ params }: Props) {
                       />
                       <Stat label="Versión" value={String(p.version)} mono />
                     </div>
-                    <pre className="max-h-96 overflow-auto rounded-2xl bg-foreground p-4 font-mono text-[11px] leading-relaxed text-primary-foreground/85">
+                    <pre
+                      data-lenis-prevent
+                      className="max-h-96 overflow-auto rounded-2xl bg-foreground p-4 font-mono text-[11px] leading-relaxed text-primary-foreground/85"
+                    >
                       {JSON.stringify(p.perfil_json, null, 2)}
                     </pre>
                   </div>

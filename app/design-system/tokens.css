@@ -33,9 +33,11 @@
   --font-display: 'General Sans', 'Satoshi', ui-sans-serif, system-ui, sans-serif;
   --font-sans:    'Satoshi', ui-sans-serif, system-ui, sans-serif;
 
-  /* === Survey surface tokens (entrevista) =========================
+  /* === Survey surface tokens (entrevista + admin) ==================
    * Off-white pure + hairlines finísimos + accent oro solo en 1px.
-   * Scope: /entrevista/* y /preview/ui. NO usar en landing. */
+   * Scope: /entrevista/*, /preview/ui y /admin/* (Wave 6 2026-05-11:
+   * admin pasa de canvas taupe a survey-bg para unificar superficie
+   * con la encuesta). NO usar en landing. */
   --survey-bg:                  #FAF8F4;
   --survey-surface:             #FFFFFF;
   --survey-card-1:              #0A0F1C;

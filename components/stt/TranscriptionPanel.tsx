@@ -39,6 +39,10 @@ export function TranscriptionPanel({ transcripts, onEdit, className }: Props) {
   return (
     <div
       ref={scrollRef}
+      // data-lenis-prevent: Lenis (smooth-scroll global) intercepta wheel a
+      // nivel window. Sin esto el wheel sobre el panel scrollearía la página
+      // en lugar de la transcripción.
+      data-lenis-prevent
       className={cn(
         'h-72 overflow-y-auto rounded-lg border border-border bg-background p-4',
         'text-base leading-relaxed text-foreground',
