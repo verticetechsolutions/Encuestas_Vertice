@@ -12,7 +12,13 @@
 //     never throw to the component.
 
 import { create } from 'zustand';
-import { readUIMessageStream, type UIMessage } from 'ai';
+import {
+  readUIMessageStream,
+  parseJsonEventStream,
+  uiMessageChunkSchema,
+  type UIMessage,
+  type UIMessageChunk,
+} from 'ai';
 import { GrupoUISchema, type GrupoUI } from '@/lib/schemas/cajas';
 import { guardarRespuestaPendiente } from '@/app/actions/respuestas';
 import { FIXTURE_BATCH_MOCK } from './fixture-batch-mock';
@@ -458,13 +464,29 @@ export const useEntrevistaStore = create<EntrevistaState>((set, get) => ({
       let nuevoBatch: PreguntaBatch | null = null;
       let streamError: string | null = null;
       let lastMessage: UIMessage | null = null;
+      // readUIMessageStream espera ReadableStream<UIMessageChunk> (objetos ya
+      // parseados), NO los bytes SSE crudos del `res.body`. Reproducimos aquí
+      // el mismo pipeline que DefaultChatTransport.processResponseStream:
+      // parseJsonEventStream(uiMessageChunkSchema) → unwrap success/error.
+      // Sin esta conversión el parser interno falla con "Cannot read
+      // properties of undefined (reading 'startsWith')" al recibir bytes.
+      const chunkStream = parseJsonEventStream({
+        stream: res.body,
+        schema: uiMessageChunkSchema,
+      }).pipeThrough(
+        new TransformStream<
+          { success: true; value: UIMessageChunk } | { success: false; error: Error },
+          UIMessageChunk
+        >({
+          transform(chunk, controller) {
+            if (!chunk.success) throw chunk.error;
+            controller.enqueue(chunk.value);
+          },
+        })
+      );
       try {
         for await (const message of readUIMessageStream({
-          // The fetch body is a ReadableStream<Uint8Array>;
-          // readUIMessageStream espera un ReadableStream<UIMessageChunk>. La
-          // conversión la hace el helper internamente parseando el SSE/JSONL
-          // del UI message stream.
-          stream: res.body as unknown as ReadableStream<never>,
+          stream: chunkStream,
           onError: (e) => {
             streamError = e instanceof Error ? e.message : String(e);
           },
