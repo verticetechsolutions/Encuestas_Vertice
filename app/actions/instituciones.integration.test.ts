@@ -60,6 +60,7 @@ describe('crearInstitucion (integration) — A5', () => {
       nombre_comercial: 'Banco Test',
       tipo: 'banco',
       email_contacto: 'banco-test-a5@vertice.test',
+      telefono_contacto: null,
     });
     expect(out.institucion_id).toMatch(/^[0-9a-f-]{36}$/);
     expect(out.cajas_aplicables).toBeGreaterThan(0);
@@ -83,6 +84,7 @@ describe('crearInstitucion (integration) — A5', () => {
       nombre_comercial: null,
       tipo: 'sofom_er',
       email_contacto: 'dup-a5@vertice.test',
+      telefono_contacto: null,
     });
     await expect(
       crearInstitucion({
@@ -90,6 +92,7 @@ describe('crearInstitucion (integration) — A5', () => {
         nombre_comercial: null,
         tipo: 'sofom_er',
         email_contacto: 'dup-a5@vertice.test',
+        telefono_contacto: null,
       })
     ).rejects.toThrow();
   });
@@ -103,6 +106,7 @@ describe('crearInstitucion (integration) — A5', () => {
         // eslint-disable-next-line @typescript-eslint/no-explicit-any
         tipo: 'ifpe' as any, // 'ifpe' excluido por ley Fintech art. 22
         email_contacto: 'ifpe-a5@vertice.test',
+        telefono_contacto: null,
       })
     ).rejects.toThrow();
   });
@@ -161,6 +165,7 @@ describe('crearInstitucionConLink (integration) — A6', () => {
       nombre_comercial: null,
       tipo: 'banco',
       email_contacto: 'dup-a6@vertice.test',
+      telefono_contacto: null,
     });
 
     const fd = makeFormData({

@@ -76,6 +76,7 @@ async function main() {
     nombre_comercial: args.nombre_comercial,
     tipo: tipoParsed.data,
     email_contacto: args.email,
+    telefono_contacto: null,
   });
   console.log(`✓ institución creada: ${inst.institucion_id} (${inst.cajas_aplicables} cajas aplicables)`);
 

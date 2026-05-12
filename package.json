@@ -45,6 +45,7 @@
     "zustand": "^5.0.12"
   },
   "devDependencies": {
+    "@eslint/eslintrc": "^3.3.5",
     "@tailwindcss/postcss": "^4",
     "@types/node": "^20",
     "@types/react": "^19",
@@ -56,12 +57,22 @@
     "puppeteer": "^24.42.0",
     "tailwindcss": "^4",
     "typescript": "^5",
+    "vite": "^8.0.12",
     "vitest": "^4.1.5"
   },
   "overrides": {
     "@opentelemetry/auto-instrumentations-node": "^0.75.0",
     "@opentelemetry/sdk-node": "^0.217.0",
     "@opentelemetry/exporter-prometheus": "^0.217.0",
-    "import-in-the-middle": "^3.0.1"
+    "import-in-the-middle": "^3.0.1",
+    "@opentelemetry/otlp-transformer": {
+      "protobufjs": "^8.0.2"
+    },
+    "next": {
+      "postcss": "^8.5.10"
+    },
+    "@esbuild-kit/core-utils": {
+      "esbuild": "^0.25.0"
+    }
   }
 }
