@@ -226,6 +226,208 @@ describe('generarSintesis', () => {
 });
 
 // =============================================================================
+// generarSintesis — motor fallback (Opus 4.7 cajas={} workaround)
+// =============================================================================
+// Opus 4.7 con structured output a veces emite cajas={} y consolida todo en
+// resumen_ejecutivo (bug observado en pipeline E2E real, ver comentarios en
+// sintesis_final.ts → generarSintesis). El motor compensa derivando cajas
+// determinísticamente desde input.extracciones + cajas_declinadas.
+
+describe('generarSintesis · motor fallback para cajas omitidas por Opus', () => {
+  function inputCon54Codigos(): SintesisInput {
+    return {
+      sesion: {
+        id: SESION_ID,
+        institucion: {
+          id: INSTITUCION_ID,
+          razon_social: 'Vértice Financiero',
+          nombre_comercial: 'Vértice',
+          tipo: 'sofom_enr',
+        },
+        cajas_aplicables: 3,
+        fatiga_detectada: false,
+        casos_sinteticos_aplicados: 0,
+      },
+      cajas_aplicables_codigos: ['id_razon_social', 'ru_monto_min', 'to_historial_credito'],
+      extracciones: [
+        {
+          caja_codigo: 'id_razon_social',
+          valor: 'Vértice Financiero',
+          confianza: 0.95,
+          evidencia_textual: 'Somos Vértice Financiero',
+          fuente: 'llm',
+          intentos: 1,
+        },
+        {
+          caja_codigo: 'ru_monto_min',
+          valor: 500000,
+          confianza: 0.9,
+          evidencia_textual: 'mínimo 500k',
+          fuente: 'llm',
+          intentos: 1,
+        },
+      ],
+      cajas_declinadas: [
+        { caja_codigo: 'to_historial_credito', razon: 'estancada_post_profundizar', intentos: 3 },
+      ],
+    };
+  }
+
+  function perfilOpusConCajasVacias(input: SintesisInput): PerfilDecisionFinal {
+    return {
+      schema_version: '1.0',
+      institucion: input.sesion.institucion,
+      sesion_id: input.sesion.id,
+      generado_at: '2026-05-12T00:00:00.000Z',
+      metricas: {
+        cajas_llenas: 0, // bug Opus: declara 0 porque emitió cajas={}
+        cajas_aplicables: input.sesion.cajas_aplicables,
+        completitud: 0,
+        confianza_global: 0,
+        cajas_criticas_pct: 0,
+        cajas_blandas_pct: 0,
+        casos_sinteticos_aplicados: 0,
+        fatiga_detectada: false,
+      },
+      cajas: {}, // ← Opus 4.7 emite vacío
+      resumen_ejecutivo: 'SOFOM ENR con foco en PyME.',
+    };
+  }
+
+  it('cuando Opus emite cajas={}, el motor materializa todas las cajas aplicables', async () => {
+    const input = inputCon54Codigos();
+    const opusCall = vi.fn().mockResolvedValue(perfilOpusConCajasVacias(input));
+    const result = await generarSintesis(input, opusCall);
+
+    expect(Object.keys(result.cajas)).toHaveLength(3);
+    expect(result.cajas.id_razon_social).toBeDefined();
+    expect(result.cajas.ru_monto_min).toBeDefined();
+    expect(result.cajas.to_historial_credito).toBeDefined();
+  });
+
+  it('extracciones del input → cajas con fuente=llm + valor + evidencia preservados', async () => {
+    const input = inputCon54Codigos();
+    const opusCall = vi.fn().mockResolvedValue(perfilOpusConCajasVacias(input));
+    const result = await generarSintesis(input, opusCall);
+
+    expect(result.cajas.id_razon_social).toMatchObject({
+      valor: 'Vértice Financiero',
+      confianza: 0.95,
+      fuente: 'llm',
+      evidencia_textual: 'Somos Vértice Financiero',
+      intentos: 1,
+    });
+    expect(result.cajas.ru_monto_min).toMatchObject({
+      valor: 500000,
+      confianza: 0.9,
+      fuente: 'llm',
+    });
+  });
+
+  it('cajas_declinadas del input → cajas con fuente=decline_to_answer + valor=null', async () => {
+    const input = inputCon54Codigos();
+    const opusCall = vi.fn().mockResolvedValue(perfilOpusConCajasVacias(input));
+    const result = await generarSintesis(input, opusCall);
+
+    expect(result.cajas.to_historial_credito).toMatchObject({
+      valor: null,
+      confianza: 0,
+      fuente: 'decline_to_answer',
+      evidencia_textual: null,
+      intentos: 3,
+    });
+  });
+
+  it('códigos sin extracción ni declinación → fallback decline_to_answer con intentos=0', async () => {
+    const input: SintesisInput = {
+      ...inputCon54Codigos(),
+      cajas_aplicables_codigos: ['id_razon_social', 'caja_huerfana'],
+      sesion: { ...inputCon54Codigos().sesion, cajas_aplicables: 2 },
+    };
+    const opusCall = vi.fn().mockResolvedValue({
+      ...perfilOpusConCajasVacias(input),
+      metricas: {
+        ...perfilOpusConCajasVacias(input).metricas,
+        cajas_aplicables: 2,
+      },
+    });
+    const result = await generarSintesis(input, opusCall);
+
+    expect(result.cajas.caja_huerfana).toMatchObject({
+      valor: null,
+      confianza: 0,
+      fuente: 'decline_to_answer',
+      evidencia_textual: null,
+      intentos: 0,
+    });
+  });
+
+  it('reconcilia métricas cuando agrega cajas (cajas_llenas y completitud)', async () => {
+    const input = inputCon54Codigos();
+    const opusCall = vi.fn().mockResolvedValue(perfilOpusConCajasVacias(input));
+    const result = await generarSintesis(input, opusCall);
+
+    // 2 cajas llm + 1 decline → cajas_llenas=2, completitud = 2/3 = 0.667
+    expect(result.metricas.cajas_llenas).toBe(2);
+    expect(result.metricas.completitud).toBeCloseTo(0.667, 3);
+  });
+
+  it('cuando Opus emite cajas parciales, preserva lo de Opus y completa el resto', async () => {
+    const input = inputCon54Codigos();
+    const opusEmitio: PerfilDecisionFinal = {
+      ...perfilOpusConCajasVacias(input),
+      cajas: {
+        // Opus emitió SOLO una caja, con su propio criterio (e.g. confianza distinta)
+        id_razon_social: {
+          valor: 'VARIANTE-OPUS',
+          confianza: 0.99,
+          fuente: 'llm',
+          evidencia_textual: 'opus reinterpretation',
+          intentos: 1,
+        },
+      },
+      metricas: {
+        ...perfilOpusConCajasVacias(input).metricas,
+        cajas_llenas: 1,
+        completitud: 1 / 3,
+      },
+    };
+    const opusCall = vi.fn().mockResolvedValue(opusEmitio);
+    const result = await generarSintesis(input, opusCall);
+
+    // Opus's choice se preserva
+    expect(result.cajas.id_razon_social.valor).toBe('VARIANTE-OPUS');
+    expect(result.cajas.id_razon_social.confianza).toBe(0.99);
+    // Las otras 2 se completan desde input
+    expect(result.cajas.ru_monto_min.valor).toBe(500000);
+    expect(result.cajas.to_historial_credito.fuente).toBe('decline_to_answer');
+  });
+
+  it('cuando Opus emite TODAS las cajas correctamente, no reconcilia (respeta sus métricas)', async () => {
+    const input = inputCon54Codigos();
+    const perfilCompleto: PerfilDecisionFinal = {
+      ...perfilOpusConCajasVacias(input),
+      cajas: {
+        id_razon_social: { valor: 'X', confianza: 0.9, fuente: 'llm', evidencia_textual: 'x', intentos: 1 },
+        ru_monto_min: { valor: 1, confianza: 0.9, fuente: 'llm', evidencia_textual: 'y', intentos: 1 },
+        to_historial_credito: { valor: null, confianza: 0, fuente: 'decline_to_answer', evidencia_textual: null, intentos: 1 },
+      },
+      metricas: {
+        ...perfilOpusConCajasVacias(input).metricas,
+        cajas_llenas: 2,
+        completitud: 2 / 3,
+      },
+    };
+    const opusCall = vi.fn().mockResolvedValue(perfilCompleto);
+    const result = await generarSintesis(input, opusCall);
+
+    // Métricas de Opus preservadas tal cual
+    expect(result.metricas.cajas_llenas).toBe(2);
+    expect(result.metricas.completitud).toBeCloseTo(2 / 3, 5);
+  });
+});
+
+// =============================================================================
 // persistirPerfil
 // =============================================================================
 

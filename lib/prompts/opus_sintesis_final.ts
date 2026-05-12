@@ -106,6 +106,20 @@ Recibes un objeto JSON con:
 }
 </input_contract>
 
+<requerimiento_estricto_cajas>
+ANTES de escribir el JSON, internaliza esta regla NO NEGOCIABLE:
+
+El campo \`cajas\` de tu output DEBE tener EXACTAMENTE Object.keys(cajas).length === input.sesion.cajas_aplicables entradas. NO menos, NO más. Cada string en input.cajas_aplicables_codigos debe ser una key de tu \`cajas\` con su entry completa.
+
+Para una sesión con cajas_aplicables=54 (sofom_enr), tu \`cajas\` tiene 54 keys. Para banco/sofom_er también 54. Para otros tipos: CANON (49) + EXTENSION[tipo].
+
+NO consolides información en \`resumen_ejecutivo\` esperando que sea suficiente. \`resumen_ejecutivo\` es complementario al campo estructurado \`cajas\` — no su sustituto. Un perfil con \`cajas: {}\` será RECHAZADO por el motor (SintesisValidacionError code='cajas_count_mismatch') y la sesión fallará.
+
+Si una caja en cajas_aplicables_codigos NO tiene extracción, NO está en cajas_declinadas, y NO está en input.cajas_no_aplica, emite la entry con fuente='decline_to_answer', valor=null, confianza=0, evidencia_textual=null, intentos=0 (fallback seguro per §calibration regla 4).
+
+NUNCA omitas una caja porque "no tienes data". El fallback decline_to_answer existe precisamente para eso.
+</requerimiento_estricto_cajas>
+
 <output_contract>
 Respondes con un objeto JSON validado contra PerfilDecisionFinalConsistenteSchema. Forma exacta:
 

@@ -146,22 +146,31 @@ export const productionOpusSintesisCall: OpusSintesisCallFn = async (input) => {
     throw new OpusSintesisPromptNotReady();
   }
 
-  // Extended thinking 8K (IMPLEMENTATION.md §10): Opus razona internamente sobre
-  // la transcripción + extracciones antes de emitir el JSON estructurado. El
-  // budget se cementa por specs, no se ajusta por sesión.
+  // Adaptive thinking (Opus 4.7): el modelo decide cuándo y cuánto pensar.
+  // Reemplaza `thinking.enabled + budget_tokens` que se removió en Opus 4.7
+  // (devuelve 400). IMPLEMENTATION.md §10 hablaba de "extended thinking 8K";
+  // adaptive sustituye ese contrato y según Anthropic supera el budget fijo
+  // en evals internas. El `effort` por default es 'high' — adecuado para
+  // síntesis (correctness > cost).
   //
   // Reintento intra-llamada: NO se hace aquí. La Inngest function ya tiene
   // retries=4 con backoff. Si Zod falla, lanzamos SintesisValidacionError y
   // que Inngest decida retry. Evita doble-cobro de tokens en caso de prompt
   // mal calibrado (mejor que founder vea el fallo rápido).
+  // maxOutputTokens=32000: el perfil final tiene 49-81 cajas (CANON + EXTENSION[tipo]),
+  // cada una con valor + confianza + evidencia + fuente + intentos. Estimación
+  // ~150 tokens/caja × 81 = ~12K, más resumen_ejecutivo (1-3 párrafos) y métricas.
+  // 32K da margen para adaptive thinking + máximo expected output.
+  //
   const { object } = await generateObject({
     model: anthropic('claude-opus-4-7'),
     system: OPUS_SINTESIS_FINAL_SYSTEM_PROMPT,
     schema: PerfilDecisionFinalConsistenteSchema,
     prompt: JSON.stringify(input, null, 2),
+    maxOutputTokens: 32000,
     providerOptions: {
       anthropic: {
-        thinking: { type: 'enabled', budgetTokens: 8000 },
+        thinking: { type: 'adaptive' },
       },
     },
   });
@@ -313,7 +322,135 @@ export async function generarSintesis(
   if (!parsed.success) {
     throw new SintesisValidacionError(parsed.error.issues);
   }
-  return parsed.data;
+
+  // Production-grade fallback: si Opus omite cajas (parcial o totalmente),
+  // el motor las deriva determinísticamente desde el input. Por qué:
+  //
+  // Bug observado en Opus 4.7 + AI SDK v6 + structured output: aunque el
+  // prompt es explícito ("una entry por cada caja en CANON + EXT[tipo]") y
+  // se setea effort=xhigh, Opus 4.7 frecuentemente emite `cajas: {}` y
+  // consolida toda la información en `resumen_ejecutivo`. Reproducible:
+  // ~3/3 runs en `scripts/test_sintesis_solo.ts`. Schema-legal porque
+  // z.record no tiene minProperties; AI SDK no expone ese constraint.
+  //
+  // Diseño: el motor conoce determinísticamente qué keys debe tener
+  // `cajas` (= input.cajas_aplicables_codigos). Las extracciones, sus
+  // valores, su evidencia textual están en DB. El motor no necesita Opus
+  // para esto. Opus aporta resumen_ejecutivo (prose) + posible recategorización
+  // de no_aplica vs decline_to_answer (que respetamos cuando Opus las emite).
+  //
+  // Comportamiento:
+  //   - Cajas que Opus SÍ emitió: se respetan (preserva la inferencia contextual).
+  //   - Cajas faltantes: se materializan desde input.extracciones (fuente='llm'),
+  //     input.cajas_declinadas (fuente='decline_to_answer'), o fallback decline_to_answer.
+  //
+  // Trade-off aceptado: perdemos posibles refinamientos de Opus (e.g. recategorizar
+  // valor=null + LLM a no_aplica explícito) cuando Opus omite la caja. Esto es
+  // strictly better que un perfil con `cajas: {}` que sería unusable para RAG.
+  const cajasOpus = Object.keys(parsed.data.cajas).length;
+  const completed = completarCajasFaltantes(parsed.data, input);
+  const cajasFinal = Object.keys(completed.cajas).length;
+
+  // Solo reconciliar métricas si el motor efectivamente agregó cajas.
+  // Cuando Opus emitió un perfil completo (cajasOpus === cajasFinal), respetamos
+  // sus métricas tal cual — ya pasaron PerfilDecisionFinalConsistenteSchema.
+  if (cajasFinal === cajasOpus) {
+    return parsed.data;
+  }
+
+  logger.warn('sesion.sintesis.cajas_completadas_por_motor', {
+    sesion_id: input.sesion.id,
+    opus_emitio: cajasOpus,
+    motor_completo_hasta: cajasFinal,
+    expected: input.sesion.cajas_aplicables,
+  });
+
+  // El motor agregó cajas → las métricas que Opus emitió quedaron stale.
+  // Recomputamos cajas_llenas y completitud desde el shape final.
+  const reconciliado = reconciliarMetricasConCajas(completed);
+  const revalidated = PerfilDecisionFinalConsistenteSchema.safeParse(reconciliado);
+  if (!revalidated.success) {
+    throw new SintesisValidacionError(revalidated.error.issues);
+  }
+  return revalidated.data;
+}
+
+// Completa entradas faltantes en perfil.cajas usando el input como fuente de verdad.
+// Para cada caja en input.cajas_aplicables_codigos no presente en perfil.cajas,
+// genera una entry desde input.extracciones, input.cajas_declinadas, o fallback.
+function completarCajasFaltantes(
+  perfil: PerfilDecisionFinal,
+  input: SintesisInput
+): PerfilDecisionFinal {
+  const extraccionesPorCaja = new Map(
+    input.extracciones.map((e) => [e.caja_codigo, e])
+  );
+  const declinadasPorCaja = new Map(
+    input.cajas_declinadas.map((d) => [d.caja_codigo, d])
+  );
+
+  const cajasCompletas: typeof perfil.cajas = { ...perfil.cajas };
+
+  for (const codigo of input.cajas_aplicables_codigos) {
+    if (cajasCompletas[codigo]) continue; // Opus ya la emitió, respetar
+
+    const extraccion = extraccionesPorCaja.get(codigo);
+    if (extraccion) {
+      cajasCompletas[codigo] = {
+        valor: extraccion.valor,
+        confianza: extraccion.confianza,
+        fuente: extraccion.fuente,
+        evidencia_textual: extraccion.evidencia_textual,
+        intentos: extraccion.intentos,
+      };
+      continue;
+    }
+
+    const declinada = declinadasPorCaja.get(codigo);
+    if (declinada) {
+      cajasCompletas[codigo] = {
+        valor: null,
+        confianza: 0,
+        fuente: 'decline_to_answer',
+        evidencia_textual: null,
+        intentos: declinada.intentos,
+      };
+      continue;
+    }
+
+    // Fallback per system prompt §calibration regla 4: si no aparece en ninguna
+    // lista, decline_to_answer con confianza=0 + intentos=0.
+    cajasCompletas[codigo] = {
+      valor: null,
+      confianza: 0,
+      fuente: 'decline_to_answer',
+      evidencia_textual: null,
+      intentos: 0,
+    };
+  }
+
+  return { ...perfil, cajas: cajasCompletas };
+}
+
+// Recalcula métricas para que sean consistentes con el `cajas` completo.
+// Opus puede haber emitido métricas asumiendo cajas={}, lo que las dejaría
+// fuera de sync tras el complete. Recomputamos del shape final.
+function reconciliarMetricasConCajas(perfil: PerfilDecisionFinal): PerfilDecisionFinal {
+  const cajas_aplicables = perfil.metricas.cajas_aplicables;
+  const entries = Object.values(perfil.cajas);
+  const llenas = entries.filter(
+    (c) => c.fuente === 'llm' || c.fuente === 'manual' || c.fuente === 'no_aplica'
+  ).length;
+  const completitud = cajas_aplicables === 0 ? 0 : Math.round((llenas / cajas_aplicables) * 1000) / 1000;
+
+  return {
+    ...perfil,
+    metricas: {
+      ...perfil.metricas,
+      cajas_llenas: llenas,
+      completitud,
+    },
+  };
 }
 
 // =============================================================================
