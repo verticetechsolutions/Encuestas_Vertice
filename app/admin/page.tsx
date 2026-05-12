@@ -30,6 +30,7 @@ import { ActionItem } from '@/components/admin/action-item';
 import { ActivityBlock } from '@/components/admin/activity-block';
 import { SeeAllLink } from '@/components/admin/see-all-link';
 import { AdminScrollArea } from '@/components/admin/scroll-area';
+import { QuickActionNuevaInstitucion } from '@/components/admin/quick-action-nueva-institucion';
 
 export const dynamic = 'force-dynamic';
 
@@ -283,6 +284,8 @@ export default async function AdminDashboardPage() {
           </div>
         }
       />
+
+      <QuickActionNuevaInstitucion />
 
       {/* Secondary stats — 3 compact cards con organic extrusion uniforme
           top-right. Consistencia visual entre los 3 widgets del row. */}
