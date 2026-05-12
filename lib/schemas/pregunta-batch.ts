@@ -16,6 +16,11 @@ export type TipoPregunta = z.infer<typeof TipoPreguntaSchema>;
 export const PreguntaSchema = z.object({
   id: z.string().min(1),
   texto_pregunta: z.string().min(1),
+  // Preamble / framing / reconocimiento opcional renderizado debajo del hero.
+  // Permite separar la pregunta cruda del contexto conversacional. Sonnet lo
+  // emite cuando aporta (transición temática, framing en tema sensible,
+  // anuncio de follow-up); vacío/ausente cuando el hero es autosuficiente.
+  auxiliar: z.string().max(200).optional(),
   cajas_objetivo: z.array(z.string()),
   tipo: TipoPreguntaSchema,
 });

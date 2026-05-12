@@ -42,6 +42,53 @@ describe('PreguntaBatchSchema', () => {
     });
     expect(out.success).toBe(false);
   });
+
+  it('acepta pregunta con campo auxiliar', () => {
+    const out = PreguntaBatchSchema.safeParse({
+      id: 'batch-xyz',
+      preguntas: [
+        {
+          id: 'batch-xyz-q0',
+          texto_pregunta: '¿Qué productos crediticios ofrecen hoy?',
+          auxiliar: 'Después te pregunto por los segmentos.',
+          cajas_objetivo: ['nm_productos_ofrecidos'],
+          tipo: 'directa',
+        },
+      ],
+    });
+    expect(out.success).toBe(true);
+  });
+
+  it('acepta pregunta sin campo auxiliar (opcional)', () => {
+    const out = PreguntaBatchSchema.safeParse({
+      id: 'batch-xyz',
+      preguntas: [
+        {
+          id: 'batch-xyz-q0',
+          texto_pregunta: '¿Aceptan clientes PEP?',
+          cajas_objetivo: ['se_pep_estructura'],
+          tipo: 'directa',
+        },
+      ],
+    });
+    expect(out.success).toBe(true);
+  });
+
+  it('rechaza auxiliar mayor a 200 chars', () => {
+    const out = PreguntaBatchSchema.safeParse({
+      id: 'batch-xyz',
+      preguntas: [
+        {
+          id: 'batch-xyz-q0',
+          texto_pregunta: '¿X?',
+          auxiliar: 'x'.repeat(201),
+          cajas_objetivo: ['c'],
+          tipo: 'directa',
+        },
+      ],
+    });
+    expect(out.success).toBe(false);
+  });
 });
 
 describe('UltimoBatchSchema', () => {

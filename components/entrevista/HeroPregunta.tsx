@@ -49,10 +49,19 @@ interface Props {
   sttEnabled?: boolean;
 }
 
-// Separa la pregunta canónica de su clarificador secundario:
-//   1. "...pregunta? Por ejemplo: ..." — microcopy clásico.
-//   2. "...pregunta1? Y/Si/¿pregunta2?" — pregunta compuesta.
-function splitPreguntaYAuxiliar(texto: string) {
+// Resuelve { pregunta, auxiliar } a renderizar. Si la Pregunta trae `auxiliar`
+// explícito (formato nuevo emitido por Sonnet desde el bloque <formato_pregunta>
+// del system prompt), úsalo directo. Si no, cae al heurístico legacy para
+// soportar batches viejos de DB que pudieran tener "...pregunta? Por ejemplo:..."
+// o pregunta compuesta "...? Y/Si/¿...?" embebida en el texto.
+function resolverPreguntaYAuxiliar(pregunta: Pregunta): {
+  pregunta: string;
+  auxiliar: string | null;
+} {
+  if (pregunta.auxiliar && pregunta.auxiliar.trim().length > 0) {
+    return { pregunta: pregunta.texto_pregunta, auxiliar: pregunta.auxiliar };
+  }
+  const texto = pregunta.texto_pregunta;
   const m1 = texto.match(/^(.+?)(\s+Por ejemplo:.*)$/);
   if (m1) return { pregunta: m1[1].trim(), auxiliar: m1[2].trim() };
   const m2 = texto.match(/^(.+?\?)\s+([YS¿].+\?)\s*$/);
@@ -82,9 +91,7 @@ export function HeroPregunta({
 }: Props) {
   const [showMicTooltip, setShowMicTooltip] = useState(false);
   const meta = AUTOSAVE_META[autosave];
-  const { pregunta: q, auxiliar } = splitPreguntaYAuxiliar(
-    pregunta.texto_pregunta
-  );
+  const { pregunta: q, auxiliar } = resolverPreguntaYAuxiliar(pregunta);
 
   // STT wiring
   const stt = useDeepgramStream();

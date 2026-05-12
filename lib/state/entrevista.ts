@@ -50,15 +50,21 @@ export const PRIMER_BATCH_BIENVENIDA: PreguntaBatch = {
   preguntas: [
     {
       id: 'bienvenida-p-1',
-      texto_pregunta:
-        'Para arrancar, cuéntanos sobre tu institución: razón social, nombre comercial si lo manejan, qué tipo son (banco, sofom, sofipo, arrendadora, etc.), bajo qué entes están regulados (CNBV, CONDUSEF, UIF), y cuántos años llevan operando.',
+      texto_pregunta: '¿Cómo se llama tu institución y qué tipo es?',
+      auxiliar:
+        'Razón social, nombre comercial si manejan ambos, y si son banco, sofom, sofipo, arrendadora, etc.',
       cajas_objetivo: [
         'id_razon_social',
         'id_nombre_comercial',
         'id_tipo_institucion',
-        'id_regulacion',
-        'id_anios_operacion',
       ],
+      tipo: 'directa',
+    },
+    {
+      id: 'bienvenida-p-2',
+      texto_pregunta: '¿Bajo qué reguladores operan y desde cuándo?',
+      auxiliar: 'CNBV, CONDUSEF, UIF, lo que aplique. Y los años que llevan operando.',
+      cajas_objetivo: ['id_regulacion', 'id_anios_operacion'],
       tipo: 'directa',
     },
   ],
@@ -169,7 +175,7 @@ function composeMensajeUsuario(
 interface GenerarBatchPreguntasOutput {
   ok: boolean;
   batch_id: string;
-  preguntas: Array<{ texto: string; cajas_objetivo: string[] }>;
+  preguntas: Array<{ texto: string; auxiliar?: string; cajas_objetivo: string[] }>;
   longitud_batch: 2 | 3 | 4;
 }
 
@@ -240,6 +246,7 @@ function extractBatchFromUIMessage(message: UIMessage): PreguntaBatch | null {
       preguntas: out.preguntas.map((q, i) => ({
         id: `${out.batch_id}-q${i}`,
         texto_pregunta: q.texto,
+        ...(q.auxiliar ? { auxiliar: q.auxiliar } : {}),
         cajas_objetivo: q.cajas_objetivo,
         tipo: 'directa',
       })),

@@ -1,8 +1,10 @@
 # Handoff — empezar desde cero en otra compu
 
-**Última actualización:** 2026-05-12 post pre-alpha hardening.
-**Branch canónica:** `master` (`origin/master` está al día).
-**Estado testing:** suite 44 archivos / 420 tests verdes · typecheck limpio · `next build` OK.
+**Última actualización:** 2026-05-12 — checkpoint E2E F2 (dictado pendiente).
+**Branch canónica:** `master` (`origin/master` al día con commit F2).
+**Estado testing:** suite 44 archivos / **423 tests** verdes · typecheck limpio en archivos F2 · `next build` OK.
+
+> ⚠️ **Checkpoint activo — RETOMAR AQUÍ**: el commit F2 cerró prompts Sonnet + schema + UI wiring, validó renderizado en `/preview/ui` y en sesión real (primer batch). **Lo pendiente es el dictado del founder + captura del batch que Sonnet emite tras turn 1, para validar formato y latencia**. Detalle completo en sección "Checkpoint E2E F2" al final.
 
 Este doc es el punto de entrada para retomar el proyecto en una computadora distinta. Lee en orden:
 
@@ -42,6 +44,30 @@ Si `:3000` está ocupado, Next arranca en `:3001` automáticamente y avisa en st
 ---
 
 ## ¿Qué se hizo en las últimas sesiones?
+
+### 2026-05-12 eve — F2 implementación + E2E parcial (commit F2)
+
+Cierre técnico de F2 (preguntas cortas + formato pregunta). Detalle de diseño y reglas en `<formato_pregunta>` dentro de `lib/prompts/sonnet_fase1.ts`.
+
+**Cambios commiteados:**
+- **Schema `auxiliar?` en `Pregunta`** (`lib/schemas/pregunta-batch.ts` + `lib/motor/tools.ts`) — campo opcional ≤200 chars para preamble/framing renderizado debajo del hero. Backwards-compat: batches viejos siguen funcionando vía heurístico `splitPreguntaYAuxiliar` legacy en HeroPregunta.
+- **Bloque `<formato_pregunta>` en system prompt** — 8 reglas terse + 5 ejemplos bad→good (open/numérica/booleana/follow-up/sensible) + descripción tool actualizada. Bullet de `<role>` ajustado: yes/no permitido SOLO cuando caja_objetivo es booleana.
+- **Heros de los 3 few-shots existentes recortados** al formato nuevo (preguntas ≤25 palabras, auxiliar separado).
+- **`PRIMER_BATCH_BIENVENIDA` reescrito**: 1 pregunta-Frankenstein (5 cajas) → 2 preguntas tight con auxiliar (Q1 identidad: razón social + nombre comercial + tipo; Q2 regulación: reguladores + años).
+- **Forward del campo `auxiliar`** en `app/api/turn/route.ts` (persist a `ultimo_batch`) y en `lib/state/entrevista.ts:extractBatchFromUIMessage` (consume del stream).
+- **`HeroPregunta.tsx:resolverPreguntaYAuxiliar`** — prefiere campo explícito sobre split heurístico.
+- **`FIXTURE_BATCH_MOCK`** actualizado al formato nuevo (preview/QA UI).
+- **Tests +3** en `pregunta-batch.test.ts` (auxiliar opcional, auxiliar válido, rechazo >200 chars).
+
+**E2E parcial validado:**
+- ✓ UI renderizado en `/preview/ui`: 3 preguntas fixture renderizan hero corto + auxiliar gris debajo.
+- ✓ Live entrevista en `/entrevista/[id]` con magic link real: PRIMER_BATCH_BIENVENIDA renderiza Q1 ("¿Cómo se llama tu institución y qué tipo es?") y Q2 ("¿Bajo qué reguladores operan y desde cuándo?") con sus auxiliares.
+
+**Pendiente del checkpoint** (ver sección "Checkpoint E2E F2" al final):
+- Dictado del founder de Q1 + Q2 con mic real.
+- Captura del batch que Sonnet emite tras turn 1.
+- Validación de formato (≤30 palabras, empieza con interrogativa, auxiliar opcional).
+- Medición de latencia turn p50.
 
 ### 2026-05-12 PM — Pre-alpha hardening (commiteado en master)
 
@@ -104,7 +130,11 @@ Cierre técnico de los bloqueantes identificados en el smoke AM. Ver detalle com
 
 ## Próxima sesión: qué atacar (en orden)
 
-**Fase actual:** post pre-alpha hardening. Bloqueantes técnicos del smoke 2026-05-12 AM cerrados. Faltan 2 piezas creativas (F1/F2) + re-smoke + infra prod antes del primer aliado.
+**Fase actual:** post F2 commit, E2E parcialmente validado (UI + primer batch). Falta dictado founder para cerrar smoke. Resto del path a alpha intacto.
+
+### 0. Retomar checkpoint E2E F2 (15-20 min) — REQUIERE FOUNDER
+
+Ver sección "Checkpoint E2E F2" al final del doc con pasos exactos. Sin esto no sabemos si Sonnet respeta el nuevo formato en producción.
 
 ### 1. F1 — Rediseñar consent al Design System (1.5-2h) — REQUIERE INPUT FOUNDER
 
@@ -113,16 +143,9 @@ Cierre técnico de los bloqueantes identificados en el smoke AM. Ver detalle com
 Referencia visual: `components/entrevista/HeroPregunta.tsx` + `app/entrevista/[sesion_id]/entrevista-shell.tsx`.
 Detalle: `docs/smoke-entrevista-real-2026-05-12.md` sección "Founder feedback post-smoke" F1.
 
-### 2. F2 — Prompts Sonnet: preguntas más cortas y formato pregunta (2-3h) — REQUIERE INPUT FOUNDER
+### 2. F2 — ✓ CERRADO en commit F2 (2026-05-12 eve)
 
-Las preguntas que Sonnet emite (y `PRIMER_BATCH_BIENVENIDA` hardcoded) son listas largas o tienen preamble conversacional largo. Requisitos:
-- Máx 2 líneas (~25 palabras).
-- Empiezan con interrogativa (¿Qué…?, ¿Cómo…?, ¿Cuánto…?).
-- Preamble separado al campo `auxiliar` (ya soportado por `splitPreguntaYAuxiliar` en `HeroPregunta.tsx`).
-- Una pregunta = una caja idealmente.
-
-Archivos: `lib/prompts/sonnet_fase1.ts` + `lib/state/entrevista.ts` (`PRIMER_BATCH_BIENVENIDA`).
-Detalle con ejemplos malos vs buenos: `docs/smoke-entrevista-real-2026-05-12.md` sección F2.
+Implementación cerrada. Pendiente solo validar en producción (ver checkpoint al final).
 
 ### 3. Re-smoke entrevista entera con voz (60-90 min) — REQUIERE FOUNDER
 
@@ -197,3 +220,119 @@ Solo si #3 pasa. Requiere acceso founder:
 - `/api/stt/token` retorna 502: verifica que `DEEPGRAM_API_KEY` en `.env.local` sea la key con role Member (`c692761f...`), no la vieja `vertice-form` (`d527d345...`).
 - `/api/turn` 503 con `sonnet_fase1_prompt_not_ready`: el flag `SONNET_FASE1_PROMPT_READY` en `lib/prompts/sonnet_fase1.ts` se quedó en false. Debería estar true.
 - Magic link da `acceso_expirado`: revocaste o consumiste. Genera otro desde `/admin/instituciones/[id]` "Generar URL".
+
+---
+
+## Checkpoint E2E F2 — retomar aquí (2026-05-12 eve)
+
+### Qué quedó cerrado
+
+Commit F2 (master @ origin). 8 archivos:
+- `lib/schemas/pregunta-batch.ts` + `.test.ts` (+3 tests)
+- `lib/motor/tools.ts`
+- `lib/prompts/sonnet_fase1.ts` (bloque `<formato_pregunta>` + ejemplos + role bullet + heros recortados + tool desc)
+- `lib/state/entrevista.ts` (`PRIMER_BATCH_BIENVENIDA` reescrito + interface + extract)
+- `lib/state/fixture-batch-mock.ts`
+- `components/entrevista/HeroPregunta.tsx` (`resolverPreguntaYAuxiliar`)
+- `app/api/turn/route.ts` (forward `auxiliar` al persistir)
+
+Validado pre-checkpoint:
+- ✓ Suite 423 tests verdes (en commit F2; typecheck limpio para archivos F2).
+- ✓ `next build` OK.
+- ✓ UI render en `/preview/ui`: las 3 preguntas del fixture mock muestran hero corto + auxiliar gris debajo, sin "Por ejemplo:" embebido.
+- ✓ Live entrevista con magic link real consumido: PRIMER_BATCH_BIENVENIDA renderiza Q1 ("¿Cómo se llama tu institución y qué tipo es?" + auxiliar) y Q2 ("¿Bajo qué reguladores operan y desde cuándo?" + auxiliar). Counter "PREGUNTA 02 DE 02" correcto.
+
+### Qué falta (3 pasos)
+
+#### Paso 1 — Setup en compu nueva
+
+```bash
+# Clonar / sync
+git pull origin master
+git log -1 --oneline  # debería empezar por el hash del commit F2
+
+npm install
+# Verifica .env.local presente (trackeado, multi-machine)
+
+# Importante: la compu previa tenía algo escuchando en :3000.
+# Lo más probable es que en compu nueva el dev arranque limpio en :3000.
+# Si :3000 está libre: npm run dev → :3000.
+# Si :3000 ocupado: arranca en :3001/3003 — Next avisa.
+npm run dev
+```
+
+⚠️ Hay WIP del admin (`telefono_contacto` features, `InstitucionAdminActions` component, nueva migración `0005`) que está untracked/unstaged en la compu previa. En la compu nueva NO va a estar. El admin panel sigue funcionando para lo que necesitas (generar magic link), pero si querés ese WIP, hay que recuperarlo del device anterior o re-implementarlo.
+
+⚠️ Errores typecheck preexistentes en `app/actions/instituciones.integration.test.ts` y `scripts/invitar.ts` por la columna `telefono_contacto` agregada al schema en WIP del usuario. NO son del F2. Si querés que typecheck pase 100%, hay que agregar `telefono_contacto: null` a los fixtures de esos tests. Fuera de scope del E2E.
+
+#### Paso 2 — Generar magic link nuevo y consumir
+
+El link generado en compu previa (`ezj2tF4vu-8_jJCTaGguO6Hg3QG9klII`) probablemente expiró o se consumió. Genera uno nuevo:
+
+```
+1. Abrí http://localhost:3000/admin (token cookie sigue si misma compu;
+   si no, postear a /admin/login con ADMIN_PANEL_TOKEN del .env.local).
+2. Ir a /admin/instituciones/930b78e0-8323-45a9-85de-2d4fc76594cb
+   (institución demo: Banco Demo Vertice SA).
+3. Click "Generar URL". La URL aparece en bodyText de la página.
+4. Abrir esa URL en otra tab. Si la URL apunta a otro port que tu dev,
+   ajustá el host (DB es compartida, el token sirve).
+5. Bienvenida → "Iniciar entrevista" (o auto-salta a /entrevista/[id] si
+   ya consentiste antes en esa sesión).
+```
+
+Sesión que viste en compu previa: `7746c975-b3a0-49d5-8bba-16cdf4bfa87c`. Si quedó con turn 0 (sin respuestas marcadas), el magic link nuevo te lleva a esa misma sesión y verás PRIMER_BATCH_BIENVENIDA otra vez. Si la sesión ya recibió turn, vas a ver el batch que Sonnet emitió — eso ya es el dato que necesitamos validar.
+
+#### Paso 3 — Smoke + capturar batch Sonnet
+
+```
+1. En Q1, click al mic, dictar algo natural. Ejemplo:
+   "Banco Demo Vértice SA, banco. Llevamos 8 años."
+   Click "Marcar respondida".
+2. Click "Siguiente" → Q2. Dictar:
+   "Regulados por CNBV, CONDUSEF y UIF. Desde hace 8 años."
+   Click "Marcar respondida".
+3. Click "Enviar respuestas".
+4. Esperar el siguiente batch (latencia esperada ~30-90s con gate review).
+```
+
+**Qué medir:**
+- **Latencia turn**: cronometrar click "Enviar" → batch nuevo visible. Objetivo p50 <30s. Si 60-90s, gate de review está disparando — esperable.
+- **Formato del batch nuevo**: cada `texto_pregunta` debe (a) empezar con interrogativa, (b) ≤30 palabras, (c) terminar en `?`, (d) usar `auxiliar` solo cuando aporta contexto, no relleno.
+- **WER en acrónimos** (CNBV/CONDUSEF/UIF): deberían transcribirse bien con keyterms wirados. Si aún hay errores tipo "CNVB", documentar.
+
+**Cómo capturar el batch que Sonnet emitió:**
+
+```javascript
+// En DevTools de la entrevista tab, después de ver el batch nuevo:
+JSON.stringify({
+  batch: window.__nextZustand?.entrevista?.batch_actual ?? 'no-store-exposed',
+  // o desde DOM:
+  hero: Array.from(document.querySelectorAll('h2')).map(h => h.textContent),
+  auxiliares: Array.from(document.querySelectorAll('article p')).map(p => p.textContent),
+}, null, 2)
+```
+
+O más simple: tomar screenshots de cada pregunta del nuevo batch + el counter.
+
+**O via DB**:
+```sql
+SELECT metadata->'ultimo_batch'->'batch' AS batch
+FROM sesiones
+WHERE id = '<session_id>';
+```
+
+#### Anti-patrones a vigilar (si Sonnet rompe formato)
+
+Documentar si ves:
+- Hero con más de 30 palabras
+- Hero con preamble baked-in ("Para entender mejor X, ¿...")
+- Pregunta multi-caja con "y/o también"
+- Auxiliar de relleno tipo "Una pregunta rápida." que no aporta
+- Yes/no en caja no-booleana
+
+Si pasa: agarrar el ejemplo concreto y reportar. Quizá la corrección es agregar un 6to ejemplo bad→good al bloque `<ejemplos_formato_pregunta>` que cubra ese anti-patrón específico.
+
+#### Bonus si hay tiempo: latencia turn
+
+Re-medir contra baseline pre-hardening (124s en turn 1 del smoke 2026-05-12 AM). Objetivo go-alpha: p50 <30s + WER <5% en acrónimos + costo <$5 USD/entrevista.

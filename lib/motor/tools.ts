@@ -100,6 +100,11 @@ export const REGISTRAR_EXTRACCION_TOOL: AnthropicTool = {
 
 export const PreguntaSchema = z.object({
   texto: z.string().min(1, { message: 'texto de pregunta no puede estar vacío' }),
+  // Preamble/framing opcional renderizado debajo del hero (≤200 chars). Sonnet
+  // emite este campo solo cuando aporta contexto real: reconocimiento de la
+  // respuesta previa, framing normalizador en tema sensible, o anuncio del
+  // follow-up que viene en el mismo batch. Si no aporta, omitir.
+  auxiliar: z.string().max(200).optional(),
   cajas_objetivo: z
     .array(z.string().min(1))
     .min(1, { message: 'cada pregunta debe declarar al menos una caja objetivo' }),
@@ -121,8 +126,10 @@ export const GENERAR_BATCH_PREGUNTAS_TOOL: AnthropicTool = {
   name: 'generar_batch_preguntas',
   description: [
     'Genera el siguiente batch de preguntas para el entrevistado (2, 3 o 4 preguntas temáticamente cercanas).',
+    'Cada pregunta tiene `texto` (la pregunta misma, hero) y opcionalmente `auxiliar` (preamble/framing de hasta 200 chars renderizado pequeño debajo).',
     'Cada pregunta declara las cajas que pretende tocar (`cajas_objetivo`) — esto es telemetría de calidad de prompt.',
-    'Las preguntas deben ser abiertas (no checkboxes). En entrevista hablada, agrupar 2-4 reduce fricción frente a una-por-una.',
+    'El `texto` debe cumplir el contrato del bloque <formato_pregunta> del system prompt: empezar con interrogativa (¿Qué/Cómo/Cuánto/...), objetivo 20 palabras, máximo 30, una cláusula, terminar en `?`. Yes/no permitido solo cuando la caja objetivo es booleana.',
+    'Usa `auxiliar` solo cuando aporte (reconocimiento, framing sensible, anuncio de follow-up). Si no aporta, omítelo.',
     'NO repitas preguntas que ya tocaron cajas con confianza ≥ threshold. Prioriza cajas críticas con status `parcial` (cerca de threshold) o `vacia`.',
     '`longitud_batch` debe coincidir con `preguntas.length` (validado al recibirse).',
   ].join(' '),

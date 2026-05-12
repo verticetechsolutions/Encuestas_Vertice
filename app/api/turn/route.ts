@@ -448,6 +448,7 @@ export async function POST(req: Request) {
             preguntas: input.preguntas.map((q, i) => ({
               id: `${batch_id}-q${i}`,
               texto_pregunta: q.texto,
+              ...(q.auxiliar ? { auxiliar: q.auxiliar } : {}),
               cajas_objetivo: q.cajas_objetivo,
               tipo: 'directa',
             })),
