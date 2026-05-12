@@ -29,7 +29,6 @@ import {
   useActionState,
   useEffect,
   useState,
-  type FormEvent,
 } from 'react';
 import { motion, AnimatePresence, type Variants } from 'motion/react';
 import Link from 'next/link';
@@ -78,14 +77,34 @@ interface Props {
   onClose: () => void;
 }
 
+/**
+ * Wrapper que monta `ModalContent` solo cuando `open` es true. El hook
+ * `useActionState` vive en el child — cerrar el modal lo desmonta y resetea
+ * el state. Volver a abrir = component fresh con `INITIAL_STATE`.
+ *
+ * Antipatrón que evitamos: tener el hook en el padre + ocultar el contenido
+ * con un boolean. El state de useActionState NO se puede resetear desde fuera
+ * (no expone setter), así que el último resultado (success o error) quedaba
+ * "pegado" entre aperturas.
+ */
 export function NuevaInstitucionModal({ open, onClose }: Props) {
+  return (
+    <AnimatePresence>
+      {open && <ModalContent key="nueva-institucion-modal" onClose={onClose} />}
+    </AnimatePresence>
+  );
+}
+
+function ModalContent({ onClose }: { onClose: () => void }) {
   const [state, formAction, pending] = useActionState(
     crearInstitucionConLink,
     INITIAL_STATE
   );
 
+  // ModalContent solo monta cuando open=true (wrapper lo gatea). No
+  // condicionamos por `open` aquí — siempre activo durante la vida del
+  // mount, cleanup al desmontar.
   useEffect(() => {
-    if (!open) return;
     const prevOverflow = document.body.style.overflow;
     document.body.style.overflow = 'hidden';
     const handleEsc = (e: KeyboardEvent) => {
@@ -96,14 +115,12 @@ export function NuevaInstitucionModal({ open, onClose }: Props) {
       document.body.style.overflow = prevOverflow;
       window.removeEventListener('keydown', handleEsc);
     };
-  }, [open, onClose]);
+  }, [onClose]);
 
   const isSuccess = state.ok === true;
 
   return (
-    <AnimatePresence>
-      {open && (
-        <div className="fixed inset-0 z-[100]">
+    <div className="fixed inset-0 z-[100]">
           {/* Backdrop */}
           <motion.div
             initial={{ opacity: 0 }}
@@ -136,16 +153,15 @@ export function NuevaInstitucionModal({ open, onClose }: Props) {
               // y caen detrás del backdrop, dejando el modal sin fondo.
               className="relative isolate w-full max-w-3xl"
             >
-              {/* ═══ ORGANIC SHAPE LAYER — composición dual-tone que sigue la
-                  silueta orgánica. Tres shapes fusionados via goo filter:
+              {/* ═══ ORGANIC SHAPE LAYER ════════════════════════════════════
+                  Form stage (dual-pane): dos rects fusionados via goo filter
                     1. Left rect (cream-pure)  — cubre el panel izquierdo
                     2. Right rect (cream lift) — cubre el panel derecho
-                    3. Extrusion lobe (cream lift) — bottom-right, matchea
-                       el color del panel derecho para que la silueta
-                       orgánica se vea continua del lado lighter.
-                  El % del split (57.4 / 42.6) replica el grid 1.35fr/1fr de
-                  las columnas interiores, alineando el seam de color con el
-                  divider visual entre form y panel.
+                    3. Extrusion lobe (cream lift) — bottom-right
+                  El split 57.4/42.6 replica el grid 1.35fr/1fr.
+                  Success stage (single-pane): un solo rect uniforme cream-pure
+                  + lobe del mismo tono. Sin esto la seam dual-tone queda
+                  visible bajo el panel success que colapsó a 1 columna.
                   ═══════════════════════════════════════════════════════════ */}
               <div
                 aria-hidden
@@ -159,21 +175,34 @@ export function NuevaInstitucionModal({ open, onClose }: Props) {
                   className="absolute inset-0"
                   style={{ filter: 'url(#admin-hero-organic)' }}
                 >
-                  {/* Left half — cream-pure. Sólo TL+BL redondeados; el
-                      lado derecho debe ser sharp para que encuentre el rect
-                      derecho sin notch interior. Se extiende un 0.6% extra
-                      (right-[42%]) para overlap con right rect, evitando
-                      hairline gap por sub-pixel rendering en el seam. */}
-                  <div className="squircle absolute top-0 bottom-10 left-0 right-[42%] rounded-l-[28px] bg-cream-pure" />
-                  {/* Right half — cream lift. Sólo TR+BR redondeados; lado
-                      izquierdo sharp. Arranca en 57.4% (matchea boundary
-                      del grid de contenido 1.35fr/1fr ≈ 57.4%). El overlap
-                      con left rect en 57.4-58% queda pintado por right
-                      (renderiza después) → transición de color limpia
-                      exactamente en el seam visual. */}
-                  <div className="squircle absolute top-0 bottom-10 left-[57.4%] right-0 rounded-r-[28px] bg-[#FAF8F2]" />
-                  {/* Extrusion lobe — bottom-right, matchea right half */}
-                  <div className="absolute bottom-0 right-0 h-20 w-1/3 rounded-full bg-[#FAF8F2]" />
+                  {isSuccess ? (
+                    <>
+                      {/* Single uniform rect — cream-pure full-width.
+                          inset-x-0 sin split, full rounded corners. */}
+                      <div className="squircle absolute top-0 bottom-10 inset-x-0 rounded-[28px] bg-cream-pure" />
+                      {/* Extrusion lobe del mismo tono — silueta orgánica
+                          consistente sin seam visible. */}
+                      <div className="absolute bottom-0 right-0 h-20 w-1/3 rounded-full bg-cream-pure" />
+                    </>
+                  ) : (
+                    <>
+                      {/* Left half — cream-pure. Sólo TL+BL redondeados; el
+                          lado derecho debe ser sharp para que encuentre el rect
+                          derecho sin notch interior. Se extiende un 0.6% extra
+                          (right-[42%]) para overlap con right rect, evitando
+                          hairline gap por sub-pixel rendering en el seam. */}
+                      <div className="squircle absolute top-0 bottom-10 left-0 right-[42%] rounded-l-[28px] bg-cream-pure" />
+                      {/* Right half — cream lift. Sólo TR+BR redondeados; lado
+                          izquierdo sharp. Arranca en 57.4% (matchea boundary
+                          del grid de contenido 1.35fr/1fr ≈ 57.4%). El overlap
+                          con left rect en 57.4-58% queda pintado por right
+                          (renderiza después) → transición de color limpia
+                          exactamente en el seam visual. */}
+                      <div className="squircle absolute top-0 bottom-10 left-[57.4%] right-0 rounded-r-[28px] bg-[#FAF8F2]" />
+                      {/* Extrusion lobe — bottom-right, matchea right half */}
+                      <div className="absolute bottom-0 right-0 h-20 w-1/3 rounded-full bg-[#FAF8F2]" />
+                    </>
+                  )}
                 </div>
               </div>
 
@@ -245,8 +274,6 @@ export function NuevaInstitucionModal({ open, onClose }: Props) {
             </motion.div>
           </div>
         </div>
-      )}
-    </AnimatePresence>
   );
 }
 
@@ -279,12 +306,12 @@ function FormStage({
 }) {
   const [tipo, setTipo] = useState<string>('banco');
 
-  const handleSubmit = (e: FormEvent<HTMLFormElement>) => {
-    e.preventDefault();
-    const formData = new FormData(e.currentTarget);
-    formData.set('tipo', tipo);
-    formAction(formData);
-  };
+  // React 19 + useActionState: el form action prop nativo envuelve la
+  // invocación en una transition automáticamente. Llamar formAction(formData)
+  // manualmente desde un onSubmit/click handler dispara
+  // "An async function with useActionState was called outside of a transition".
+  // Por eso pasamos formAction directo al <form action={...}> y exfiltramos
+  // el valor del Select (que no es un <input>) vía un hidden input.
 
   return (
     <motion.div
@@ -311,7 +338,11 @@ function FormStage({
         </p>
       </motion.header>
 
-      <form onSubmit={handleSubmit} className="flex flex-col gap-5">
+      <form action={formAction} className="flex flex-col gap-5">
+        {/* Hidden input que viaja el valor del Select shadcn dentro del FormData.
+            El Select no es un <input> nativo así que React no lo serializa al
+            submit; el hidden input se sincroniza desde `tipo` state. */}
+        <input type="hidden" name="tipo" value={tipo} />
         <motion.div
           custom={1}
           variants={fieldVariants}
