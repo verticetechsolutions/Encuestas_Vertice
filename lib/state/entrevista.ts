@@ -20,26 +20,20 @@ import {
   type UIMessageChunk,
 } from 'ai';
 import { GrupoUISchema, type GrupoUI } from '@/lib/schemas/cajas';
+import {
+  type Pregunta,
+  type PreguntaBatch,
+  type TipoPregunta,
+} from '@/lib/schemas/pregunta-batch';
 import { guardarRespuestaPendiente } from '@/app/actions/respuestas';
 import { FIXTURE_BATCH_MOCK } from './fixture-batch-mock';
 
 // =============================================================================
-// Public types — exported for components and the fixture file
+// Public types — re-exportados desde lib/schemas/pregunta-batch para mantener
+// el API histórico que consumen los componentes y el fixture.
 // =============================================================================
 
-export type TipoPregunta = 'directa' | 'caso_sintetico_solicitado';
-
-export interface Pregunta {
-  id: string;
-  texto_pregunta: string;
-  cajas_objetivo: string[];
-  tipo: TipoPregunta;
-}
-
-export interface PreguntaBatch {
-  id: string;
-  preguntas: Pregunta[];
-}
+export type { TipoPregunta, Pregunta, PreguntaBatch };
 
 // =============================================================================
 // Primer batch (bootstrap real, no fixture)
@@ -112,7 +106,19 @@ interface EntrevistaState {
   init: (
     sesion_id: string,
     totalsPorGrupo: Record<GrupoUI, number>,
-    options?: { preview?: boolean }
+    options?: {
+      preview?: boolean;
+      /**
+       * Payload de rehidratación al reload: batch que Sonnet ya había emitido +
+       * snapshot de cajas llenas + drafts de respuestas. Si está presente,
+       * `cargarPrimerBatch` NO se llama desde el shell — el batch ya está aquí.
+       */
+      rehidratacion?: {
+        batch: PreguntaBatch;
+        llenas_por_grupo: Record<GrupoUI, number>;
+        drafts?: Record<string, string>;
+      };
+    }
   ) => void;
   setRespuesta: (preguntaId: string, texto: string) => void;
   marcarRespondida: (preguntaId: string, marcada: boolean) => void;
@@ -317,6 +323,46 @@ export const useEntrevistaStore = create<EntrevistaState>((set, get) => ({
     for (const g of GrupoUISchema.options) {
       cajas_llenas_por_grupo[g] = { llenas: 0, total: totalsPorGrupo[g] ?? 0 };
     }
+
+    // Rehidratación: si server-side encontró un ultimo_batch fresco en
+    // metadata, seedeamos batch_actual + contador llenas + drafts en el mismo
+    // init para que la primera pintura del shell ya tenga el estado real
+    // (sin parpadeo "Cargando preguntas…" → batch correcto).
+    const rh = options?.rehidratacion;
+    if (rh) {
+      for (const g of GrupoUISchema.options) {
+        cajas_llenas_por_grupo[g] = {
+          total: totalsPorGrupo[g] ?? 0,
+          llenas: rh.llenas_por_grupo[g] ?? 0,
+        };
+      }
+      // Solo restauramos drafts cuya pregunta esté en el batch rehidratado —
+      // evita arrastrar drafts huérfanos de batches anteriores.
+      const idsBatch = new Set(rh.batch.preguntas.map((p) => p.id));
+      const drafts: Record<string, string> = {};
+      if (rh.drafts) {
+        for (const [pid, texto] of Object.entries(rh.drafts)) {
+          if (idsBatch.has(pid)) drafts[pid] = texto;
+        }
+      }
+      // Estado autosave: las preguntas con draft persistido ya están "saved"
+      // (vinieron de DB). El resto queda en idle.
+      const autosave_estado: Record<string, AutosaveStatus> = {};
+      for (const pid of Object.keys(drafts)) autosave_estado[pid] = 'saved';
+
+      set({
+        sesion_id,
+        cajas_llenas_por_grupo,
+        status: 'mostrando_batch',
+        batch_actual: rh.batch,
+        respuestas_pendientes: drafts,
+        autosave_estado,
+        marcadas_respondidas: {},
+        preview_mode: options?.preview === true,
+      });
+      return;
+    }
+
     set({
       sesion_id,
       cajas_llenas_por_grupo,

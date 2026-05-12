@@ -28,10 +28,11 @@ import { NextResponse } from 'next/server';
 import { streamText, tool, stepCountIs, APICallError } from 'ai';
 import { anthropic } from '@ai-sdk/anthropic';
 import { z } from 'zod';
-import { eq } from 'drizzle-orm';
+import { eq, sql } from 'drizzle-orm';
 
 import { db } from '@/lib/db';
 import { sesiones, instituciones } from '@/db/schema';
+import type { PreguntaBatch } from '@/lib/schemas/pregunta-batch';
 import {
   RegistrarExtraccionInputSchema,
   GenerarBatchPreguntasInputSchema,
@@ -50,13 +51,8 @@ import {
   type ExtraccionInput,
 } from '@/lib/motor/persistence';
 import { valorSchemaFor } from '@/lib/schemas/extracciones';
-import {
-  GrupoUISchema,
-  getCajasAplicables,
-  getCajaAny,
-  type GrupoUI,
-} from '@/lib/schemas/cajas';
-import { computeMapaIncertidumbre } from '@/lib/motor/mapa';
+import { getCajasAplicables } from '@/lib/schemas/cajas';
+import { computeMapaIncertidumbre, computeLlenasPorGrupo } from '@/lib/motor/mapa';
 import {
   SONNET_FASE1_SYSTEM_PROMPT,
   SONNET_FASE1_PROMPT_READY,
@@ -88,33 +84,6 @@ const TurnRequestSchema = z.object({
 // =============================================================================
 // Helpers
 // =============================================================================
-
-// Cuenta cajas con status terminal-llena ('llena' o 'no_aplica') por grupo_ui.
-// Usa CAJAS_CANON + EXTENSION[tipo] vía getCajaAny() para resolver el grupo.
-// Returns un Record con TODOS los 6 grupos (incluyendo 0 explícito) para que
-// el cliente pueda reemplazar el snapshot completo sin hacer merge parcial.
-function computeLlenasPorGrupo(
-  cajasState: ReturnType<typeof computeMapaIncertidumbre>['cajas']
-): Record<GrupoUI, number> {
-  const out = {} as Record<GrupoUI, number>;
-  for (const g of GrupoUISchema.options) out[g] = 0;
-  for (const codigo of Object.keys(cajasState)) {
-    const state = cajasState[codigo];
-    // "llenas" para el panel UI = todo estado terminal: llena | no_aplica | declinada.
-    // Declinadas cuentan como cerradas para que el avance del panel refleje la
-    // realidad post-handoff Sonnet→Opus (Phase 5 step 5).
-    if (
-      state.status !== 'llena' &&
-      state.status !== 'no_aplica' &&
-      state.status !== 'declinada'
-    )
-      continue;
-    const canon = getCajaAny(codigo);
-    if (!canon) continue;
-    out[canon.grupo_ui] = (out[canon.grupo_ui] ?? 0) + 1;
-  }
-  return out;
-}
 
 // Reformatea errores que llegan al cliente vía el UI message stream. El AI SDK
 // por default envía un mensaje opaco que rompe el parser cliente
@@ -438,13 +407,53 @@ export async function POST(req: Request) {
             longitud_batch: input.longitud_batch,
             cajas_objetivo_total: input.preguntas.flatMap((p) => p.cajas_objetivo),
           });
+          const batch_id = `batch-${turnoAgente.turno_id}`;
+
+          // Persistir el batch en sesiones.metadata.ultimo_batch para rehidratar
+          // /entrevista al reload (bug O1, doc bugs-encontrados-2026-05-11-e2e §O1).
+          // Espejo del shape que el cliente construye en
+          // lib/state/entrevista.ts:extractBatchFromUIMessage — así
+          // rehidratamos sin transformación adicional al cargar.
+          const batchPersist: PreguntaBatch = {
+            id: batch_id,
+            preguntas: input.preguntas.map((q, i) => ({
+              id: `${batch_id}-q${i}`,
+              texto_pregunta: q.texto,
+              cajas_objetivo: q.cajas_objetivo,
+              tipo: 'directa',
+            })),
+          };
+          const ultimoBatchPayload = {
+            batch: batchPersist,
+            numero_turno_emitido: turnoAgente.numero_turno,
+          };
+          try {
+            await db
+              .update(sesiones)
+              .set({
+                metadata: sql`COALESCE(${sesiones.metadata}, '{}'::jsonb)
+                  || jsonb_build_object('ultimo_batch', ${JSON.stringify(
+                    ultimoBatchPayload
+                  )}::jsonb)`,
+              })
+              .where(eq(sesiones.id, sesion_id));
+          } catch (err) {
+            // No-fail: la persistencia del batch es para UX de reload, no
+            // afecta el turn actual. Loguear y seguir — el cliente recibe el
+            // batch igualmente por el stream.
+            logger.warn('tool.generar_batch_preguntas.persist_fallido', {
+              sesion_id,
+              error: err instanceof Error ? err.message : String(err),
+            });
+          }
+
           // El batch se devuelve tal cual en el output. El cliente lee el
           // chunk `tool-output-available` con toolName='generar_batch_preguntas'
           // y mapea a PreguntaBatch (ver lib/state/entrevista.ts:enviarBatch).
           // batch_id se ancla al turno agente activo para correlación con DB.
           return {
             ok: true,
-            batch_id: `batch-${turnoAgente.turno_id}`,
+            batch_id,
             preguntas: input.preguntas,
             longitud_batch: input.longitud_batch,
           };

@@ -24,7 +24,13 @@
 //     Declinadas conservan la confianza de su última extracción (0 si nunca
 //     se extrajo) — bajan el score honestamente sin inflar artificialmente.
 
-import type { CajaCanon, Criticidad } from '@/lib/schemas/cajas';
+import {
+  GrupoUISchema,
+  getCajaAny,
+  type CajaCanon,
+  type Criticidad,
+  type GrupoUI,
+} from '@/lib/schemas/cajas';
 import type { Extraccion } from '@/lib/schemas/extracciones';
 
 export const CONFIANZA_MIN_CRITICA = 0.8;
@@ -244,4 +250,32 @@ function collapseCaja(
     evidencias_count: extracciones.length,
     ultima_extraccion_id: latest.id ?? null,
   };
+}
+
+// =============================================================================
+// computeLlenasPorGrupo — derivado del mapa
+// =============================================================================
+// Snapshot del contador `llenas` por grupo_ui que consume el panel UI lateral.
+// "Llenas" para fines del panel = todo estado terminal: llena | no_aplica |
+// declinada. Declinadas cuentan como cerradas (Phase 5 step 5 Sonnet→Opus).
+// Extraído acá para que /api/turn (snapshot post-extracción) y la rehidratación
+// server-side de /entrevista al reload usen el mismo cálculo.
+export function computeLlenasPorGrupo(
+  cajasState: MapaIncertidumbre['cajas']
+): Record<GrupoUI, number> {
+  const out = {} as Record<GrupoUI, number>;
+  for (const g of GrupoUISchema.options) out[g] = 0;
+  for (const codigo of Object.keys(cajasState)) {
+    const state = cajasState[codigo];
+    if (
+      state.status !== 'llena' &&
+      state.status !== 'no_aplica' &&
+      state.status !== 'declinada'
+    )
+      continue;
+    const canon = getCajaAny(codigo);
+    if (!canon) continue;
+    out[canon.grupo_ui] = (out[canon.grupo_ui] ?? 0) + 1;
+  }
+  return out;
 }

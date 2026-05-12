@@ -9,6 +9,7 @@ import {
   GrupoUISchema,
   type GrupoUI,
 } from '@/lib/schemas/cajas';
+import { cargarRehidratacion } from '@/lib/motor/rehidratacion';
 import { EntrevistaShell } from './entrevista-shell';
 
 interface Props {
@@ -56,11 +57,20 @@ export default async function EntrevistaPage({ params }: Props) {
   const nombre_institucion = row.nombre_comercial ?? row.razon_social;
   const totales_por_grupo = computeTotalesPorGrupo(row.tipo);
 
+  // Rehidratación O1: si Sonnet ya emitió un batch en esta sesión y el último
+  // turno agente coincide, lo cargamos server-side y se lo pasamos al shell
+  // como estado inicial. Null si no hay batch persistido o si es stale.
+  const rehidratacion = await cargarRehidratacion({
+    sesion_id,
+    tipo: row.tipo,
+  });
+
   return (
     <EntrevistaShell
       sesion_id={sesion_id}
       nombre_institucion={nombre_institucion}
       totales_por_grupo={totales_por_grupo}
+      rehidratacion={rehidratacion}
     />
   );
 }

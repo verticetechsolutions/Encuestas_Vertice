@@ -22,13 +22,15 @@
 
 import Image from 'next/image';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { AnimatePresence, motion } from 'motion/react';
+import { motion } from 'motion/react';
+import { Check } from 'lucide-react';
 import { HeroPregunta } from '@/components/entrevista/HeroPregunta';
 import { BatchNav } from '@/components/entrevista/BatchNav';
 import { Stepper } from '@/components/entrevista/Stepper';
 import { BrandSuccessGlyph } from '@/components/landing/BrandSuccessGlyph';
 import { useEntrevistaStore } from '@/lib/state/entrevista';
 import { getCajaAny, type GrupoUI } from '@/lib/schemas/cajas';
+import type { PreguntaBatch } from '@/lib/schemas/pregunta-batch';
 import { SPRING_BUTTON, solidButtonVariants } from '@/lib/motion-presets';
 import { cn } from '@/lib/utils';
 import {
@@ -44,16 +46,18 @@ interface Props {
   totales_por_grupo: Record<GrupoUI, number>;
   /** Cuando true, el store no toca DB ni /api/turn — todo simulado en memoria. */
   preview?: boolean;
+  /**
+   * Estado inicial a rehidratar en reload (fix bug O1). Si presente, el shell
+   * NO llama `cargarPrimerBatch` — el batch ya viene desde el server con
+   * llenas_por_grupo computado de la DB. Null cuando es primera carga o el
+   * batch en metadata es stale.
+   */
+  rehidratacion?: {
+    batch: PreguntaBatch;
+    llenas_por_grupo: Record<GrupoUI, number>;
+    drafts: Record<string, string>;
+  } | null;
 }
-
-const GRUPO_LABEL: Record<GrupoUI, string> = {
-  identificacion: 'Identidad',
-  productos_y_mercado: 'Productos y mercado',
-  numeros_del_negocio: 'Números del negocio',
-  operacion: 'Operación',
-  pricing_y_criterio: 'Pricing y criterio',
-  contacto_y_especificos: 'Contacto y específicos',
-};
 
 function inferGrupoActivo(cajasObjetivo: string[] | undefined): GrupoUI {
   if (!cajasObjetivo || cajasObjetivo.length === 0) return 'identificacion';
@@ -69,6 +73,7 @@ export function EntrevistaShell({
   nombre_institucion,
   totales_por_grupo,
   preview = false,
+  rehidratacion = null,
 }: Props) {
   const init = useEntrevistaStore((s) => s.init);
   const cargarFixtureMock = useEntrevistaStore((s) => s.cargarFixtureMock);
@@ -115,19 +120,27 @@ export function EntrevistaShell({
   }, [status]);
 
   useEffect(() => {
-    init(sesion_id, totales_por_grupo, { preview });
+    // Init carga el estado base. Si rehidratacion viene del server, init lo
+    // seedea directo (batch_actual + cajas_llenas_por_grupo + drafts) y NO
+    // disparamos cargarPrimerBatch — ya hay batch.
+    init(sesion_id, totales_por_grupo, {
+      preview,
+      rehidratacion: rehidratacion ?? undefined,
+    });
     if (preview) {
       // Preview UI sandbox: rota el fixture mock para diseño/QA visual.
       cargarFixtureMock();
-    } else {
-      // Producción: pregunta de bienvenida hardcoded (identidad institucional).
-      // Sonnet toma el relevo desde el segundo turn vía /api/turn.
+    } else if (!rehidratacion) {
+      // Producción primera entrada: pregunta de bienvenida hardcoded
+      // (identidad institucional). Sonnet toma el relevo desde el segundo
+      // turn vía /api/turn. Si rehidratacion existe, init ya pobló batch_actual.
       cargarPrimerBatch();
     }
   }, [
     sesion_id,
     totales_por_grupo,
     preview,
+    rehidratacion,
     init,
     cargarFixtureMock,
     cargarPrimerBatch,
@@ -281,7 +294,12 @@ export function EntrevistaShell({
           >
           {/* Body de la card 2 — workspace de la pregunta.
               motion.div layout anima el cambio de altura entre preguntas.
-              AnimatePresence + opacity fade da el cross-fade entre preguntas.
+              El swap de pregunta usa `key={activePregunta.id}` que dispara
+              remount + animación CSS `animate-fade-up` en HeroPregunta. Con
+              AnimatePresence previo (mode="wait" o "popLayout") el mount del
+              entrante se quedaba stuck con header levantado — smoke 2026-05-12
+              confirmó el bug. CSS keyframe es suficiente para el feel y es
+              determinista (no depende del state-machine de motion-react).
               Padding generoso (px-14, pb-12) para que el CTA y su shadow
               gold respiren del rounded corner del card. */}
           <motion.div
@@ -305,29 +323,41 @@ export function EntrevistaShell({
                 </p>
               </div>
             ) : activePregunta ? (
-              <AnimatePresence mode="wait" initial={false}>
-                <motion.div
+              <>
+                {/* Header del workspace (counter + chip RESPONDIDA) — fuera del
+                    AnimatePresence para que refleje pregIndex y `marcadas` en
+                    tiempo real, sin desincronizarse durante la transición de
+                    220ms del HeroPregunta (fix O2 bug doc
+                    bugs-encontrados-2026-05-11-e2e.md §O2). */}
+                <header className="mb-6 flex min-h-[28px] items-center justify-between gap-4">
+                  <span className="numeric text-[10px] font-medium uppercase tracking-[0.16em] text-gold-deep">
+                    Pregunta {(pregIndex + 1).toString().padStart(2, '0')}
+                    <span className="text-[color:var(--ink)]/60"> de </span>
+                    {total.toString().padStart(2, '0')}
+                  </span>
+                  <span
+                    aria-hidden={marcadas[activePregunta.id] !== true}
+                    className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--gold)]/12 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-gold-deep ring-1 ring-[color:var(--gold)]/35 transition-opacity duration-200"
+                    style={{
+                      opacity: marcadas[activePregunta.id] === true ? 1 : 0,
+                      visibility: marcadas[activePregunta.id] === true ? 'visible' : 'hidden',
+                    }}
+                  >
+                    <Check className="size-3" strokeWidth={3} />
+                    Respondida
+                  </span>
+                </header>
+                <HeroPregunta
                   key={activePregunta.id}
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  transition={{ duration: 0.22, ease: [0.16, 1, 0.3, 1] }}
-                >
-                  <HeroPregunta
-                    pregunta={activePregunta}
-                    numero={pregIndex + 1}
-                    total={total}
-                    seccionLabel={GRUPO_LABEL[grupoActivo]}
-                    cajasObjetivo={activePregunta.cajas_objetivo}
-                    texto={respuestas[activePregunta.id] ?? ''}
-                    marcada={marcadas[activePregunta.id] === true}
-                    autosave={autosave[activePregunta.id] ?? 'idle'}
-                    onChangeTexto={(t) => setRespuesta(activePregunta.id, t)}
-                    onToggleMarcada={(m) => marcarRespondida(activePregunta.id, m)}
-                    sttEnabled={!preview}
-                  />
-                </motion.div>
-              </AnimatePresence>
+                  pregunta={activePregunta}
+                  texto={respuestas[activePregunta.id] ?? ''}
+                  marcada={marcadas[activePregunta.id] === true}
+                  autosave={autosave[activePregunta.id] ?? 'idle'}
+                  onChangeTexto={(t) => setRespuesta(activePregunta.id, t)}
+                  onToggleMarcada={(m) => marcarRespondida(activePregunta.id, m)}
+                  sttEnabled={!preview}
+                />
+              </>
             ) : enviando ? (
               <div className="flex items-center justify-center gap-3 py-16">
                 <Loader2 className="size-5 animate-spin text-gold-deep" />

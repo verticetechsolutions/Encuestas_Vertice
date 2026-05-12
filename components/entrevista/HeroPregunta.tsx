@@ -3,13 +3,16 @@
 // HeroPregunta — workspace de la pregunta activa (rewrite limpio 2026-05-10).
 //
 // Estructura (flex-col gap-6 — spacing predecible y uniforme):
-//   1. Header: counter "Pregunta XX de YY" + chip RESPONDIDA (ghost slot).
-//   2. Question: h2 hero + auxiliar (split por "Por ejemplo:" o composición).
-//   3. Textarea + banner Lock (ghost slot bajo el textarea).
-//   4. Footer: autosave indicator + buttons (Dictar ghost + Marcar/Desmarcar CTA).
+//   1. Question: h2 hero + auxiliar (split por "Por ejemplo:" o composición).
+//   2. Textarea + banner Lock (ghost slot bajo el textarea).
+//   3. Footer: autosave indicator + buttons (Dictar ghost + Marcar/Desmarcar CTA).
+//
+// Counter "Pregunta XX de YY" + chip RESPONDIDA viven en `entrevista-shell.tsx`
+// FUERA del AnimatePresence (fix O2 bug doc bugs-encontrados-2026-05-11-e2e.md
+// §O2) — durante la transición de 120ms entre preguntas, esos elementos no se
+// quedan stuck con el valor del HeroPregunta saliente.
 //
 // Anti-shift por construcción:
-//   - Header min-h reservado (chip aparece sin empujar nada).
 //   - Banner min-h reservado (toggle no mueve el footer).
 //   - Textarea max-h + scroll interno (no crece el card si user escribe largo).
 //   - CTA min-w fijo (alterna "Marcar respondida" ↔ "Desmarcar" sin shift).
@@ -37,12 +40,6 @@ import { cn } from '@/lib/utils';
 
 interface Props {
   pregunta: Pregunta;
-  numero: number;
-  total: number;
-  /** Sección actual (a11y / accessor); ya no se renderiza en el eyebrow. */
-  seccionLabel: string;
-  /** Códigos de cajas que cubre esta pregunta. Disponibles para debug/tooltip. */
-  cajasObjetivo: string[];
   texto: string;
   marcada: boolean;
   autosave: AutosaveStatus;
@@ -76,8 +73,6 @@ const AUTOSAVE_META: Record<
 
 export function HeroPregunta({
   pregunta,
-  numero,
-  total,
   texto,
   marcada,
   autosave,
@@ -118,28 +113,8 @@ export function HeroPregunta({
   }, [stt.transcripts.history, onChangeTexto]);
 
   return (
-    <article className="flex flex-col gap-6">
-      {/* ─── 1. HEADER — counter + chip respondida (ghost slot derecha) ─── */}
-      <header className="flex min-h-[28px] items-center justify-between gap-4">
-        <span className="text-[10px] font-medium uppercase tracking-[0.16em] numeric text-gold-deep">
-          Pregunta {numero.toString().padStart(2, '0')}
-          <span className="text-[color:var(--ink)]/60"> de </span>
-          {total.toString().padStart(2, '0')}
-        </span>
-        <span
-          aria-hidden={!marcada}
-          className="inline-flex items-center gap-1.5 rounded-full bg-[color:var(--gold)]/12 px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] text-gold-deep ring-1 ring-[color:var(--gold)]/35 transition-opacity duration-200"
-          style={{
-            opacity: marcada ? 1 : 0,
-            visibility: marcada ? 'visible' : 'hidden',
-          }}
-        >
-          <Check className="size-3" strokeWidth={3} />
-          Respondida
-        </span>
-      </header>
-
-      {/* ─── 2. QUESTION — h2 hero + auxiliar opcional ─── */}
+    <article className="flex flex-col gap-6 animate-fade-up">
+      {/* ─── 1. QUESTION — h2 hero + auxiliar opcional ─── */}
       <div>
         <h2 className="text-display text-[28px] leading-[1.08] tracking-[-0.025em] text-foreground md:text-[36px] xl:text-[40px]">
           {q}
@@ -151,7 +126,7 @@ export function HeroPregunta({
         )}
       </div>
 
-      {/* ─── 3. TEXTAREA + banner Lock (ghost slot debajo) ─── */}
+      {/* ─── 2. TEXTAREA + banner Lock (ghost slot debajo) ─── */}
       <div className="flex flex-col gap-3">
         <Textarea
           value={texto}
@@ -164,7 +139,7 @@ export function HeroPregunta({
           rows={5}
           readOnly={marcada}
           aria-readonly={marcada}
-          aria-label={`Respuesta a la pregunta ${numero}`}
+          aria-label="Tu respuesta a la pregunta actual"
           // El smooth-scroll global de Lenis intercepta wheel a nivel window.
           // En respuestas largas que activan overflow-auto del textarea, sin
           // este attr el wheel scrollearía la página en vez del textarea.
@@ -222,7 +197,7 @@ export function HeroPregunta({
         )}
       </div>
 
-      {/* ─── 4. FOOTER — autosave izq, buttons der ─── */}
+      {/* ─── 3. FOOTER — autosave izq, buttons der ─── */}
       <footer className="flex flex-wrap items-center justify-between gap-4">
         <AutosaveIndicator meta={meta} />
 
