@@ -71,6 +71,16 @@ vi.mock('@/lib/db', () => {
     'leftJoin',
     'orderBy',
     'groupBy',
+    // Methods consumed por persist de ultimo_batch en
+    // generar_batch_preguntas.execute() (route.ts). Misma estrategia
+    // chainable; el test que verifique ultimo_batch espía obj.update y
+    // obj.set para inspeccionar el payload.
+    'update',
+    'set',
+    'insert',
+    'values',
+    'returning',
+    'delete',
   ];
   for (const m of methods) {
     obj[m] = vi.fn(() => obj);
@@ -404,5 +414,107 @@ describe('POST /api/turn — gates', () => {
     expect(res.status).toBe(429);
     const json = (await res.json()) as { error: string };
     expect(json.error).toBe('rate_limited');
+  });
+
+  // ===========================================================================
+  // A10 — Persist ultimo_batch en sesiones.metadata (fix bug O1, doc
+  // bugs-encontrados-2026-05-11-e2e.md §O1).
+  // El tool generar_batch_preguntas.execute() debe ejecutar:
+  //   db.update(sesiones).set({ metadata: sql`COALESCE(metadata, '{}'::jsonb) ||
+  //     jsonb_build_object('ultimo_batch', <payload>::jsonb)` }).where(...)
+  // Espiamos obj.update + obj.set para verificar shape sin recurrir a DB real.
+  // ===========================================================================
+
+  it('12. tool generar_batch_preguntas — persiste ultimo_batch en sesiones.metadata', async () => {
+    mockDbSelect.mockReturnValue([
+      { status: 'abierta', consentimiento_at: new Date('2026-05-01'), tipo: 'banco' },
+    ]);
+
+    // Override mock-Sonnet para emitir un tool_call generar_batch_preguntas
+    // seguido de un step de cierre (sino el SDK pediría otro step y arroja).
+    const { anthropic } = await import('@ai-sdk/anthropic');
+    vi.mocked(anthropic).mockReturnValueOnce(
+      createMockSonnet([
+        {
+          toolCalls: [
+            {
+              toolName: 'generar_batch_preguntas',
+              input: {
+                preguntas: [
+                  {
+                    texto: '¿Cuál es tu razón social y nombre comercial?',
+                    cajas_objetivo: ['id_razon_social', 'id_nombre_comercial'],
+                  },
+                  {
+                    texto: '¿Bajo qué entes están regulados?',
+                    cajas_objetivo: ['id_regulacion'],
+                  },
+                ],
+                longitud_batch: 2,
+              },
+            },
+          ],
+        },
+        { text: 'Listo, ahí va el batch.' },
+      ]) as ReturnType<typeof createMockSonnet>
+    );
+
+    const { db } = await import('@/lib/db');
+    // Drenar cualquier call previa de obj.set/obj.update (en este test no
+    // hay select previa que las dispare, pero somos defensivos).
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const dbAny = db as any;
+    dbAny.update.mockClear();
+    dbAny.set.mockClear();
+
+    const res = await POST(
+      makeRequest({
+        sesion_id: SESION_VALIDA_UUID,
+        mensaje_usuario: 'Soy Banco Demo, sofom regulada CNBV.',
+      })
+    );
+    expect(res.status).toBe(200);
+    // Drenar el stream — los tool execute() corren mientras el stream avanza.
+    // Si no drenamos, el execute puede no haber corrido al hacer las asserts.
+    if (res.body) {
+      const reader = res.body.getReader();
+      while (true) {
+        const { done } = await reader.read();
+        if (done) break;
+      }
+    }
+
+    // El tool ejecutó: debe haber llamado db.update y db.set al menos una vez.
+    expect(dbAny.update).toHaveBeenCalled();
+    expect(dbAny.set).toHaveBeenCalled();
+
+    // Una de las llamadas a .set debe contener metadata con un payload que
+    // referencie ultimo_batch. El payload pasa por sql`...` así que en el
+    // mock chainable el valor literal del SQL es una instancia opaca; nos
+    // basta con que el set haya recibido un objeto con la key `metadata`.
+    const setCalls = dbAny.set.mock.calls as Array<[Record<string, unknown>]>;
+    const metadataCalls = setCalls.filter(
+      ([arg]) => arg && typeof arg === 'object' && 'metadata' in arg
+    );
+    expect(metadataCalls.length).toBeGreaterThan(0);
+
+    // Verificar el SHAPE del payload persistido. Los literales SQL del template
+    // ('jsonb_build_object', 'ultimo_batch') están envueltos por Drizzle en
+    // StringChunk wrappers — los `typeof === 'string'` chunks que SÍ vienen
+    // como string literal son los valores interpolados via `${...}` (en
+    // particular el JSON.stringify del payload). Comprobamos las keys propias
+    // del UltimoBatch (batch + numero_turno_emitido) y la inclusión del
+    // turno agente del placeholder (numero 2 emitido por persistirTurnoAgente
+    // mock).
+    const sqlTexts = metadataCalls.flatMap(([arg]) => {
+      const m = (arg as { metadata?: { queryChunks?: unknown[] } }).metadata;
+      const chunks = m?.queryChunks ?? [];
+      return chunks.filter((c): c is string => typeof c === 'string');
+    });
+    const payloadBlob = sqlTexts.join(' ');
+    expect(payloadBlob).toContain('"batch"');
+    expect(payloadBlob).toContain('"numero_turno_emitido":2');
+    expect(payloadBlob).toContain('"texto_pregunta"');
+    expect(payloadBlob).toContain('id_razon_social');
   });
 });
