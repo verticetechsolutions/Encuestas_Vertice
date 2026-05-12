@@ -1,18 +1,14 @@
-// Índice global de sesiones con filtros por status. Default operativo:
-// 'abierta' + 'sintetizando' (sesiones vivas). Filtros chips en URL → links
-// que cambian ?status=...
+// Índice global de sesiones — rediseño coherente con design system de
+// /admin (Resumen). El server component sólo se ocupa del fetch + parse
+// de status filter; toda la UI vive en SesionesView (client) que maneja
+// state de búsqueda, hero reactivo, card de nav orgánico y feed cappeado
+// con scroll interno.
 
-import Link from 'next/link';
 import { desc, eq, inArray } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { sesiones, instituciones } from '@/db/schema';
-import { ArrowRight, Sparkles } from 'lucide-react';
-import { formatRelative } from '@/lib/utils';
-import {
-  parseStatusFilter,
-  VALID_STATUSES,
-  type SesionStatus,
-} from '@/lib/admin/parse-status-filter';
+import { parseStatusFilter } from '@/lib/admin/parse-status-filter';
+import { SesionesView } from '@/components/admin/sesiones-view';
 
 export const dynamic = 'force-dynamic';
 
@@ -48,207 +44,12 @@ export default async function AdminSesionesIndexPage({ searchParams }: Props) {
   const visible = truncated ? rows.slice(0, HARD_LIMIT) : rows;
 
   return (
-    <div className="flex flex-col gap-6">
-      <header>
-        <p className="font-mono text-[10px] uppercase tracking-[0.22em] text-muted-foreground">
-          Operativo
-        </p>
-        <h1 className="mt-1 text-2xl font-semibold tracking-tight text-foreground">
-          Sesiones
-        </h1>
-        <p className="mt-1 text-sm text-muted-foreground">
-          {visible.length} {visible.length === 1 ? 'visible' : 'visibles'}
-          {truncated && ` (mostrando primeras ${HARD_LIMIT}, refina filtros)`}
-        </p>
-      </header>
-
-      <FilterChips active={activeStatuses} />
-
-      {visible.length === 0 ? (
-        <EmptyState isExplicitFilter={status !== undefined} />
-      ) : (
-        <div className="overflow-hidden rounded-3xl bg-cream shadow-sm ring-1 ring-foreground/5">
-          <table className="w-full text-sm">
-            <thead className="bg-background/40 text-left text-[10px] uppercase tracking-[0.18em] text-muted-foreground">
-              <tr>
-                <Th>Institución</Th>
-                <Th>Tipo</Th>
-                <Th>Status</Th>
-                <Th>Cajas</Th>
-                <Th>Iniciada</Th>
-                <Th>Último turno</Th>
-                <Th srLabel="Acciones" />
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-foreground/5">
-              {visible.map((s) => (
-                <tr
-                  key={s.sesion_id}
-                  className="transition hover:bg-foreground/[0.02]"
-                >
-                  <Td>
-                    <Link
-                      href={`/admin/instituciones/${s.institucion_id}`}
-                      className="font-medium text-foreground hover:text-gold-deep hover:underline"
-                    >
-                      {s.razon_social}
-                    </Link>
-                  </Td>
-                  <Td className="font-mono text-xs text-muted-foreground">
-                    {s.tipo}
-                  </Td>
-                  <Td>
-                    <StatusPill status={s.status} />
-                  </Td>
-                  <Td className="font-mono text-xs tabular-nums">
-                    {s.cajas_llenas}
-                    <span className="text-muted-foreground">
-                      /{s.cajas_aplicables}
-                    </span>
-                  </Td>
-                  <Td className="text-xs text-muted-foreground">
-                    {formatRelative(s.started_at)}
-                  </Td>
-                  <Td className="text-xs text-muted-foreground">
-                    {formatRelative(s.ultimo_turno_at)}
-                  </Td>
-                  <Td className="text-right">
-                    <Link
-                      href={`/admin/sesiones/${s.sesion_id}`}
-                      className="inline-flex items-center gap-1 text-xs font-medium text-gold-deep hover:underline"
-                    >
-                      Ver <ArrowRight className="size-3" />
-                    </Link>
-                  </Td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      )}
-    </div>
-  );
-}
-
-function FilterChips({ active }: { active: SesionStatus[] }) {
-  const activeSet = new Set(active);
-  const isDefault =
-    activeSet.size === 2 &&
-    activeSet.has('abierta') &&
-    activeSet.has('sintetizando');
-  return (
-    <div className="flex flex-wrap gap-2">
-      <ChipLink href="/admin/sesiones" active={isDefault}>
-        Default (vivas)
-      </ChipLink>
-      {VALID_STATUSES.map((s) => {
-        const isActive = activeSet.has(s);
-        const next = isActive
-          ? activeSet.size === 1
-            ? null // si era el único, limpia
-            : Array.from(activeSet).filter((x) => x !== s)
-          : [...active, s];
-        const href =
-          next === null
-            ? '/admin/sesiones'
-            : `/admin/sesiones?status=${next.join(',')}`;
-        return (
-          <ChipLink key={s} href={href} active={isActive}>
-            {s}
-          </ChipLink>
-        );
-      })}
-    </div>
-  );
-}
-
-function ChipLink({
-  href,
-  active,
-  children,
-}: {
-  href: string;
-  active: boolean;
-  children: React.ReactNode;
-}) {
-  const cls = active
-    ? 'bg-ink text-cream-pure ring-ink'
-    : 'bg-cream text-foreground ring-foreground/10 hover:bg-foreground/5';
-  return (
-    <Link
-      href={href}
-      className={`inline-flex items-center rounded-full px-3 py-1.5 text-xs font-medium ring-1 transition ${cls}`}
-    >
-      {children}
-    </Link>
-  );
-}
-
-function EmptyState({ isExplicitFilter }: { isExplicitFilter: boolean }) {
-  return (
-    <div className="rounded-3xl bg-cream p-10 text-center shadow-sm ring-1 ring-foreground/5">
-      <p className="text-sm text-muted-foreground">
-        {isExplicitFilter
-          ? 'Sin sesiones con estos filtros.'
-          : 'Aún no hay sesiones. Crea una institución para emitir un magic link.'}
-      </p>
-      {isExplicitFilter && (
-        <Link
-          href="/admin/sesiones"
-          className="mt-3 inline-block text-xs font-medium text-gold-deep hover:underline"
-        >
-          Ver todas
-        </Link>
-      )}
-    </div>
-  );
-}
-
-function Th({
-  children,
-  srLabel,
-}: {
-  children?: React.ReactNode;
-  srLabel?: string;
-}) {
-  return (
-    <th
-      scope="col"
-      aria-label={!children ? srLabel : undefined}
-      className="px-5 py-3"
-    >
-      {children}
-    </th>
-  );
-}
-
-function Td({
-  children,
-  className,
-}: {
-  children?: React.ReactNode;
-  className?: string;
-}) {
-  return <td className={`px-5 py-3 ${className ?? ''}`}>{children}</td>;
-}
-
-const STATUS_STYLE: Record<string, string> = {
-  abierta: 'bg-gold-bright/30 text-gold-deep ring-gold-bright/50',
-  pausada: 'bg-amber-100 text-amber-900 ring-amber-200',
-  sintetizando: 'bg-ink/8 text-ink/72 ring-ink/15',
-  completa: 'bg-ink text-cream-pure ring-ink',
-  abandonada: 'bg-foreground/8 text-muted-foreground ring-foreground/15',
-};
-
-function StatusPill({ status }: { status: string }) {
-  const cls =
-    STATUS_STYLE[status] ?? 'bg-muted text-foreground ring-foreground/15';
-  return (
-    <span
-      className={`inline-flex items-center gap-1.5 rounded-full px-2.5 py-1 text-[10px] font-semibold uppercase tracking-[0.16em] ring-1 ${cls}`}
-    >
-      <Sparkles className="size-2.5" />
-      {status}
-    </span>
+    <SesionesView
+      rows={visible}
+      activeStatuses={activeStatuses}
+      truncated={truncated}
+      hardLimit={HARD_LIMIT}
+      hasExplicitFilter={status !== undefined}
+    />
   );
 }
