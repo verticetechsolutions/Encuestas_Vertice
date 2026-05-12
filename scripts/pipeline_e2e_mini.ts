@@ -95,7 +95,7 @@ async function main() {
   // -------------------------------------------------------------------------
   section('Fase 0 · Setup DB');
   const { db: testDb, client } = createTestDb();
-  console.log(`  DB    : ${testUrl.replace(/:[^:@]+@/, ':***@')}`);
+  console.log(`  DB    : ${(testUrl as string).replace(/:[^:@]+@/, ':***@')}`);
 
   await resetReviewTables(testDb);
   console.log('  reset : TRUNCATE de tablas review/extracciones/turnos OK');

@@ -108,7 +108,8 @@ async function modo2_anthropicSdkDirecto(input: SintesisInput) {
   const jsonSchema = z.toJSONSchema(PerfilDecisionFinalConsistenteSchema);
 
   const t0 = Date.now();
-  // @ts-expect-error — output_config y thinking adaptive son beta/recientes
+  // SDK actual ya tipa thinking adaptive + output_config; el @ts-expect-error
+  // anterior quedó stale tras upgrade. Sin él typecheck pasa limpio.
   const response = await client.messages.create({
     model: 'claude-opus-4-7',
     max_tokens: 32000,

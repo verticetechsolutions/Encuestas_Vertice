@@ -25,6 +25,40 @@ import { DeepgramClient } from '@deepgram/sdk';
 // Deepgram's HTTP/WS API takes booleans as `"true"`/`"false"` query strings,
 // and the v5 SDK types reflect that — booleans here would fail typecheck.
 // ---------------------------------------------------------------------------
+// Keyterms regulatorios MX para Nova-3. Mejora WER en transposiciones comunes
+// (e.g. CNBV → CNVB) que observamos en smoke 2026-05-12. Lista cerrada
+// — agregar nuevos términos requiere PR. Nova-3 acepta keyterms como hint
+// (no hard-bias) que sesga el modelo a estos tokens en context regulatorio.
+//
+// Cobertura intencional:
+//   - Reguladores federales: CNBV, CONDUSEF, CNSF, IPAB, UIF, SHCP, BANXICO.
+//   - Tipos institucionales: SOFOM (ER/ENR), SOFIPO, SOCAP, IFC, IFPE.
+//   - Métricas financieras: DSCR, CETES, TIIE, UDIS.
+//   - Procesos clave: SAT, RESICO, RFC, INDAVAL.
+export const STT_KEYTERMS = Object.freeze([
+  'CNBV',
+  'CONDUSEF',
+  'CNSF',
+  'IPAB',
+  'UIF',
+  'SHCP',
+  'BANXICO',
+  'SOFOM',
+  'SOFIPO',
+  'SOCAP',
+  'IFC',
+  'IFPE',
+  'DSCR',
+  'CETES',
+  'TIIE',
+  'UDIS',
+  'SAT',
+  'RESICO',
+  'RFC',
+  'INDAVAL',
+] as const);
+export type SttKeyterm = (typeof STT_KEYTERMS)[number];
+
 export const STT_LIVE_CONFIG = Object.freeze({
   model: 'nova-3-general',
   language: 'multi',
@@ -39,6 +73,10 @@ export const STT_LIVE_CONFIG = Object.freeze({
   interim_results: 'true',
   punctuate: 'true',
   vad_events: 'true',
+  // Keyterm: sesga el reconocedor hacia acrónimos regulatorios MX. Deepgram
+  // acepta lista coma-separada como query param. Lista cementada en
+  // `STT_KEYTERMS` arriba.
+  keyterm: STT_KEYTERMS.join(','),
 } as const);
 export type SttLiveConfig = typeof STT_LIVE_CONFIG;
 

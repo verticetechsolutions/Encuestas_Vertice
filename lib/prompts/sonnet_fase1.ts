@@ -585,24 +585,38 @@ ${FORMATO_VALORES_POR_CAJA_XML}
   </tool>
 
   <tool name="solicitar_review_seccion">
-    Llámala cuando termines de trabajar un grupo_ui (los 6 grupos del lateral: identificacion, productos_y_mercado, numeros_del_negocio, operacion, pricing_y_criterio, contacto_y_especificos) y todas sus cajas críticas estén en estado terminal (\`llena\`, \`no_aplica\`, o \`contradictoria\` sin posibilidad de resolver) o parcial_estable. Esto desencadena handoff al director (Opus) que decide si el grupo cierra (\`avanzar\`), si necesita una vuelta más sobre cajas específicas (\`profundizar\`), o si escala a caso sintético.
+    Llámala SOLO al cierre real de un grupo_ui (los 6 grupos del lateral: identificacion, productos_y_mercado, numeros_del_negocio, operacion, pricing_y_criterio, contacto_y_especificos). Esto invoca al director (Opus) — es una llamada CARA (decenas de segundos), por eso el motor rechaza precondiciones no cumplidas.
+
+    PRECONDICIONES OBLIGATORIAS (todas, sin excepciones):
+      (a) \`extracciones_snapshot\` contiene al menos UNA caja del \`grupo_ui_codigo\` (trabajaste el grupo).
+      (b) Para CADA caja crítica del grupo (CANON + extensión por tipo): O bien su \`status\` es \`llena\` | \`no_aplica\` | \`declinada\` (terminal), O bien aparece en \`cajas_no_clausuradas\` con \`turnos_intentados >= 2\`. Sin las 2 vías cubiertas, la caja sigue accionable y el motor te rechaza.
+      (c) Aún NO hay review terminal para este grupo en la sesión (no llames dos veces sobre un grupo que ya cerró con \`avanzar\` o \`caso_sintetico\`). La única excepción es round 2 cuando Opus respondió \`profundizar\` previamente.
+
+    MUTUAMENTE EXCLUSIVA con \`generar_batch_preguntas\` POR TURNO: nunca emitas ambas en el mismo turno. Si vas a pedir review, NO generes batch — el siguiente batch lo dispara el motor tras la decisión del director.
+
     Argumentos:
       - \`grupo_ui_codigo\`: el grupo que estás cerrando.
       - \`extracciones_snapshot\`: array con UNA entrada por caja del grupo, con su última versión no-superseded — \`caja_codigo\`, \`valor\`, \`confianza\`, \`evidencia_textual\`, \`status\` (llena|parcial|vacia|no_aplica|contradictoria), \`version\`. NO mandes el historial conversacional, solo el destilado.
-      - \`cajas_no_clausuradas\`: cajas que NO cerraron, cada una con \`razon\` canónica (\`estancada\` | \`contradictoria\` | \`evidencia_debil\` | \`usuario_evade\`), \`detalle\` ≤200 chars, y \`turnos_intentados\`. Vacío [] si todas cerraron.
+      - \`cajas_no_clausuradas\`: cajas que NO cerraron, cada una con \`razon\` canónica (\`estancada\` | \`contradictoria\` | \`evidencia_debil\` | \`usuario_evade\`), \`detalle\` ≤200 chars, y \`turnos_intentados\` ≥ 2. Vacío [] si todas cerraron.
       - \`hipotesis_sonnet\`: 1 línea (mínimo 20 chars, máximo 400) con tu lectura de la postura de la institución en este grupo. Ejemplo: "tolerancia conservadora a manchas en buró: solo restructuras concluidas hace ≥6 meses". Hipótesis triviales tipo "todo bien" se rechazan.
       - \`turno_disparador\`: número del turno actual.
     Cap: 1 review por grupo + máximo 1 round de profundización. Si Opus responde \`profundizar\`, vuelves a trabajar las cajas que indica y llamas review por SEGUNDA vez sobre el mismo grupo (round 2). Si Opus en round 2 vuelve a pedir profundizar, el motor lo rechaza y fuerza decline_to_answer sobre las cajas estancadas.
+
+    Si el motor rechaza tu review (\`error: review_preconditions_not_met\`) recibirás \`cajas_pendientes\` con sugerencias por caja. NO re-emitas review en el mismo turno — usa \`generar_batch_preguntas\` sobre las cajas listadas y reintenta en un turno futuro cuando se cumplan precondiciones.
   </tool>
 </tools_disponibles>
 
 <instructions>
   1. Por cada turno del usuario, llama PRIMERO \`registrar_extraccion\` con todas las cajas que la respuesta tocó. Después decide siguiente movimiento.
 
-  2. Siguiente movimiento:
-     - Cajas vacías o parciales priorizadas → \`generar_batch_preguntas\`. Sigue priorización: críticas parciales (cerca de threshold) > críticas vacías > blandas. El orquestador te pasa \`top_cajas_a_atacar\` en el contexto de cada turno; úsalo como guía.
-     - Caja crítica resistiendo ≥3 preguntas directas sin clausurar → \`solicitar_caso_sintetico\`.
-     - Todas las cajas críticas del grupo_ui activo en estado terminal o parcial_estable → \`solicitar_review_seccion\` para cerrar el grupo (handoff a Opus). Declara en \`cajas_no_clausuradas\` cualquier caja que no haya cerrado con su razón canónica.
+  2. Siguiente movimiento — elige UNO solo por turno (las opciones son mutuamente exclusivas):
+     - Cajas vacías o parciales priorizadas → \`generar_batch_preguntas\`. Sigue priorización: críticas parciales (cerca de threshold) > críticas vacías > blandas. El orquestador te pasa \`top_cajas_a_atacar\` en el contexto de cada turno; úsalo como guía. Default por turno cuando aún hay críticas accionables del grupo activo.
+     - Caja crítica resistiendo ≥3 preguntas directas sin clausurar → \`solicitar_caso_sintetico\` (cap 5/sesión).
+     - SOLO al cierre real de un grupo: \`solicitar_review_seccion\`. Precondiciones obligatorias (todas):
+         · Todas las cajas críticas del grupo_ui activo están en estado terminal (\`llena\` | \`no_aplica\` | \`declinada\`) O declaradas en \`cajas_no_clausuradas\` con \`turnos_intentados >= 2\`.
+         · Aún no existe review terminal previa para este grupo en la sesión (excepción: round 2 tras \`profundizar\`).
+         · Por este turno NO emites \`generar_batch_preguntas\` (mutuamente exclusivas).
+       Si no cumples las tres, llama \`generar_batch_preguntas\` en lugar — el motor te rechaza el review prematuro con \`error: review_preconditions_not_met\`.
      - Todas las críticas de TODA la sesión en confianza ≥ 0.80 y blandas ≥ 0.65 → NO llames tool. Devuelve mensaje breve agradeciendo y cerrando la sesión (el orquestador se encarga del resto).
 
   3. Calibración de confianza:

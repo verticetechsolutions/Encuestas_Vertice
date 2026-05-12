@@ -112,6 +112,12 @@ vi.mock('@/lib/motor/review', () => ({
   OpusReviewPromptNotReady: class extends Error {},
 }));
 
+// Gate server-side antes de Opus. Default mock: aceptar (ok: true). Tests
+// específicos de gate override con mockReturnValueOnce.
+vi.mock('@/lib/motor/review-gate', () => ({
+  canCloseSeccion: vi.fn(async () => ({ ok: true })),
+}));
+
 vi.mock('@/lib/observability/axiom', () => ({
   logger: {
     info: vi.fn(),
@@ -516,5 +522,237 @@ describe('POST /api/turn — gates', () => {
     expect(payloadBlob).toContain('"numero_turno_emitido":2');
     expect(payloadBlob).toContain('"texto_pregunta"');
     expect(payloadBlob).toContain('id_razon_social');
+  });
+
+  // ===========================================================================
+  // A11 — Server-side gate canCloseSeccion ANTES de Opus director (latency fix
+  // 2026-05-12). Verifica que solicitar_review_seccion.execute respeta el gate:
+  //   - gate.ok=false → tool_result error, processSolicitarReview NO se llama.
+  //   - gate.ok=true → processSolicitarReview se llama normal.
+  // ===========================================================================
+
+  it('13. solicitar_review_seccion — gate rechaza prematura, processSolicitarReview NO se invoca', async () => {
+    mockDbSelect.mockReturnValue([
+      { status: 'abierta', consentimiento_at: new Date('2026-05-01'), tipo: 'banco' },
+    ]);
+
+    const { canCloseSeccion } = await import('@/lib/motor/review-gate');
+    const { processSolicitarReview } = await import('@/lib/motor/review');
+    vi.mocked(canCloseSeccion).mockResolvedValueOnce({
+      ok: false,
+      razon: 'critical_cajas_actionable',
+      message: 'Crítica X todavía vacía',
+      cajas_pendientes: [
+        {
+          caja_codigo: 'id_razon_social',
+          status: 'vacia',
+          confianza: 0,
+          sugerencia: 'Pregunta directa primero.',
+        },
+      ],
+    });
+
+    // Sonnet emite review_seccion con snapshot mínimo válido (Zod no rechaza).
+    const { anthropic } = await import('@ai-sdk/anthropic');
+    vi.mocked(anthropic).mockReturnValueOnce(
+      createMockSonnet([
+        {
+          toolCalls: [
+            {
+              toolName: 'solicitar_review_seccion',
+              input: {
+                grupo_ui_codigo: 'identificacion',
+                extracciones_snapshot: [
+                  {
+                    caja_codigo: 'id_razon_social',
+                    valor: 'Banco Demo SA',
+                    confianza: 0.9,
+                    evidencia_textual: 'Somos Banco Demo SA',
+                    status: 'llena',
+                    version: 1,
+                  },
+                ],
+                cajas_no_clausuradas: [],
+                hipotesis_sonnet:
+                  'Identidad institucional aparentemente clara desde el primer turno',
+                turno_disparador: 1,
+              },
+            },
+          ],
+        },
+        { text: 'Ack' },
+      ]) as ReturnType<typeof createMockSonnet>
+    );
+
+    const res = await POST(
+      makeRequest({
+        sesion_id: SESION_VALIDA_UUID,
+        mensaje_usuario: 'Soy Banco Demo SA',
+      })
+    );
+    expect(res.status).toBe(200);
+    if (res.body) {
+      const reader = res.body.getReader();
+      while (true) {
+        const { done } = await reader.read();
+        if (done) break;
+      }
+    }
+
+    // Gate corrió.
+    expect(canCloseSeccion).toHaveBeenCalledTimes(1);
+    // processSolicitarReview NO corrió (gate cortocircuitó).
+    expect(processSolicitarReview).not.toHaveBeenCalled();
+  });
+
+  it('14. solicitar_review_seccion — gate ok → processSolicitarReview se invoca', async () => {
+    mockDbSelect.mockReturnValue([
+      { status: 'abierta', consentimiento_at: new Date('2026-05-01'), tipo: 'banco' },
+    ]);
+
+    const { canCloseSeccion } = await import('@/lib/motor/review-gate');
+    const { processSolicitarReview } = await import('@/lib/motor/review');
+    vi.mocked(canCloseSeccion).mockResolvedValueOnce({ ok: true });
+    vi.mocked(processSolicitarReview).mockResolvedValueOnce({
+      estado: 'grupo_cerrado',
+      review_id: 'rv-1',
+      siguiente_grupo_ui: 'productos_y_mercado',
+    });
+
+    const { anthropic } = await import('@ai-sdk/anthropic');
+    vi.mocked(anthropic).mockReturnValueOnce(
+      createMockSonnet([
+        {
+          toolCalls: [
+            {
+              toolName: 'solicitar_review_seccion',
+              input: {
+                grupo_ui_codigo: 'identificacion',
+                extracciones_snapshot: [
+                  {
+                    caja_codigo: 'id_razon_social',
+                    valor: 'Banco Demo SA',
+                    confianza: 0.9,
+                    evidencia_textual: 'Somos Banco Demo SA',
+                    status: 'llena',
+                    version: 1,
+                  },
+                ],
+                cajas_no_clausuradas: [],
+                hipotesis_sonnet:
+                  'Identidad institucional capturada — banco múltiple CNBV con más de 10 años',
+                turno_disparador: 4,
+              },
+            },
+          ],
+        },
+        { text: 'Cerré la sección de identidad.' },
+      ]) as ReturnType<typeof createMockSonnet>
+    );
+
+    const res = await POST(
+      makeRequest({
+        sesion_id: SESION_VALIDA_UUID,
+        mensaje_usuario: 'Llevamos 12 años operando.',
+      })
+    );
+    expect(res.status).toBe(200);
+    if (res.body) {
+      const reader = res.body.getReader();
+      while (true) {
+        const { done } = await reader.read();
+        if (done) break;
+      }
+    }
+
+    expect(canCloseSeccion).toHaveBeenCalledTimes(1);
+    expect(processSolicitarReview).toHaveBeenCalledTimes(1);
+  });
+
+  // ===========================================================================
+  // A12 — Guard O3: solo 1 generar_batch_preguntas por turno (bugs
+  // -encontrados-2026-05-11-e2e §O3). El segundo call en mismo turno recibe
+  // error tool_result; persistencia solo del primer batch.
+  // ===========================================================================
+
+  it('15. generar_batch_preguntas — segundo call en mismo turno → error tool_result, sin re-persist', async () => {
+    mockDbSelect.mockReturnValue([
+      { status: 'abierta', consentimiento_at: new Date('2026-05-01'), tipo: 'banco' },
+    ]);
+
+    const { anthropic } = await import('@ai-sdk/anthropic');
+    vi.mocked(anthropic).mockReturnValueOnce(
+      createMockSonnet([
+        {
+          toolCalls: [
+            {
+              toolName: 'generar_batch_preguntas',
+              input: {
+                preguntas: [
+                  { texto: '¿Pregunta 1?', cajas_objetivo: ['id_razon_social'] },
+                  { texto: '¿Pregunta 2?', cajas_objetivo: ['id_nombre_comercial'] },
+                ],
+                longitud_batch: 2,
+              },
+            },
+          ],
+        },
+        {
+          // SEGUNDO batch en mismo turno → debe ser rechazado por el guard.
+          toolCalls: [
+            {
+              toolName: 'generar_batch_preguntas',
+              input: {
+                preguntas: [
+                  { texto: '¿Pregunta 3?', cajas_objetivo: ['id_tipo_institucion'] },
+                  { texto: '¿Pregunta 4?', cajas_objetivo: ['id_regulacion'] },
+                ],
+                longitud_batch: 2,
+              },
+            },
+          ],
+        },
+        { text: 'OK.' },
+      ]) as ReturnType<typeof createMockSonnet>
+    );
+
+    const { db } = await import('@/lib/db');
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const dbAny = db as any;
+    dbAny.update.mockClear();
+    dbAny.set.mockClear();
+
+    const res = await POST(
+      makeRequest({
+        sesion_id: SESION_VALIDA_UUID,
+        mensaje_usuario: 'Algo.',
+      })
+    );
+    expect(res.status).toBe(200);
+    if (res.body) {
+      const reader = res.body.getReader();
+      while (true) {
+        const { done } = await reader.read();
+        if (done) break;
+      }
+    }
+
+    // Solo UNA persistencia de ultimo_batch (la del primer call). El segundo
+    // call cortocircuitó antes de db.update.
+    const setCalls = dbAny.set.mock.calls as Array<[Record<string, unknown>]>;
+    const metadataCalls = setCalls.filter(
+      ([arg]) => arg && typeof arg === 'object' && 'metadata' in arg
+    );
+    expect(metadataCalls.length).toBe(1);
+
+    // El payload persistido es el del primer batch (Pregunta 1 / 2), no el segundo.
+    const sqlTexts = metadataCalls.flatMap(([arg]) => {
+      const m = (arg as { metadata?: { queryChunks?: unknown[] } }).metadata;
+      const chunks = m?.queryChunks ?? [];
+      return chunks.filter((c): c is string => typeof c === 'string');
+    });
+    const payloadBlob = sqlTexts.join(' ');
+    expect(payloadBlob).toContain('Pregunta 1');
+    expect(payloadBlob).not.toContain('Pregunta 3');
   });
 });

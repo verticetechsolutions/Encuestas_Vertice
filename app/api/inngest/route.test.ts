@@ -51,7 +51,10 @@ describe('GET/POST/PUT /api/inngest — manifest', () => {
     const req = new Request('http://localhost:3000/api/inngest', {
       method: 'GET',
     });
-    const res = await GET(req);
+    // inngest/next typa `serve` con (req, res) firma de Next 15 RouteContext;
+    // en tests no nos importa el res, pasamos {} y casteamos req a NextRequest.
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    const res = await GET(req as any, {} as unknown);
     expect(res.status).toBe(200);
 
     const body = (await res.json()) as Record<string, unknown>;

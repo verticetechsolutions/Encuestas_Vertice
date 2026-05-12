@@ -64,6 +64,17 @@ const PAUSE_MS = 1500;
 const PAUSE_TICK_MS = 250;
 const MAX_RETRIES = 3;
 const AUDIO_CHUNK_MS = 250;
+
+// Cold-start buffer (bug O1 STT — doc bugs-encontrados-2026-05-11-stt §O1).
+// Antes: el MediaRecorder arrancaba al `socket.open` (~200-400ms después del
+// click del mic). Audio dicho durante esa ventana se perdía → "Estoy
+// probando" se truncaba a "probando".
+// Ahora: el recorder arranca al click. Mientras el socket conecta, los
+// chunks se buffearean in-memory. Al `socket.open` drenamos en orden y
+// switcheamos a send directo. BUFFER_MAX_CHUNKS acota memoria (10s a 250ms
+// = 40 chunks); si el socket tarda más, dropeamos los más antiguos. Pérdida
+// preferible a OOM.
+export const BUFFER_MAX_CHUNKS = 40;
 const MIC_ERROR_MESSAGES: Record<string, string> = {
   NotAllowedError:
     'Permiso de micrófono denegado. Habilítalo en la configuración del navegador para continuar.',
@@ -129,6 +140,35 @@ async function fetchEphemeralToken(): Promise<string> {
   return data.access_token;
 }
 
+/**
+ * Drena el buffer de chunks pre-socket-open al socket en orden FIFO.
+ *
+ * Decisión: pure helper exportado para test unitario. Mutación in-place del
+ * array es deliberada — los useRef arrays compartidos no admiten reasignación
+ * desde fuera del hook. Si sendMedia throws, dejamos el resto del buffer
+ * intacto para que la siguiente vuelta del retry loop lo intente de nuevo.
+ *
+ * @returns número de chunks enviados exitosamente.
+ */
+export function drainBufferToSocket(
+  buffer: Blob[],
+  socket: { sendMedia: (data: Blob) => void }
+): number {
+  let sent = 0;
+  while (buffer.length > 0) {
+    const chunk = buffer[0]; // peek
+    try {
+      socket.sendMedia(chunk);
+      buffer.shift(); // consume only after success
+      sent += 1;
+    } catch {
+      // Socket murió mid-drain. Dejamos el resto para el siguiente reintento.
+      return sent;
+    }
+  }
+  return sent;
+}
+
 function pickAudioMimeType(): string {
   // Browsers vary; webm/opus is the broadest. Safari 14+ ships MediaRecorder
   // but only `audio/mp4`. Fall back rather than throw — Deepgram autodetects.
@@ -166,6 +206,10 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
   const [pauseDetected, setPauseDetected] = useState(false);
 
   const socketRef = useRef<DeepgramSocketHandle | null>(null);
+  // socketOpenRef: true entre `on('open')` y `on('close')`. La ondataavailable
+  // del recorder decide buffer-vs-send-directo según este flag SIN tener que
+  // re-asignarse, evitando una clase de bugs por re-wireado fuera de orden.
+  const socketOpenRef = useRef<boolean>(false);
   const recorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const lastAudioAtRef = useRef<number>(0);
@@ -177,6 +221,9 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
   const segmentCounterRef = useRef<number>(0);
   // Pause-while-tab-hidden support.
   const recorderWasRunningOnHideRef = useRef<boolean>(false);
+  // Buffer de chunks audio capturados antes de socket.open (cold-start fix).
+  // Drenado FIFO en el handler `on('open')` antes de switchear a live mode.
+  const bufferedChunksRef = useRef<Blob[]>([]);
 
   const teardown = useCallback(() => {
     if (pauseTimerRef.current !== null) {
@@ -207,6 +254,8 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
       }
       socketRef.current = null;
     }
+    socketOpenRef.current = false;
+    bufferedChunksRef.current.length = 0;
   }, []);
 
   const handleResult = useCallback((msg: DeepgramResultMessage) => {
@@ -259,17 +308,41 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
     [],
   );
 
-  const wireRecorderToSocket = useCallback(
-    (recorder: MediaRecorder, socket: DeepgramSocketHandle) => {
+  /**
+   * Single ondataavailable handler que decide buffer vs send-directo según
+   * `socketOpenRef`. Set una vez al start; no se re-asigna por estado, lo
+   * cual elimina la clase de bugs por re-wireado fuera de orden.
+   *
+   * - Si el socket NO está open: encola en `bufferedChunksRef` (cap acotado).
+   * - Si el socket está open: drena buffer pendiente (defensivo) y envía live.
+   */
+  const installRecorderHandler = useCallback(
+    (recorder: MediaRecorder) => {
       recorder.ondataavailable = (ev) => {
-        if (ev.data && ev.data.size > 0) {
+        if (!ev.data || ev.data.size === 0) return;
+        const sock = socketRef.current;
+        if (sock && socketOpenRef.current) {
+          // Live mode.
+          if (bufferedChunksRef.current.length > 0) {
+            // Defensa: si quedó algo del cold-start (e.g. open llegó entre
+            // chunks), drenamos antes para preservar orden.
+            drainBufferToSocket(bufferedChunksRef.current, sock);
+          }
           try {
-            socket.sendMedia(ev.data);
+            sock.sendMedia(ev.data);
             lastAudioAtRef.current = Date.now();
             if (pauseDetected) setPauseDetected(false);
           } catch {
-            // Socket may have closed mid-chunk; the close handler will retry.
+            // Socket pudo cerrarse mid-chunk; el close handler dispara retry.
           }
+          return;
+        }
+        // Cold-start mode: bufferear con cap acotado.
+        const buf = bufferedChunksRef.current;
+        buf.push(ev.data);
+        while (buf.length > BUFFER_MAX_CHUNKS) {
+          // Drop oldest — connecting tomó demasiado, prioritizamos memory.
+          buf.shift();
         }
       };
     },
@@ -310,13 +383,21 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
     const token = await fetchEphemeralToken();
     const socket = await openSocket(token);
     socketRef.current = socket;
+    // Reset flag al inicio del nuevo intento — si veníamos de retry, debe estar false.
+    socketOpenRef.current = false;
 
     socket.on('open', () => {
       retryCountRef.current = 0;
       setStatus('streaming');
-      if (recorderRef.current && recorderRef.current.state === 'inactive') {
-        recorderRef.current.start(AUDIO_CHUNK_MS);
+      // Drenar el buffer cold-start ANTES de marcar live. Preserva orden FIFO
+      // del audio dicho entre el click del mic y socket.open. drainBufferToSocket
+      // es defensivo a sendMedia throws (deja el resto del buffer para próximo
+      // intento). El handler unificado fija socketOpenRef en true después.
+      const sock = socketRef.current;
+      if (sock && bufferedChunksRef.current.length > 0) {
+        drainBufferToSocket(bufferedChunksRef.current, sock);
       }
+      socketOpenRef.current = true;
       startPauseTimer();
     });
 
@@ -326,23 +407,18 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
 
     socket.on('close', () => {
       socketRef.current = null;
-      if (recorderRef.current && recorderRef.current.state !== 'inactive') {
-        try {
-          recorderRef.current.stop();
-        } catch {
-          // already stopped
-        }
-      }
+      socketOpenRef.current = false;
+      // En retry, el recorder se queda CORRIENDO. Chunks que vengan caen al
+      // buffer cold-start (handler unificado detecta !socketOpenRef). Cuando
+      // el nuevo socket abra, drena el buffer y continúa. Antes parábamos el
+      // recorder aquí — perdíamos audio entre desconexión y reconexión, peor
+      // que el cold-start original.
       if (!stoppedByUserRef.current) scheduleRetry(boot);
     });
 
     socket.on('error', () => {
       // Let the close handler drive the retry — error fires before close.
     });
-
-    if (recorderRef.current && socketRef.current) {
-      wireRecorderToSocket(recorderRef.current, socketRef.current);
-    }
 
     // SDK v5+: el V1Socket viene `startClosed: true` por diseño del wrapper
     // `createWebSocketConnection` (deepgram/sdk/dist/.../ws.mjs:343). Hay que
@@ -351,7 +427,7 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
     // esto, `_connect()` retorna early en la primera línea (porque
     // `_shouldReconnect` es false) y nunca se construye el WebSocket.
     socket.connect();
-  }, [handleResult, openSocket, scheduleRetry, startPauseTimer, wireRecorderToSocket]);
+  }, [handleResult, openSocket, scheduleRetry, startPauseTimer]);
 
   const start = useCallback(async (): Promise<void> => {
     if (status === 'streaming' || status === 'connecting' || status === 'requesting_mic') {
@@ -362,6 +438,9 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
     setPauseDetected(false);
     stoppedByUserRef.current = false;
     retryCountRef.current = 0;
+    // Reset estado de buffer/socket — nueva sesión de captura.
+    bufferedChunksRef.current.length = 0;
+    socketOpenRef.current = false;
 
     setStatus('requesting_mic');
     let stream: MediaStream;
@@ -380,16 +459,35 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
       : new MediaRecorder(stream);
     recorderRef.current = recorder;
 
+    // FIX cold-start: instalar el handler ANTES de start() y arrancar AHORA,
+    // sin esperar al socket. Chunks dichos antes del socket.open caen al
+    // buffer in-memory y se drenan al abrir. Doc bugs-encontrados-2026-05-11-stt §O1.
+    installRecorderHandler(recorder);
+    try {
+      recorder.start(AUDIO_CHUNK_MS);
+    } catch (err) {
+      // Track muerto antes del start (raro pero posible). Limpieza + error.
+      teardown();
+      setStatus('error');
+      setError(
+        err instanceof Error
+          ? `No pudimos iniciar la grabación: ${err.message}`
+          : 'No pudimos iniciar la grabación.'
+      );
+      return;
+    }
+
     try {
       await boot();
     } catch (err) {
       // Initial connect failure — try the retry path so the user gets the same
-      // behavior as a mid-stream drop.
+      // behavior as a mid-stream drop. El recorder sigue corriendo y bufferea
+      // chunks hasta que el retry conecte (o se agote MAX_RETRIES y teardown).
       const message = err instanceof Error ? err.message : 'connect_failed';
       setError(`No pudimos conectar con el servicio de voz: ${message}`);
       scheduleRetry(boot);
     }
-  }, [boot, scheduleRetry, status]);
+  }, [boot, installRecorderHandler, scheduleRetry, status, teardown]);
 
   const stop = useCallback(() => {
     stoppedByUserRef.current = true;

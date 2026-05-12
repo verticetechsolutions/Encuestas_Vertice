@@ -14,11 +14,9 @@
 import { create } from 'zustand';
 import {
   readUIMessageStream,
-  parseJsonEventStream,
-  uiMessageChunkSchema,
   type UIMessage,
-  type UIMessageChunk,
 } from 'ai';
+import { sseBytesToUIChunks } from './sse-to-ui-chunks';
 import { GrupoUISchema, type GrupoUI } from '@/lib/schemas/cajas';
 import {
   type Pregunta,
@@ -510,26 +508,11 @@ export const useEntrevistaStore = create<EntrevistaState>((set, get) => ({
       let nuevoBatch: PreguntaBatch | null = null;
       let streamError: string | null = null;
       let lastMessage: UIMessage | null = null;
-      // readUIMessageStream espera ReadableStream<UIMessageChunk> (objetos ya
-      // parseados), NO los bytes SSE crudos del `res.body`. Reproducimos aquí
-      // el mismo pipeline que DefaultChatTransport.processResponseStream:
-      // parseJsonEventStream(uiMessageChunkSchema) → unwrap success/error.
-      // Sin esta conversión el parser interno falla con "Cannot read
-      // properties of undefined (reading 'startsWith')" al recibir bytes.
-      const chunkStream = parseJsonEventStream({
-        stream: res.body,
-        schema: uiMessageChunkSchema,
-      }).pipeThrough(
-        new TransformStream<
-          { success: true; value: UIMessageChunk } | { success: false; error: Error },
-          UIMessageChunk
-        >({
-          transform(chunk, controller) {
-            if (!chunk.success) throw chunk.error;
-            controller.enqueue(chunk.value);
-          },
-        })
-      );
+      // Pipeline SSE bytes → UIMessageChunk objetos. Extraído a helper para
+      // testeabilidad + regression guard contra bug F2 (doc
+      // bugs-encontrados-2026-05-11-e2e §F2: pasar res.body raw crasheaba con
+      // "Cannot read properties of undefined (reading 'startsWith')").
+      const chunkStream = sseBytesToUIChunks(res.body);
       try {
         for await (const message of readUIMessageStream({
           stream: chunkStream,

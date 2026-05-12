@@ -40,6 +40,7 @@ import {
 } from '@/lib/motor/tools';
 import { SolicitarReviewSeccionInputSchema } from '@/lib/schemas/review_seccion';
 import { processSolicitarReview, OpusReviewPromptNotReady } from '@/lib/motor/review';
+import { canCloseSeccion } from '@/lib/motor/review-gate';
 import {
   persistirTurnoUsuario,
   persistirTurnoAgente,
@@ -217,6 +218,14 @@ export async function POST(req: Request) {
   // Snapshot de cajas aplicables a esta institución — se queda fijo durante todo
   // el turn loop. Lo capturamos en el closure de `registrar_extraccion.execute`.
   const cajasAplicables = getCajasAplicables(sesion.tipo);
+
+  // Guard O3: Sonnet puede emitir múltiples `generar_batch_preguntas` en un
+  // mismo turno (con stopWhen=8). Solo el PRIMER batch se commitea + persiste;
+  // los subsecuentes reciben tool_result error para que Sonnet entienda. Sin
+  // esto, el cliente recibía batches en cascada y el store conservaba el
+  // ÚLTIMO, perdiendo los intermedios. Doc: bugs-encontrados-2026-05-11-e2e §O3.
+  // Closure mutable per-request — re-instanciado por POST, no compartido.
+  let batchEmittedThisTurn = false;
 
   // 4. Persistir el turno usuario ANTES del stream. Las extracciones del
   //    siguiente turno agente lo necesitan para correlación pero se anclan al
@@ -402,6 +411,26 @@ export async function POST(req: Request) {
         description: 'Genera el siguiente batch de 2-4 preguntas. El output se propaga al cliente vía el tool-result chunk del UI message stream.',
         inputSchema: GenerarBatchPreguntasInputSchema,
         execute: async (input) => {
+          // Guard O3: solo 1 batch por turno. Subsecuentes invocaciones reciben
+          // error que Sonnet lee como "ya emitiste batch, termina turno o usa
+          // solicitar_review_seccion en su lugar". Sin mutación de state ni
+          // persist a metadata.
+          if (batchEmittedThisTurn) {
+            logger.warn('tool.generar_batch_preguntas.rechazado_duplicado', {
+              sesion_id,
+              turno_agente_id: turnoAgente.turno_id,
+            });
+            return {
+              ok: false,
+              error: 'batch_already_emitted_this_turn',
+              message:
+                'Ya emitiste un batch en este turno. Solo se permite un generar_batch_preguntas por turno; ' +
+                'el cliente recibió el primero. Termina el turno (devuelve texto breve) o usa solicitar_review_seccion ' +
+                'si cumples las precondiciones del grupo activo.',
+            };
+          }
+          batchEmittedThisTurn = true;
+
           logger.info('tool.generar_batch_preguntas.recibido', {
             sesion_id,
             longitud_batch: input.longitud_batch,
@@ -478,6 +507,33 @@ export async function POST(req: Request) {
           'Solicita review del director Opus sobre la sección actual. Flujo completo wirado en step iii — ver lib/motor/review.ts.',
         inputSchema: SolicitarReviewSeccionInputSchema,
         execute: async (input) => {
+          // Server-side gate ANTES de Opus (latency fix — Opus es 30-60s).
+          // Si Sonnet emitió review prematuramente (grupo ya cerrado, snapshot
+          // fuera del grupo, o críticas todavía accionables), short-circuit con
+          // tool_result error y NO invocamos al director.
+          const gate = await canCloseSeccion({
+            sesion_id,
+            input,
+            cajasAplicables,
+          });
+          if (!gate.ok) {
+            logger.warn('tool.solicitar_review_seccion.rechazada_pre_opus', {
+              sesion_id,
+              grupo_ui: input.grupo_ui_codigo,
+              turno_disparador: input.turno_disparador,
+              razon: gate.razon,
+              cajas_pendientes_count: gate.cajas_pendientes?.length ?? 0,
+            });
+            return {
+              error: 'review_preconditions_not_met',
+              razon: gate.razon,
+              message: gate.message,
+              ...(gate.cajas_pendientes
+                ? { cajas_pendientes: gate.cajas_pendientes }
+                : {}),
+            };
+          }
+
           try {
             const out = await processSolicitarReview(input, { sesion_id });
             return out;
