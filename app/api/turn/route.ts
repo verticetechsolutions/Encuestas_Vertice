@@ -25,7 +25,7 @@
 // feedback_use_server_only_async).
 
 import { NextResponse } from 'next/server';
-import { streamText, tool, APICallError } from 'ai';
+import { streamText, tool, stepCountIs, APICallError } from 'ai';
 import { anthropic } from '@ai-sdk/anthropic';
 import { z } from 'zod';
 import { eq } from 'drizzle-orm';
@@ -488,6 +488,15 @@ export async function POST(req: Request) {
       }),
     },
     toolChoice: 'auto',
+    // Multi-step: AI SDK v6 default es stepCountIs(1) — el stream cierra
+    // tras la PRIMERA tool_call y nunca devuelve los tool_results al modelo
+    // para continuar. El turn loop necesita que Sonnet pueda encadenar:
+    //   registrar_extraccion → (recibe result) → solicitar_review_seccion?
+    //   → generar_batch_preguntas → texto final.
+    // 8 pasos cubren el peor caso realista (extracción + review opcional +
+    // batch + buffer) sin riesgo de runaway loop. Si Sonnet quiere más,
+    // termina turno limpio y founder lo ve en logs.
+    stopWhen: stepCountIs(8),
     onError: ({ error }) => {
       // Loguea el error completo (con cause/statusCode/responseBody si es
       // APICallError) a Axiom. El mensaje que ve el cliente lo decide
