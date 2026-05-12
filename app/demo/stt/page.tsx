@@ -56,8 +56,8 @@ export default function SttDemoPage() {
         </h2>
         <TranscriptionPanel transcripts={transcripts} onEdit={editSegment} />
         <p className="mt-2 text-xs text-muted-foreground">
-          Final en negro · interim en gris · clic para editar (se marca como
-          corregido manualmente con un punto dorado).
+          Final en negro · interim en gris · doble clic para editar (se marca
+          como corregido manualmente con un punto dorado).
         </p>
       </section>
 

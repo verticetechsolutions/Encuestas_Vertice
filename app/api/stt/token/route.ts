@@ -70,8 +70,14 @@ export async function POST(req: Request): Promise<NextResponse> {
       access_token: token.access_token,
       expires_in: token.expires_in,
     });
-  } catch {
+  } catch (err) {
     // Mantener mensaje genérico hacia el browser; el detalle queda en logs.
+    // Sin esto el debug es ciego: el frontend solo ve `token_grant_failed` y
+    // el origen real (403 de Deepgram por scope, network, etc.) se pierde.
+    logger.error('stt.token_grant_failed', {
+      sesion_id: cookie,
+      error_message: err instanceof Error ? err.message : String(err),
+    });
     return NextResponse.json({ error: 'token_grant_failed' }, { status: 502 });
   }
 }

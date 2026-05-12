@@ -1,19 +1,40 @@
 'use client';
 
 // Editable transcription view for the demo route. Reads from the same
-// TranscriptState shape the hook exposes; renders finalized segments inline-
-// editable (contentEditable) and the current interim segment in muted gray
-// at the tail. Auto-scrolls to the bottom whenever a new final lands.
+// TranscriptState shape the hook exposes; renders finalized segments as
+// plain text (selectable across segments) and the current interim segment
+// in muted gray at the tail. Auto-scrolls to the bottom whenever a new
+// final lands.
 //
-// Editing pattern: a segment becomes editable on focus. On blur we diff
-// against the original text — if it changed, we call `editSegment(id, text)`
-// and the hook flags it as `corregida_manualmente: true`. The corrected
-// state shows a small gold dot so the founder can see at a glance which
-// segments were touched by hand during QA.
+// Editing pattern: doble clic en el panel entra modo edit. UN solo
+// contentEditable wrapper envuelve TODOS los segmentos para que selección,
+// drag-to-select y Ctrl+A funcionen sobre el texto completo (cada
+// contentEditable individual crea editing-context aislado en el browser,
+// rompiendo la selección continua entre spans).
+//
+// onBlur: diffeamos cada segmento contra su snapshot via data-segment-id
+// markers; los segmentos que cambiaron disparan onEdit(id, text) y el hook
+// los flagea `corregida_manualmente: true`. Punto dorado de UI para que el
+// founder vea de un vistazo qué se tocó a mano.
+//
+// Compatibilidad React + contentEditable:
+//   1. Snapshot inmutable durante edit. Si llegan segments nuevos del stream
+//      mientras editas, NO los renderizamos hasta blur — sino React intenta
+//      reconciliar hijos de un contentEditable cuyo DOM fue tocado por el
+//      user/browser y lanza NotFoundError en insertBefore.
+//   2. `editKey` cambia al salir de edit, forzando remount completo del
+//      contenedor. React monta DOM limpio en vez de intentar diffear contra
+//      el DOM que el user dejó editado.
+//   3. El wrapper SIEMPRE está montado (no condicional sobre isEmpty). Así
+//      React no swaps `<p>` ↔ `<div contentEditable>` cuando llega el primer
+//      segmento, evitando otro flavor del mismo bug de placement.
 
-import { useEffect, useRef } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from '@/lib/utils';
-import type { TranscriptState, TranscriptSegment } from '@/lib/stt/use-deepgram-stream';
+import type {
+  TranscriptSegment,
+  TranscriptState,
+} from '@/lib/stt/use-deepgram-stream';
 
 interface Props {
   transcripts: TranscriptState;
@@ -23,18 +44,60 @@ interface Props {
 
 export function TranscriptionPanel({ transcripts, onEdit, className }: Props) {
   const scrollRef = useRef<HTMLDivElement | null>(null);
+  const editableRef = useRef<HTMLDivElement | null>(null);
+  const snapshotRef = useRef<TranscriptSegment[]>([]);
   const lastHistoryLenRef = useRef<number>(0);
+  const [editing, setEditing] = useState(false);
+  const [editKey, setEditKey] = useState(0);
 
+  // Auto-scroll a fondo cuando llega un nuevo final, salvo en modo edit
+  // (no queremos saltarle el viewport al user mientras edita).
   useEffect(() => {
+    if (editing) return;
     if (transcripts.history.length !== lastHistoryLenRef.current) {
       lastHistoryLenRef.current = transcripts.history.length;
       const el = scrollRef.current;
       if (el) el.scrollTop = el.scrollHeight;
     }
-  }, [transcripts.history.length]);
+  }, [transcripts.history.length, editing]);
+
+  function enterEdit(): void {
+    // Snapshot inmutable de los segmentos al momento de entrar a edit.
+    // Mientras edita, el render NO mira transcripts.history aunque cambie.
+    snapshotRef.current = transcripts.history;
+    setEditing(true);
+  }
+
+  function handleBlur(): void {
+    const root = editableRef.current;
+    if (root) {
+      // Walk segmentos del DOM editado y diffea cada uno contra el snapshot.
+      const segEls = root.querySelectorAll<HTMLElement>('[data-segment-id]');
+      for (const el of Array.from(segEls)) {
+        const id = el.getAttribute('data-segment-id');
+        if (!id) continue;
+        const textEl = el.querySelector<HTMLElement>('[data-text]');
+        const newText = (textEl?.textContent ?? '').trim();
+        const original = snapshotRef.current.find((s) => s.id === id);
+        if (original && newText && newText !== original.text) {
+          onEdit(id, newText);
+        }
+      }
+    }
+    setEditing(false);
+    snapshotRef.current = [];
+    // Forzar remount: clave nueva en el wrapper hace que React descarte el
+    // DOM editado por el user y monte uno fresco desde transcripts.history.
+    setEditKey((k) => k + 1);
+  }
+
+  const visibleSegments = useMemo(
+    () => (editing ? snapshotRef.current : transcripts.history),
+    [editing, transcripts.history],
+  );
 
   const isEmpty =
-    transcripts.history.length === 0 && transcripts.interim.trim() === '';
+    visibleSegments.length === 0 && transcripts.interim.trim() === '';
 
   return (
     <div
@@ -51,75 +114,57 @@ export function TranscriptionPanel({ transcripts, onEdit, className }: Props) {
       aria-live="polite"
       aria-atomic="false"
     >
-      {isEmpty ? (
-        <p className="text-sm text-muted-foreground">
-          Habla por el micrófono — la transcripción aparecerá aquí.
-        </p>
-      ) : (
-        <>
-          {transcripts.history.map((seg) => (
-            <Segment key={seg.id} seg={seg} onEdit={onEdit} />
-          ))}
-          {transcripts.interim && (
-            <span className="text-muted-foreground/70">
-              {' '}
-              {transcripts.interim}
-            </span>
-          )}
-        </>
-      )}
-    </div>
-  );
-}
-
-interface SegmentProps {
-  seg: TranscriptSegment;
-  onEdit: (id: string, newText: string) => void;
-}
-
-function Segment({ seg, onEdit }: SegmentProps) {
-  const ref = useRef<HTMLSpanElement | null>(null);
-
-  // Avoid stomping the user's caret while they're typing — only sync DOM text
-  // when the prop diverges from the rendered text.
-  useEffect(() => {
-    const el = ref.current;
-    if (el && el.textContent !== seg.text) {
-      el.textContent = seg.text;
-    }
-  }, [seg.text]);
-
-  return (
-    <span
-      data-segment-id={seg.id}
-      data-speaker={seg.speaker ?? 'unk'}
-      className="group/seg"
-    >
-      <span
-        ref={ref}
-        contentEditable
+      <div
+        key={editKey}
+        ref={editableRef}
+        contentEditable={editing && !isEmpty}
         suppressContentEditableWarning
         spellCheck={false}
-        onBlur={(e) => {
-          const next = e.currentTarget.textContent ?? '';
-          if (next !== seg.text) onEdit(seg.id, next);
+        title={editing || isEmpty ? undefined : 'Doble clic para editar'}
+        onDoubleClick={() => {
+          if (!isEmpty && !editing) enterEdit();
         }}
+        onBlur={handleBlur}
         className={cn(
-          'rounded px-0.5 outline-none',
-          'focus-visible:bg-muted/40',
-          'hover:bg-muted/30',
+          'rounded outline-none transition-shadow',
+          editing && !isEmpty
+            ? 'ring-2 ring-[color:#c8a34a]/40 bg-muted/20 px-2 py-1 -mx-2 -my-1'
+            : !isEmpty && 'cursor-text',
         )}
       >
-        {seg.text}
-      </span>
-      {seg.corregida_manualmente && (
-        <span
-          aria-label="segmento corregido manualmente"
-          title="Corregido manualmente"
-          className="ml-0.5 inline-block size-1.5 align-super rounded-full"
-          style={{ backgroundColor: '#c8a34a' }}
-        />
-      )}{' '}
-    </span>
+        {isEmpty ? (
+          <p className="text-sm text-muted-foreground">
+            Habla por el micrófono — la transcripción aparecerá aquí.
+          </p>
+        ) : (
+          <>
+            {visibleSegments.map((seg) => (
+              <span
+                key={seg.id}
+                data-segment-id={seg.id}
+                data-speaker={seg.speaker ?? 'unk'}
+                className="group/seg"
+              >
+                <span data-text>{seg.text}</span>
+                {seg.corregida_manualmente && (
+                  <span
+                    aria-label="segmento corregido manualmente"
+                    title="Corregido manualmente"
+                    className="ml-0.5 inline-block size-1.5 align-super rounded-full"
+                    style={{ backgroundColor: '#c8a34a' }}
+                  />
+                )}{' '}
+              </span>
+            ))}
+            {!editing && transcripts.interim && (
+              <span className="text-muted-foreground/70">
+                {' '}
+                {transcripts.interim}
+              </span>
+            )}
+          </>
+        )}
+      </div>
+    </div>
   );
 }

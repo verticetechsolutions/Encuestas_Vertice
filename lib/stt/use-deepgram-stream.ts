@@ -149,6 +149,10 @@ interface DeepgramSocketHandle {
   on(event: 'error', cb: (err: Error) => void): void;
   sendMedia(data: ArrayBuffer | Blob | ArrayBufferView): void;
   close(): void;
+  // SDK v5+ retorna el V1Socket en estado `startClosed: true` deliberadamente.
+  // El caller tiene que llamar `connect()` después de registrar handlers para
+  // que el ReconnectingWebSocket interno corra `reconnect()` y abra el ws real.
+  connect(): DeepgramSocketHandle;
 }
 
 export function useDeepgramStream(): UseDeepgramStreamReturn {
@@ -242,6 +246,11 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
       const socket = (await dg.listen.v1.connect({
         ...STT_LIVE_CONFIG,
         Authorization: `Bearer ${token}`,
+        // Browser WebSocket no soporta headers custom; Deepgram acepta el JWT
+        // via subprotocol ['bearer', token]. El SDK pasa este array al
+        // constructor `new WebSocket(url, protocols)`. Sin esto el handshake
+        // cierra con code 1006 (auth no entregada).
+        protocols: ['bearer', token],
         // Defer reconnect logic to our own retry loop so we can refresh the JWT.
         reconnectAttempts: 0,
       })) as unknown as DeepgramSocketHandle;
@@ -334,6 +343,14 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
     if (recorderRef.current && socketRef.current) {
       wireRecorderToSocket(recorderRef.current, socketRef.current);
     }
+
+    // SDK v5+: el V1Socket viene `startClosed: true` por diseño del wrapper
+    // `createWebSocketConnection` (deepgram/sdk/dist/.../ws.mjs:343). Hay que
+    // disparar `connect()` explícitamente DESPUÉS de registrar handlers para
+    // que ReconnectingWebSocket llame `reconnect()` y abra el ws real. Sin
+    // esto, `_connect()` retorna early en la primera línea (porque
+    // `_shouldReconnect` es false) y nunca se construye el WebSocket.
+    socket.connect();
   }, [handleResult, openSocket, scheduleRetry, startPauseTimer, wireRecorderToSocket]);
 
   const start = useCallback(async (): Promise<void> => {

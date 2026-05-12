@@ -29,7 +29,13 @@ export const STT_LIVE_CONFIG = Object.freeze({
   model: 'nova-3-general',
   language: 'multi',
   diarize: 'true',
-  smart_format: 'true',
+  // smart_format OMITIDO a propósito (no `'false'` — Deepgram rechaza el
+  // handshake con `'false'` cerrando code 1006). Sin smart_format el modelo
+  // aplica title-case agresivo a preposiciones españolas ("De", "Del", "Con")
+  // interpretando "X de Y de Z" como nombres propios multi-palabra (sesgo
+  // del modelo entrenado sobre todo en EN). Acrónimos como SOFOM o DSCR los
+  // conserva el lenguaje `multi` sin necesitar smart_format. Mantenemos
+  // `punctuate: 'true'` por separado para puntos y comas.
   interim_results: 'true',
   punctuate: 'true',
   vad_events: 'true',
