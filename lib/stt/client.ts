@@ -73,12 +73,49 @@ export const STT_LIVE_CONFIG = Object.freeze({
   interim_results: 'true',
   punctuate: 'true',
   vad_events: 'true',
+  // utterance_end_ms: Deepgram emite UtteranceEnd después de N ms de silencio
+  // tras un final. Útil para detectar fin de turno preciso (mejor que VAD raw).
+  // 1000ms = 1s de silencio post-final → considera turn terminado.
+  utterance_end_ms: '1000',
   // Keyterm: sesga el reconocedor hacia acrónimos regulatorios MX. Deepgram
   // acepta lista coma-separada como query param. Lista cementada en
   // `STT_KEYTERMS` arriba.
   keyterm: STT_KEYTERMS.join(','),
 } as const);
 export type SttLiveConfig = typeof STT_LIVE_CONFIG;
+
+// ---------------------------------------------------------------------------
+// MediaRecorder + getUserMedia constraints — calidad profesional.
+// ---------------------------------------------------------------------------
+// echoCancellation: elimina eco del speaker (importante si user usa speakers).
+// noiseSuppression: filtra ruido ambiente (AC, tráfico) — Deepgram lo agradece.
+// autoGainControl: normaliza volumen (mic lejano vs cercano).
+// channelCount: mono — STT no necesita stereo, ahorra 50% bandwidth.
+// sampleRate: 16000 es óptimo para speech (Deepgram default upsamplea de ahí).
+// Nota: browsers pueden ignorar sampleRate; lo intentamos pero no fallamos.
+export const STT_AUDIO_CONSTRAINTS: MediaTrackConstraints = Object.freeze({
+  echoCancellation: true,
+  noiseSuppression: true,
+  autoGainControl: true,
+  channelCount: 1,
+  sampleRate: 16000,
+});
+
+// KeepAlive: Deepgram cierra el WS tras ~10-12s sin audio. Si el usuario
+// está pensando entre dictados, hay que pingear. Cada 8s da 4s de margen.
+// Doc: https://developers.deepgram.com/docs/keepalive
+export const STT_KEEPALIVE_INTERVAL_MS = 8_000;
+
+// Finalize grace: tras stop() llamamos sendFinalize y esperamos un poco
+// para que Deepgram emita el último is_final pendiente antes de close.
+// 600ms cubre el roundtrip típico + procesamiento del modelo (~200-400ms).
+export const STT_FINALIZE_GRACE_MS = 600;
+
+// Hard cap de sesión continua: 30 minutos. Después de eso, auto-stop con
+// warning. Previene escenario "user olvidó cerrar mic, sigue grabando todo el día".
+export const STT_MAX_RECORDING_MS = 30 * 60 * 1000;
+// Warning a los 25 min: mostrar banner "5 minutos para auto-pausa".
+export const STT_WARN_LONG_RECORDING_MS = 25 * 60 * 1000;
 
 // ---------------------------------------------------------------------------
 // Server client factory.

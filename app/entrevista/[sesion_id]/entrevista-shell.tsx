@@ -47,13 +47,13 @@ interface Props {
   /** Cuando true, el store no toca DB ni /api/turn — todo simulado en memoria. */
   preview?: boolean;
   /**
-   * Estado inicial a rehidratar en reload (fix bug O1). Si presente, el shell
-   * NO llama `cargarPrimerBatch` — el batch ya viene desde el server con
-   * llenas_por_grupo computado de la DB. Null cuando es primera carga o el
-   * batch en metadata es stale.
+   * Estado inicial a rehidratar en reload (fix bug O1). Siempre presente:
+   * `batch=null` cuando no hubo turn previo o el batch es stale, en cuyo
+   * caso el shell llama `cargarPrimerBatch` PRESERVANDO los drafts (fix bug
+   * pre-primer-turn: F5 antes de enviar Q1 borraba el draft del bienvenida).
    */
   rehidratacion?: {
-    batch: PreguntaBatch;
+    batch: PreguntaBatch | null;
     llenas_por_grupo: Record<GrupoUI, number>;
     drafts: Record<string, string>;
   } | null;
@@ -120,9 +120,9 @@ export function EntrevistaShell({
   }, [status]);
 
   useEffect(() => {
-    // Init carga el estado base. Si rehidratacion viene del server, init lo
-    // seedea directo (batch_actual + cajas_llenas_por_grupo + drafts) y NO
-    // disparamos cargarPrimerBatch — ya hay batch.
+    // Init siempre seedea drafts (incluso cuando batch=null en rehidratacion).
+    // Si hay batch fresco, init también pone batch_actual; si no, el shell
+    // dispara cargarPrimerBatch acá para mostrar la bienvenida hardcoded.
     init(sesion_id, totales_por_grupo, {
       preview,
       rehidratacion: rehidratacion ?? undefined,
@@ -130,10 +130,9 @@ export function EntrevistaShell({
     if (preview) {
       // Preview UI sandbox: rota el fixture mock para diseño/QA visual.
       cargarFixtureMock();
-    } else if (!rehidratacion) {
-      // Producción primera entrada: pregunta de bienvenida hardcoded
-      // (identidad institucional). Sonnet toma el relevo desde el segundo
-      // turn vía /api/turn. Si rehidratacion existe, init ya pobló batch_actual.
+    } else if (!rehidratacion?.batch) {
+      // No hay batch fresco (primera entrada o stale): cargar PRIMER_BATCH.
+      // Los drafts del bienvenida ya quedaron seedeados en init si existían.
       cargarPrimerBatch();
     }
   }, [

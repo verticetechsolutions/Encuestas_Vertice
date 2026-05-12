@@ -39,8 +39,20 @@ import type { instituciones } from '@/db/schema';
 import { logger } from '@/lib/observability/axiom';
 
 export interface RehidratacionPayload {
-  batch: PreguntaBatch;
+  /**
+   * Batch fresco del último turno agente. `null` cuando aún no se emitió un
+   * batch via /api/turn (sesión nueva en PRIMER_BATCH_BIENVENIDA) o cuando el
+   * batch persistido está stale (último turno agente no coincide). El shell
+   * cae al fallback `cargarPrimerBatch` cuando es null.
+   */
+  batch: PreguntaBatch | null;
   llenas_por_grupo: Record<GrupoUI, number>;
+  /**
+   * Drafts autosaved en `metadata.borrador_respuestas`. Se devuelven SIEMPRE,
+   * incluso cuando `batch` es null — necesario para preservar la respuesta
+   * del usuario al PRIMER_BATCH antes de mandar el primer turn al motor (sin
+   * esto, F5 borra el draft del Q1 hardcoded de bienvenida).
+   */
   drafts: Record<string, string>;
 }
 
@@ -50,12 +62,13 @@ interface CargarArgs {
 }
 
 /**
- * Carga el estado de rehidratación desde DB. Devuelve null si no hay batch
- * persistido o si el batch es stale (no corresponde al último turno agente).
+ * Carga el estado de rehidratación desde DB. Siempre devuelve un payload con
+ * `llenas_por_grupo` + `drafts`; `batch` puede ser null si todavía no hubo
+ * primer turn o si el batch persistido es stale.
  */
 export async function cargarRehidratacion(
   args: CargarArgs
-): Promise<RehidratacionPayload | null> {
+): Promise<RehidratacionPayload> {
   const { sesion_id, tipo } = args;
 
   // 1. Leer metadata de la sesión: ultimo_batch + borrador_respuestas.
@@ -68,23 +81,43 @@ export async function cargarRehidratacion(
     .where(eq(sesiones.id, sesion_id))
     .limit(1);
 
-  if (!meta?.ultimo_batch) return null;
+  // 2. Drafts (siempre que existan). Preservados aunque no haya batch.
+  const drafts: Record<string, string> = {};
+  if (meta?.borrador && typeof meta.borrador === 'object') {
+    for (const [pid, texto] of Object.entries(meta.borrador)) {
+      if (typeof texto === 'string') drafts[pid] = texto;
+    }
+  }
 
-  // 2. Validar shape del ultimo_batch contra Zod. Si la DB tiene basura
-  //    (versión vieja del producto, jsonb corrupto), preferimos fallback
-  //    silencioso a fallar el render del page.
+  // 3. Computar llenas_por_grupo desde extracciones activas + declinadas.
+  //    Mismo cálculo que /api/turn hace post-extracción para el panel live.
+  const cajasAplicables = getCajasAplicables(tipo);
+  const [activas, declinadas] = await Promise.all([
+    listarExtraccionesActivas(sesion_id),
+    listarCajasDeclinadas(sesion_id),
+  ]);
+  const mapa = computeMapaIncertidumbre(activas, cajasAplicables, declinadas);
+  const llenas_por_grupo = computeLlenasPorGrupo(mapa.cajas);
+
+  // 4. Si no hay ultimo_batch, devolvemos sin batch — el shell hará
+  //    cargarPrimerBatch y los drafts del PRIMER_BATCH se preservan via init.
+  if (!meta?.ultimo_batch) {
+    return { batch: null, llenas_por_grupo, drafts };
+  }
+
+  // 5. Validar shape contra Zod. Si la DB tiene basura, batch null.
   const parsed = UltimoBatchSchema.safeParse(meta.ultimo_batch);
   if (!parsed.success) {
     logger.warn('rehidratacion.ultimo_batch_invalido', {
       sesion_id,
       error: parsed.error.message,
     });
-    return null;
+    return { batch: null, llenas_por_grupo, drafts };
   }
   const ultimo = parsed.data;
 
-  // 3. Freshness: el batch debe corresponder al último turno agente. Si el
-  //    último turno es usuario o un agente posterior sin batch, esta es stale.
+  // 6. Freshness: el batch debe corresponder al último turno agente. Si el
+  //    último turno es usuario o un agente posterior sin batch, batch null.
   const [latestAgent] = await db
     .select({ numero_turno: turnos_conversacion.numero_turno })
     .from(turnos_conversacion)
@@ -103,31 +136,8 @@ export async function cargarRehidratacion(
       numero_turno_emitido: ultimo.numero_turno_emitido,
       ultimo_agent_numero: latestAgent?.numero_turno ?? null,
     });
-    return null;
+    return { batch: null, llenas_por_grupo, drafts };
   }
 
-  // 4. Computar llenas_por_grupo desde extracciones activas + declinadas.
-  //    Mismo cálculo que /api/turn hace post-extracción para el panel live.
-  const cajasAplicables = getCajasAplicables(tipo);
-  const [activas, declinadas] = await Promise.all([
-    listarExtraccionesActivas(sesion_id),
-    listarCajasDeclinadas(sesion_id),
-  ]);
-  const mapa = computeMapaIncertidumbre(activas, cajasAplicables, declinadas);
-  const llenas_por_grupo = computeLlenasPorGrupo(mapa.cajas);
-
-  // 5. Drafts del usuario para preguntas en el batch. Filtramos al hidratar
-  //    en el store por seguridad (drop drafts de batches anteriores).
-  const drafts: Record<string, string> = {};
-  if (meta.borrador && typeof meta.borrador === 'object') {
-    for (const [pid, texto] of Object.entries(meta.borrador)) {
-      if (typeof texto === 'string') drafts[pid] = texto;
-    }
-  }
-
-  return {
-    batch: ultimo.batch,
-    llenas_por_grupo,
-    drafts,
-  };
+  return { batch: ultimo.batch, llenas_por_grupo, drafts };
 }

@@ -22,7 +22,7 @@
 //   - useEffect 1: cierra stream cuando cambia la pregunta + resetea tracker.
 //   - useEffect 2: cuando llega un segmento nuevo, lo concatena al texto.
 
-import { useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion } from 'motion/react';
 import { Check, Lock, Mic, RotateCcw } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
@@ -98,10 +98,72 @@ export function HeroPregunta({
   const lastAppendedRef = useRef(0);
   const textoRef = useRef(texto);
   textoRef.current = texto;
+  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  // Auto-focus al textarea cuando el user activa el mic. Sin esto, el cursor
+  // visible se queda en el botón, lo cual genera la sensación de que "no se
+  // está escribiendo" hasta que el WS de Deepgram abre (~400-800ms más tarde).
+  // Mover el caret al textarea hace que el placeholder/draft sea el foco visual
+  // desde el primer click + permite mixed input (mic + tecleo simultáneo).
+  const handleMicStart = useCallback(() => {
+    if (!marcada) {
+      const ta = textareaRef.current;
+      if (ta) {
+        ta.focus({ preventScroll: true });
+        // Posicionar caret al final del texto existente para que lo dictado
+        // se concatene visualmente donde el user lo espera.
+        const end = ta.value.length;
+        ta.setSelectionRange(end, end);
+      }
+    }
+    void stt.start();
+  }, [marcada, stt]);
+
+  const handleMicStop = useCallback(() => {
+    void stt.stop();
+  }, [stt]);
+
+  // Keyboard shortcut: Space toggle mic (Wispr-style). Solo cuando:
+  //   - STT habilitado
+  //   - pregunta no marcada como definitiva
+  //   - el target no es un input/textarea/contenteditable (no robar Space al
+  //     typear espacios) — excepto el textarea de la propia respuesta cuando
+  //     ya hay mic activo (Space para detener vale aunque tipees).
+  // Ctrl/Cmd-modificado se ignora para no chocar con shortcuts del sistema.
+  useEffect(() => {
+    if (!sttEnabled || marcada) return;
+    const onKey = (ev: KeyboardEvent) => {
+      if (ev.code !== 'Space' || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+      const target = ev.target as HTMLElement | null;
+      const isFormInput =
+        target instanceof HTMLInputElement ||
+        target instanceof HTMLTextAreaElement ||
+        (target?.isContentEditable ?? false);
+      // Si estoy tipiando en el textarea, NO secuestrar Space (usuario escribe
+      // espacios naturales). Solo permitir el toggle si el foco está fuera de
+      // cualquier input. Esto da el shortcut útil para "iniciar mic" cuando
+      // el foco está en el body o en el button container.
+      if (isFormInput) return;
+      ev.preventDefault();
+      if (stt.status === 'streaming') {
+        void stt.stop();
+      } else if (stt.status === 'idle' || stt.status === 'error') {
+        handleMicStart();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [handleMicStart, marcada, stt, sttEnabled]);
 
   // Reset STT cuando cambia la pregunta.
   useEffect(() => {
-    if (stt.status === 'streaming' || stt.status === 'connecting') stt.stop();
+    if (
+      stt.status === 'streaming' ||
+      stt.status === 'connecting' ||
+      stt.status === 'reconnecting'
+    ) {
+      void stt.stop();
+    }
     lastAppendedRef.current = stt.transcripts.history.length;
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pregunta.id]);
@@ -136,6 +198,7 @@ export function HeroPregunta({
       {/* ─── 2. TEXTAREA + banner Lock (ghost slot debajo) ─── */}
       <div className="flex flex-col gap-3">
         <Textarea
+          ref={textareaRef}
           value={texto}
           onChange={(e) => onChangeTexto(e.target.value)}
           placeholder={
@@ -197,6 +260,24 @@ export function HeroPregunta({
             {stt.transcripts.interim}…
           </p>
         )}
+        {sttEnabled && stt.status === 'reconnecting' && (
+          <p
+            className="px-1 text-xs text-muted-foreground/80"
+            role="status"
+            aria-live="polite"
+          >
+            Reconectando con el servicio de voz…
+          </p>
+        )}
+        {sttEnabled && stt.longRecordingWarning && stt.status === 'streaming' && (
+          <p
+            className="px-1 text-xs text-amber-600"
+            role="status"
+            aria-live="polite"
+          >
+            La grabación lleva más de 25 minutos. Se detendrá automáticamente a los 30.
+          </p>
+        )}
         {sttEnabled && stt.error && stt.status === 'error' && (
           <p className="px-1 text-xs text-destructive" role="alert">
             {stt.error}
@@ -213,9 +294,13 @@ export function HeroPregunta({
             <MicButton
               status={stt.status}
               error={stt.error}
-              onStart={stt.start}
-              onStop={stt.stop}
-              className="size-11 [&>svg]:size-4"
+              errorCode={stt.errorCode}
+              audioLevel={stt.audioLevel}
+              onStart={handleMicStart}
+              onStop={handleMicStop}
+              // Touch target: 56px en mobile (Apple HIG sweet spot, supera el
+              // mínimo WCAG 44), 44px en desktop (compacto, alineado con el CTA).
+              className="size-14 [&>svg]:size-5 md:size-11 md:[&>svg]:size-4"
             />
           ) : (
             <DictarButtonDisabled

@@ -350,8 +350,10 @@ describe('POST /api/turn — gates', () => {
     expect(json.message).toContain('origin_not_allowed');
   });
 
-  it('9. mensaje_usuario > 8000 chars → 400 invalid_request', async () => {
-    const huge = 'a'.repeat(8001);
+  it('9. mensaje_usuario > 20000 chars → 400 invalid_request', async () => {
+    // Cap subido a 20K (era 8K) para soportar dictados largos vía STT (~10min
+    // de habla a 150wpm = ~9K chars; 20K cubre con margen). Más allá rechazado.
+    const huge = 'a'.repeat(20001);
     const res = await POST(
       makeRequest({ sesion_id: SESION_VALIDA_UUID, mensaje_usuario: huge })
     );

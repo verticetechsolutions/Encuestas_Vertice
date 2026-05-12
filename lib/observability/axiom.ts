@@ -185,12 +185,14 @@ function emit(level: LogLevel, event: string, payload: object = {}) {
     ...(payload as Record<string, unknown>),
   };
 
-  if (client) {
-    client.ingest(dataset, [record]);
-  } else if (process.env.NODE_ENV !== 'production') {
-    // Local dev fallback: surface structured logs to stdout.
+  if (process.env.NODE_ENV !== 'production') {
+    // Local dev: always echo structured logs to stdout for live observability,
+    // even when AXIOM_TOKEN is set. Production keeps stdout silent.
     // eslint-disable-next-line no-console
     console.log(`[axiom:${level}]`, event, record);
+  }
+  if (client) {
+    client.ingest(dataset, [record]);
   }
 }
 

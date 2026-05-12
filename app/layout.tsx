@@ -1,4 +1,4 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { SmoothScroll } from "@/components/providers/smooth-scroll";
 
@@ -6,6 +6,17 @@ export const metadata: Metadata = {
   title: "Vértice · Red de financieras aliadas",
   description:
     "Vértice estructura los criterios crediticios de tu institución en una entrevista de doce minutos. Tu mesa recibe solicitudes preprocesadas que cumplen tu política. Reduces tiempo de screening y aumentas conversión.",
+};
+
+// Viewport meta — crítico para mobile. Sin `width=device-width` los browsers
+// móviles renderizan en viewport virtual de 980px y aplican zoom-out → tipografía
+// ilegible. `userScalable: true` + `maximumScale: 5` cumple WCAG 1.4.4 (zoom).
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  maximumScale: 5,
+  userScalable: true,
+  themeColor: "#0a1f44",
 };
 
 export default function RootLayout({

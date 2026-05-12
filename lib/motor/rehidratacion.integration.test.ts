@@ -1,12 +1,13 @@
 // Integration test del helper `cargarRehidratacion` contra Postgres real
-// (Neon test branch). Fix bug O1.
+// (Neon test branch). Fix bug O1 + bug pre-primer-turn drafts.
 //
 // Cobertura:
-//   - Happy path: ultimo_batch fresco + último turno agente coincide → payload.
-//   - Stale: ultimo_batch presente pero un turno agente posterior sin batch → null.
-//   - Sin metadata: sesión sin ultimo_batch → null.
-//   - Metadata corrupta: ultimo_batch que falla validación Zod → null.
-//   - Sin turnos: no hay turno agente en DB → null.
+//   - Happy path: ultimo_batch fresco + último turno agente coincide → batch presente.
+//   - Stale: ultimo_batch con turno agente posterior sin batch → batch=null, drafts conservados.
+//   - Sin metadata: sesión nueva → batch=null, drafts {} (siempre devuelve payload).
+//   - Metadata corrupta: ultimo_batch que falla validación Zod → batch=null.
+//   - Sin turnos: no hay turno agente en DB → batch=null.
+//   - Drafts preservados aunque batch=null (escenario F5 pre-primer-turn).
 
 import { afterAll, beforeEach, describe, expect, it, vi } from 'vitest';
 
@@ -143,15 +144,15 @@ describe('cargarRehidratacion (integration)', () => {
 
     const out = await cargarRehidratacion({ sesion_id, tipo: 'banco' });
 
-    expect(out).not.toBeNull();
-    expect(out!.batch.id).toBe('batch-test-2');
-    expect(out!.batch.preguntas).toHaveLength(2);
-    expect(out!.drafts['batch-test-2-q0']).toBe('Banco Demo Vertice SA');
+    expect(out.batch).not.toBeNull();
+    expect(out.batch!.id).toBe('batch-test-2');
+    expect(out.batch!.preguntas).toHaveLength(2);
+    expect(out.drafts['batch-test-2-q0']).toBe('Banco Demo Vertice SA');
     // Sin extracciones todavía → contador en 0 por cada grupo.
-    expect(out!.llenas_por_grupo.identificacion).toBe(0);
+    expect(out.llenas_por_grupo.identificacion).toBe(0);
   });
 
-  skip('stale — turno agente posterior sin batch → null fallback', async () => {
+  skip('stale — turno agente posterior sin batch → batch null + drafts conservados', async () => {
     if (!db) return;
     const { sesion_id } = await seedSesion(db, { tipo: 'banco' });
 
@@ -159,25 +160,37 @@ describe('cargarRehidratacion (integration)', () => {
     await insertTurnoUsuario(sesion_id, 1);
     await insertTurnoAgente(sesion_id, 2);
     await setUltimoBatchEnMetadata(sesion_id, buildValidUltimoBatch(2));
+    await setBorradorEnMetadata(sesion_id, { 'batch-test-2-q0': 'draft que queremos preservar' });
 
     // Turn 2: usuario (3) → agente (4) NO emite batch.
-    // metadata.ultimo_batch sigue apuntando a numero_turno_emitido=2.
+    // metadata.ultimo_batch sigue apuntando a numero_turno_emitido=2 → stale.
     await insertTurnoUsuario(sesion_id, 3);
     await insertTurnoAgente(sesion_id, 4);
 
     const out = await cargarRehidratacion({ sesion_id, tipo: 'banco' });
-    expect(out).toBeNull();
+    expect(out.batch).toBeNull();
+    // Drafts se conservan aunque batch sea stale — el shell carga PRIMER_BATCH
+    // y los drafts viejos no aplican, pero queremos no perder el dato hasta
+    // que el store los filtre.
+    expect(out.drafts['batch-test-2-q0']).toBe('draft que queremos preservar');
   });
 
-  skip('sin metadata.ultimo_batch → null', async () => {
+  skip('sin metadata.ultimo_batch → batch null + drafts preservados (caso pre-primer-turn)', async () => {
     if (!db) return;
     const { sesion_id } = await seedSesion(db, { tipo: 'banco' });
+    // El usuario dictó en PRIMER_BATCH y autosave persistió drafts ANTES de
+    // mandar el turn al motor. Sin ultimo_batch en metadata → batch=null pero
+    // drafts deben sobrevivir para que F5 no borre la respuesta.
+    await setBorradorEnMetadata(sesion_id, {
+      'bienvenida-p-1': 'Banco Demo Vertice SA, somos banco.',
+    });
 
     const out = await cargarRehidratacion({ sesion_id, tipo: 'banco' });
-    expect(out).toBeNull();
+    expect(out.batch).toBeNull();
+    expect(out.drafts['bienvenida-p-1']).toBe('Banco Demo Vertice SA, somos banco.');
   });
 
-  skip('metadata corrupta — shape inválido → null silencioso', async () => {
+  skip('metadata corrupta — shape inválido → batch null silencioso, drafts preservados', async () => {
     if (!db) return;
     const { sesion_id } = await seedSesion(db, { tipo: 'banco' });
     await insertTurnoUsuario(sesion_id, 1);
@@ -187,22 +200,24 @@ describe('cargarRehidratacion (integration)', () => {
     await setUltimoBatchEnMetadata(sesion_id, {
       batch: { id: 'b', preguntas: [] }, // también preguntas vacío → invalid
     });
+    await setBorradorEnMetadata(sesion_id, { 'bienvenida-p-1': 'draft' });
 
     const out = await cargarRehidratacion({ sesion_id, tipo: 'banco' });
-    expect(out).toBeNull();
+    expect(out.batch).toBeNull();
+    expect(out.drafts['bienvenida-p-1']).toBe('draft');
   });
 
-  skip('sin turnos agente en DB → null', async () => {
+  skip('sin turnos agente en DB → batch null', async () => {
     if (!db) return;
     const { sesion_id } = await seedSesion(db, { tipo: 'banco' });
     // metadata presente pero no hay turno agente para validar freshness.
     await setUltimoBatchEnMetadata(sesion_id, buildValidUltimoBatch(2));
 
     const out = await cargarRehidratacion({ sesion_id, tipo: 'banco' });
-    expect(out).toBeNull();
+    expect(out.batch).toBeNull();
   });
 
-  skip('drafts huérfanos (pregunta no en batch actual) son filtrados', async () => {
+  skip('drafts (pregunta no en batch actual) sobreviven al filtrado del helper', async () => {
     if (!db) return;
     const { sesion_id } = await seedSesion(db, { tipo: 'banco' });
     await insertTurnoUsuario(sesion_id, 1);
@@ -216,11 +231,11 @@ describe('cargarRehidratacion (integration)', () => {
     });
 
     const out = await cargarRehidratacion({ sesion_id, tipo: 'banco' });
-    expect(out).not.toBeNull();
+    expect(out.batch).not.toBeNull();
     // El helper devuelve TODOS los drafts; el filtrado por pregunta_id
     // del batch ocurre en el store (init.rehidratar). Verificamos que el
     // helper devuelve ambos (el store los limpia).
-    expect(out!.drafts['batch-test-2-q0']).toBe('respuesta actual');
-    expect(out!.drafts['batch-vieja-q5']).toBe('respuesta huérfana');
+    expect(out.drafts['batch-test-2-q0']).toBe('respuesta actual');
+    expect(out.drafts['batch-vieja-q5']).toBe('respuesta huérfana');
   });
 });

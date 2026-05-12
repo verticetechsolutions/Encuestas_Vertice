@@ -71,11 +71,13 @@ import { checkSameOrigin } from '@/lib/security/csrf';
 // =============================================================================
 
 // Bound superior en `mensaje_usuario` para evitar DoS por payload gigante.
-// 8000 chars cubre con holgura el rango realista de un turno de entrevista
-// (~1-3 párrafos de texto humano). Antes de Anthropic, el handler rechaza
-// 400 si el body excede — protege RAM y evita meter texto enorme al
-// streamText buffer del AI SDK.
-const MENSAJE_USUARIO_MAX = 8_000;
+// 20000 chars cubre dictados largos vía STT (~10-12 min de habla continua a
+// 150wpm = ~7500-9000 chars; hard cap del recorder STT es 30min = ~22500 chars
+// pero esos casos extremos esperamos sean raros). 20K da margen razonable
+// sin abrir la puerta a payloads abusivos. Antes de Anthropic, el handler
+// rechaza 400 si el body excede — protege RAM y evita buffer enorme en
+// streamText del AI SDK.
+const MENSAJE_USUARIO_MAX = 20_000;
 
 const TurnRequestSchema = z.object({
   sesion_id: z.string().uuid(),

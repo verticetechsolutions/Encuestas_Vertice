@@ -13,8 +13,19 @@ import { TranscriptionPanel } from '@/components/stt/TranscriptionPanel';
 import { useDeepgramStream } from '@/lib/stt/use-deepgram-stream';
 
 export default function SttDemoPage() {
-  const { status, error, transcripts, pauseDetected, start, stop, editSegment } =
-    useDeepgramStream();
+  const {
+    status,
+    error,
+    errorCode,
+    transcripts,
+    pauseDetected,
+    audioLevel,
+    longRecordingWarning,
+    metrics,
+    start,
+    stop,
+    editSegment,
+  } = useDeepgramStream();
 
   return (
     <main className="mx-auto max-w-2xl px-6 py-12">
@@ -23,30 +34,66 @@ export default function SttDemoPage() {
           Demo · Deepgram STT
         </h1>
         <p className="mt-1 text-sm text-muted-foreground">
-          QA manual del cliente Deepgram (Nova-3 multilingual · es-419 ·
-          diarización). No está conectado al motor de entrevista — esto solo
-          valida transcripción + UI.
+          QA manual del cliente Deepgram (Nova-3 multilingual · diarización ·
+          keepalive + finalize + audio constraints + level meter). No está
+          conectado al motor de entrevista — esto solo valida transcripción + UI.
         </p>
       </header>
 
       <section className="flex items-center gap-6">
-        <MicButton status={status} error={error} onStart={start} onStop={stop} />
-        <div className="flex flex-col gap-1 text-sm">
+        <MicButton
+          status={status}
+          error={error}
+          errorCode={errorCode}
+          audioLevel={audioLevel}
+          onStart={() => void start()}
+          onStop={() => void stop()}
+        />
+        <div className="flex flex-col gap-1 font-mono text-xs">
           <span>
-            <span className="text-muted-foreground">Estado:</span>{' '}
-            <code className="font-mono">{status}</code>
+            <span className="text-muted-foreground">Estado:</span> {status}
           </span>
+          {errorCode && (
+            <span>
+              <span className="text-muted-foreground">Error code:</span> {errorCode}
+            </span>
+          )}
           <span>
             <span className="text-muted-foreground">Pausa &gt;1.5s:</span>{' '}
-            <code className="font-mono">{pauseDetected ? 'sí' : 'no'}</code>
+            {pauseDetected ? 'sí' : 'no'}
+          </span>
+          <span>
+            <span className="text-muted-foreground">Audio level:</span>{' '}
+            {audioLevel.toFixed(2)}
           </span>
           <span>
             <span className="text-muted-foreground">Segmentos finalizados:</span>{' '}
-            <code className="font-mono">{transcripts.history.length}</code>
+            {transcripts.history.length}
           </span>
-          {error && (
-            <span className="text-destructive">{error}</span>
+          <span>
+            <span className="text-muted-foreground">Time to open:</span>{' '}
+            {metrics.timeToOpenMs !== null ? `${metrics.timeToOpenMs}ms` : '—'}
+          </span>
+          <span>
+            <span className="text-muted-foreground">Time to first transcript:</span>{' '}
+            {metrics.timeToFirstTranscriptMs !== null
+              ? `${metrics.timeToFirstTranscriptMs}ms`
+              : '—'}
+          </span>
+          <span>
+            <span className="text-muted-foreground">Reconnects:</span>{' '}
+            {metrics.reconnects}
+          </span>
+          <span>
+            <span className="text-muted-foreground">KeepAlives sent:</span>{' '}
+            {metrics.keepAlivesSent}
+          </span>
+          {longRecordingWarning && (
+            <span className="text-amber-600">
+              ⚠ Long recording: hit 25-min mark
+            </span>
           )}
+          {error && <span className="text-destructive">{error}</span>}
         </div>
       </section>
 

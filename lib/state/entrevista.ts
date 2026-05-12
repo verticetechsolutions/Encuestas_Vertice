@@ -118,8 +118,10 @@ interface EntrevistaState {
        * `cargarPrimerBatch` NO se llama desde el shell — el batch ya está aquí.
        */
       rehidratacion?: {
-        batch: PreguntaBatch;
+        /** Null cuando no hubo turn previo o batch stale — shell carga PRIMER_BATCH. */
+        batch: PreguntaBatch | null;
         llenas_por_grupo: Record<GrupoUI, number>;
+        /** Drafts persistidos en metadata.borrador_respuestas — preservados aunque batch=null. */
         drafts?: Record<string, string>;
       };
     }
@@ -329,10 +331,9 @@ export const useEntrevistaStore = create<EntrevistaState>((set, get) => ({
       cajas_llenas_por_grupo[g] = { llenas: 0, total: totalsPorGrupo[g] ?? 0 };
     }
 
-    // Rehidratación: si server-side encontró un ultimo_batch fresco en
-    // metadata, seedeamos batch_actual + contador llenas + drafts en el mismo
-    // init para que la primera pintura del shell ya tenga el estado real
-    // (sin parpadeo "Cargando preguntas…" → batch correcto).
+    // Rehidratación SIEMPRE seedea drafts y llenas_por_grupo si vienen, aunque
+    // batch=null (caso pre-primer-turn: el usuario dictó en PRIMER_BATCH antes
+    // de enviar al motor; sin esto, F5 borraba el draft del bienvenida).
     const rh = options?.rehidratacion;
     if (rh) {
       for (const g of GrupoUISchema.options) {
@@ -341,28 +342,52 @@ export const useEntrevistaStore = create<EntrevistaState>((set, get) => ({
           llenas: rh.llenas_por_grupo[g] ?? 0,
         };
       }
-      // Solo restauramos drafts cuya pregunta esté en el batch rehidratado —
-      // evita arrastrar drafts huérfanos de batches anteriores.
-      const idsBatch = new Set(rh.batch.preguntas.map((p) => p.id));
+
+      if (rh.batch) {
+        // Batch fresco: filtrar drafts al subset del batch (evita arrastrar
+        // huérfanos de batches anteriores) y montar estado completo.
+        const idsBatch = new Set(rh.batch.preguntas.map((p) => p.id));
+        const drafts: Record<string, string> = {};
+        if (rh.drafts) {
+          for (const [pid, texto] of Object.entries(rh.drafts)) {
+            if (idsBatch.has(pid)) drafts[pid] = texto;
+          }
+        }
+        const autosave_estado: Record<string, AutosaveStatus> = {};
+        for (const pid of Object.keys(drafts)) autosave_estado[pid] = 'saved';
+
+        set({
+          sesion_id,
+          cajas_llenas_por_grupo,
+          status: 'mostrando_batch',
+          batch_actual: rh.batch,
+          respuestas_pendientes: drafts,
+          autosave_estado,
+          marcadas_respondidas: {},
+          preview_mode: options?.preview === true,
+        });
+        return;
+      }
+
+      // batch=null pero hay drafts y/o llenas_por_grupo: shell hará
+      // cargarPrimerBatch después; pre-seedeamos drafts ahora para que cuando
+      // PRIMER_BATCH monte, las respuestas ya estén en respuestas_pendientes
+      // (los IDs del PRIMER_BATCH son hardcoded: bienvenida-p-1, bienvenida-p-2).
       const drafts: Record<string, string> = {};
       if (rh.drafts) {
         for (const [pid, texto] of Object.entries(rh.drafts)) {
-          if (idsBatch.has(pid)) drafts[pid] = texto;
+          drafts[pid] = texto;
         }
       }
-      // Estado autosave: las preguntas con draft persistido ya están "saved"
-      // (vinieron de DB). El resto queda en idle.
       const autosave_estado: Record<string, AutosaveStatus> = {};
       for (const pid of Object.keys(drafts)) autosave_estado[pid] = 'saved';
 
       set({
         sesion_id,
         cajas_llenas_por_grupo,
-        status: 'mostrando_batch',
-        batch_actual: rh.batch,
+        status: 'esperando_batch',
         respuestas_pendientes: drafts,
         autosave_estado,
-        marcadas_respondidas: {},
         preview_mode: options?.preview === true,
       });
       return;
