@@ -1,7 +1,12 @@
 // Índice global de magic links cross-institución. Coherente con design
 // system de /admin/sesiones. Server component sólo hace el fetch + parse
 // del filter; la UI vive en MagicLinksView (client).
+//
+// Performance: page wrappea data-fetch en `<Suspense>` para que el shell
+// (header + skeleton) llegue al cliente al instante en cada navegación.
+// El RSC chunk con datos reales fluye después por streaming.
 
+import { Suspense } from 'react';
 import { desc, eq } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { magic_tokens, instituciones } from '@/db/schema';
@@ -11,6 +16,7 @@ import {
   MagicLinksView,
   type MagicLinkRow,
 } from '@/components/admin/magic-links-view';
+import { ListPageSkeleton } from '@/components/admin/loading-skeleton';
 
 export const dynamic = 'force-dynamic';
 
@@ -20,9 +26,7 @@ interface Props {
   searchParams: Promise<{ status?: string }>;
 }
 
-export default async function AdminMagicLinksIndexPage({
-  searchParams,
-}: Props) {
+async function MagicLinksContent({ searchParams }: Props) {
   const { status } = await searchParams;
   const activeStatuses = parseMagicStatusFilter(status);
 
@@ -59,5 +63,13 @@ export default async function AdminMagicLinksIndexPage({
       hardLimit={HARD_LIMIT}
       hasExplicitFilter={status !== undefined}
     />
+  );
+}
+
+export default function AdminMagicLinksIndexPage(props: Props) {
+  return (
+    <Suspense fallback={<ListPageSkeleton />}>
+      <MagicLinksContent {...props} />
+    </Suspense>
   );
 }

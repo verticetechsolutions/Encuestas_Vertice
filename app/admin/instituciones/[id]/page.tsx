@@ -22,6 +22,7 @@ import { SectionCard } from '@/components/admin/section-card';
 import { SesionListItem } from '@/components/admin/sesion-list-item';
 import { MagicLinkActionsPanel } from '@/components/admin/magic-link-actions';
 import { MagicLinkInstitucionItem } from '@/components/admin/magic-link-institucion-item';
+import { InstitucionAdminActions } from '@/components/admin/institucion-admin-actions';
 
 export const dynamic = 'force-dynamic';
 
@@ -119,9 +120,22 @@ export default async function AdminInstitucionDetailPage({ params }: Props) {
         nombreComercial={inst.nombre_comercial}
         tipo={inst.tipo}
         email={inst.email_contacto}
+        telefono={inst.telefono_contacto}
         createdAt={inst.created_at}
         totalSesiones={totalSesiones}
         totalPerfiles={totalPerfiles}
+      />
+
+      {/* Edit + Delete actions */}
+      <InstitucionAdminActions
+        institucion={{
+          id: inst.id,
+          razon_social: inst.razon_social,
+          nombre_comercial: inst.nombre_comercial,
+          tipo: inst.tipo,
+          email_contacto: inst.email_contacto,
+          telefono_contacto: inst.telefono_contacto,
+        }}
       />
 
       {/* ════════════════════════════════════════════════════════════════
@@ -243,6 +257,7 @@ function HeroInstitucionCard({
   nombreComercial,
   tipo,
   email,
+  telefono,
   createdAt,
   totalSesiones,
   totalPerfiles,
@@ -251,6 +266,7 @@ function HeroInstitucionCard({
   nombreComercial: string | null;
   tipo: string;
   email: string;
+  telefono: string | null;
   createdAt: Date;
   totalSesiones: number;
   totalPerfiles: number;
@@ -298,9 +314,16 @@ function HeroInstitucionCard({
       {/* KPIs row */}
       <div className="mt-8 grid grid-cols-2 gap-x-8 gap-y-5 md:grid-cols-4">
         <KpiCell label="Email contacto" value={email} />
+        <KpiCell
+          label="Tel contacto"
+          value={telefono ?? '—'}
+          mono={telefono !== null}
+        />
         <KpiCell label="Sesiones" value={String(totalSesiones)} mono />
         <KpiCell label="Perfiles" value={String(totalPerfiles)} mono />
-        <KpiCell label="Creada" value={formatRelative(createdAt)} />
+      </div>
+      <div className="mt-4 text-[12px] tracking-tight text-foreground/45">
+        Creada {formatRelative(createdAt)}
       </div>
     </div>
   );

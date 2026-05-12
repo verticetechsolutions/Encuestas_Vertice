@@ -63,7 +63,7 @@ export default async function AdminLoginPage({
             </label>
             <button
               type="submit"
-              className="mt-2 inline-flex h-11 items-center justify-center rounded-full bg-ink px-5 text-sm font-semibold tracking-tight text-primary-foreground transition hover:bg-[var(--ink-raised)] active:scale-[0.98]"
+              className="mt-2 inline-flex h-11 cursor-pointer items-center justify-center rounded-full bg-ink px-5 text-sm font-semibold tracking-tight text-primary-foreground transition hover:bg-[var(--ink-raised)] active:scale-[0.98]"
             >
               Entrar al panel
             </button>

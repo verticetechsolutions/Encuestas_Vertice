@@ -8,7 +8,13 @@
 //
 // Separación entre zonas vía whitespace generoso (gap-10 md:gap-16) +
 // títulos de sección como anclas visuales. NO dividers.
+//
+// Performance: el page wrappea el data-fetch en `<Suspense>` para que el
+// shell (header + skeleton) se envíe al cliente INSTANTÁNEAMENTE en cada
+// navegación. Las 11 queries en paralelo + render arman el árbol completo
+// y fluyen al cliente por streaming RSC.
 
+import { Suspense } from 'react';
 import { and, count, desc, eq, gt, isNull, lt, sql } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import {
@@ -31,6 +37,7 @@ import { ActivityBlock } from '@/components/admin/activity-block';
 import { SeeAllLink } from '@/components/admin/see-all-link';
 import { AdminScrollArea } from '@/components/admin/scroll-area';
 import { QuickActionNuevaInstitucion } from '@/components/admin/quick-action-nueva-institucion';
+import { ResumenSkeleton } from '@/components/admin/loading-skeleton';
 
 export const dynamic = 'force-dynamic';
 
@@ -83,7 +90,15 @@ const STATUS_LABEL: Record<string, string> = {
 // Page
 // ────────────────────────────────────────────────────────────────────────────
 
-export default async function AdminDashboardPage() {
+export default function AdminDashboardPage() {
+  return (
+    <Suspense fallback={<ResumenSkeleton />}>
+      <DashboardContent />
+    </Suspense>
+  );
+}
+
+async function DashboardContent() {
   const now = new Date();
   const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
   const monthLabel = capitalizeMonth(MONTH_FORMATTER.format(now));
@@ -265,27 +280,28 @@ export default async function AdminDashboardPage() {
         value={perfilesEsteMes}
         label="perfiles generados este mes"
         hint={
-          <div className="flex flex-col gap-3">
-            <MetricLine
-              icon={<PieChart className="size-3.5" strokeWidth={1.5} />}
-              label="Completitud media"
-              value={formatPct(avg_completitud)}
-            />
-            <MetricLine
-              icon={<ShieldCheck className="size-3.5" strokeWidth={1.5} />}
-              label="Confianza media"
-              value={formatFloat(avg_confianza)}
-            />
-            <MetricLine
-              icon={<Timer className="size-3.5" strokeWidth={1.5} />}
-              label="Tiempo promedio"
-              value={formatMinutes(avg_duracion)}
-            />
+          <div className="flex flex-col gap-5">
+            <QuickActionNuevaInstitucion />
+            <div className="flex flex-col gap-3">
+              <MetricLine
+                icon={<PieChart className="size-3.5" strokeWidth={1.5} />}
+                label="Completitud media"
+                value={formatPct(avg_completitud)}
+              />
+              <MetricLine
+                icon={<ShieldCheck className="size-3.5" strokeWidth={1.5} />}
+                label="Confianza media"
+                value={formatFloat(avg_confianza)}
+              />
+              <MetricLine
+                icon={<Timer className="size-3.5" strokeWidth={1.5} />}
+                label="Tiempo promedio"
+                value={formatMinutes(avg_duracion)}
+              />
+            </div>
           </div>
         }
       />
-
-      <QuickActionNuevaInstitucion />
 
       {/* Secondary stats — 3 compact cards con organic extrusion uniforme
           top-right. Consistencia visual entre los 3 widgets del row. */}

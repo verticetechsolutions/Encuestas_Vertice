@@ -26,6 +26,8 @@ interface Props {
   tipo: string;
   /** Email de contacto. */
   email: string;
+  /** Teléfono de contacto (opcional). */
+  telefono: string | null;
   /** Total sesiones registradas. */
   totalSesiones: number;
   /** Total perfiles generados. */
@@ -42,6 +44,7 @@ export function InstitucionListItem({
   nombreComercial,
   tipo,
   email,
+  telefono,
   totalSesiones,
   totalPerfiles,
   lastTurnRelative,
@@ -83,9 +86,10 @@ export function InstitucionListItem({
               {nombreComercial}
             </p>
           )}
-          {/* Row 2: meta belt — email, sesiones, perfiles */}
+          {/* Row 2: meta belt — email, tel (si hay), sesiones, perfiles */}
           <div className="mt-1.5 flex flex-wrap items-center gap-x-4 gap-y-1">
             <MetaCell kicker="Email" value={email} />
+            {telefono && <MetaCell kicker="Tel" value={telefono} mono />}
             <MetaCell kicker="Sesiones" value={String(totalSesiones)} mono />
             <MetaCell kicker="Perfiles" value={String(totalPerfiles)} mono />
           </div>

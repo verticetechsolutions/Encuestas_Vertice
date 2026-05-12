@@ -45,6 +45,7 @@ import {
   KeyRound,
   MessagesSquare,
   Sparkles,
+  Phone,
 } from 'lucide-react';
 import {
   Select,
@@ -57,6 +58,7 @@ import {
   crearInstitucionConLink,
   type CrearInstitucionConLinkState,
 } from '@/app/actions/adminInstituciones';
+import { formatPhoneInput } from '@/lib/utils/format-phone';
 
 const TIPOS = [
   { value: 'banco', label: 'Banco' },
@@ -419,6 +421,25 @@ function FormStage({
           />
         </motion.div>
 
+        <motion.div
+          custom={5}
+          variants={fieldVariants}
+          initial="hidden"
+          animate="visible"
+        >
+          <Field
+            name="telefono_contacto"
+            label="Teléfono de contacto"
+            type="tel"
+            placeholder="52 33 2654 0178"
+            icon={<Phone className="size-4" strokeWidth={1.75} />}
+            hint="opcional"
+            onInput={formatPhoneInput}
+            inputMode="tel"
+            autoComplete="tel"
+          />
+        </motion.div>
+
         <AnimatePresence>
           {error && (
             <motion.div
@@ -578,6 +599,9 @@ function Field({
   placeholder,
   icon,
   required = false,
+  onInput,
+  inputMode,
+  autoComplete,
 }: {
   name: string;
   label: string;
@@ -586,6 +610,9 @@ function Field({
   placeholder?: string;
   icon?: React.ReactNode;
   required?: boolean;
+  onInput?: React.FormEventHandler<HTMLInputElement>;
+  inputMode?: React.HTMLAttributes<HTMLInputElement>['inputMode'];
+  autoComplete?: string;
 }) {
   return (
     <div className="flex flex-col gap-2">
@@ -614,6 +641,9 @@ function Field({
           type={type}
           placeholder={placeholder}
           required={required}
+          onInput={onInput}
+          inputMode={inputMode}
+          autoComplete={autoComplete}
           className="flex-1 bg-transparent text-[14px] tracking-tight text-foreground placeholder:text-foreground/35 focus:outline-none"
         />
       </div>

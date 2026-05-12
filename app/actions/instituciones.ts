@@ -23,6 +23,7 @@ export async function crearInstitucion(
       nombre_comercial: parsed.nombre_comercial,
       tipo: parsed.tipo,
       email_contacto: parsed.email_contacto,
+      telefono_contacto: parsed.telefono_contacto,
     })
     .returning({ id: instituciones.id });
   return { institucion_id: row.id, cajas_aplicables };

@@ -1,14 +1,18 @@
 // Índice global de sesiones — rediseño coherente con design system de
-// /admin (Resumen). El server component sólo se ocupa del fetch + parse
-// de status filter; toda la UI vive en SesionesView (client) que maneja
-// state de búsqueda, hero reactivo, card de nav orgánico y feed cappeado
-// con scroll interno.
+// /admin (Resumen). Server component sólo se ocupa del fetch + parse de
+// status filter; toda la UI vive en SesionesView (client).
+//
+// Performance: page wrappea data-fetch en `<Suspense>` para que el shell
+// (header + skeleton) se envíe al cliente al instante en cada navegación.
+// El RSC chunk con datos reales fluye después por streaming.
 
+import { Suspense } from 'react';
 import { desc, eq, inArray } from 'drizzle-orm';
 import { db } from '@/lib/db';
 import { sesiones, instituciones } from '@/db/schema';
 import { parseStatusFilter } from '@/lib/admin/parse-status-filter';
 import { SesionesView } from '@/components/admin/sesiones-view';
+import { ListPageSkeleton } from '@/components/admin/loading-skeleton';
 
 export const dynamic = 'force-dynamic';
 
@@ -18,7 +22,7 @@ interface Props {
   searchParams: Promise<{ status?: string }>;
 }
 
-export default async function AdminSesionesIndexPage({ searchParams }: Props) {
+async function SesionesContent({ searchParams }: Props) {
   const { status } = await searchParams;
   const activeStatuses = parseStatusFilter(status);
 
@@ -51,5 +55,13 @@ export default async function AdminSesionesIndexPage({ searchParams }: Props) {
       hardLimit={HARD_LIMIT}
       hasExplicitFilter={status !== undefined}
     />
+  );
+}
+
+export default function AdminSesionesIndexPage(props: Props) {
+  return (
+    <Suspense fallback={<ListPageSkeleton />}>
+      <SesionesContent {...props} />
+    </Suspense>
   );
 }

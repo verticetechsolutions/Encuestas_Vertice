@@ -65,6 +65,9 @@ export const instituciones = pgTable('instituciones', {
   nombre_comercial: text('nombre_comercial'),
   tipo: tipoInstitucionEnum('tipo').notNull(),
   email_contacto: text('email_contacto').notNull().unique(),
+  // Telefono opcional — agregado en migración 0005. Sin formato estricto a
+  // nivel DB; la validación liviana vive en Zod.
+  telefono_contacto: text('telefono_contacto'),
   // Columnas magic_link_token / magic_link_expires_at removidas en migración
   // 0003 (Phase 4 dead code cleanup, 2026-05-10). El flujo magic-link real
   // vive en `magic_tokens` (Fase 4, migración 0001) — esas columnas en

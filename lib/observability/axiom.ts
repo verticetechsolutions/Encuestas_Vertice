@@ -149,6 +149,15 @@ export interface AdminInstitucionCreadaPayload {
   emitio_magic_link: boolean;
 }
 
+export interface AdminInstitucionEditadaPayload {
+  institucion_id: string;
+  campos: string[];
+}
+
+export interface AdminInstitucionEliminadaPayload {
+  institucion_id: string;
+}
+
 export interface AdminMagicLinkEmitidoPayload {
   institucion_id: string;
   // Hash del token (SHA-256 hex), NUNCA el plaintext.
@@ -244,6 +253,10 @@ export const logger = {
       emit('warn', 'admin.login_fallido', p),
     institucionCreada: (p: AdminInstitucionCreadaPayload) =>
       emit('info', 'admin.institucion_creada', p),
+    institucionEditada: (p: AdminInstitucionEditadaPayload) =>
+      emit('info', 'admin.institucion_editada', p),
+    institucionEliminada: (p: AdminInstitucionEliminadaPayload) =>
+      emit('warn', 'admin.institucion_eliminada', p),
     magicLinkEmitido: (p: AdminMagicLinkEmitidoPayload) =>
       emit('info', 'admin.magic_link_emitido', p),
     magicLinkRevocado: (p: AdminMagicLinkRevocadoPayload) =>

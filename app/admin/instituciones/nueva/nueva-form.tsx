@@ -5,6 +5,7 @@
 // el form renderiza inline.
 
 import { useActionState, useState } from 'react';
+import { motion } from 'motion/react';
 import {
   crearInstitucionConLink,
   type CrearInstitucionConLinkState,
@@ -74,10 +75,13 @@ export function NuevaInstitucionForm() {
             required
           />
         </div>
-        <button
+        <motion.button
           type="submit"
           disabled={pending}
-          className="mt-6 inline-flex h-11 w-full items-center justify-center gap-2 rounded-full bg-ink px-5 text-sm font-semibold tracking-tight text-primary-foreground transition hover:bg-[var(--ink-raised)] active:scale-[0.98] disabled:opacity-60 disabled:cursor-not-allowed"
+          whileHover={pending ? undefined : { y: -1 }}
+          whileTap={pending ? undefined : { scale: 0.98 }}
+          transition={{ type: 'spring', stiffness: 380, damping: 22 }}
+          className="mt-6 inline-flex h-11 w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-ink px-5 text-sm font-semibold tracking-tight text-primary-foreground transition-colors hover:bg-[var(--ink-raised)] disabled:cursor-not-allowed disabled:opacity-60"
         >
           {pending ? (
             <>
@@ -90,7 +94,7 @@ export function NuevaInstitucionForm() {
               Crear y generar magic link
             </>
           )}
-        </button>
+        </motion.button>
       </form>
 
       <ResultPanel state={state} />
@@ -202,10 +206,13 @@ function SuccessPanel({
         rows={3}
         className="mt-3 w-full rounded-xl bg-[var(--ink-raised)]/60 px-3 py-2 font-mono text-[11px] leading-relaxed text-primary-foreground ring-1 ring-primary-foreground/10 outline-none"
       />
-      <button
+      <motion.button
         type="button"
         onClick={copy}
-        className="mt-3 inline-flex h-10 w-full items-center justify-center gap-2 rounded-full bg-gold text-sm font-semibold tracking-tight text-ink transition hover:bg-gold-bright active:scale-[0.98]"
+        whileHover={{ y: -1 }}
+        whileTap={{ scale: 0.98 }}
+        transition={{ type: 'spring', stiffness: 380, damping: 22 }}
+        className="mt-3 inline-flex h-10 w-full cursor-pointer items-center justify-center gap-2 rounded-full bg-gold text-sm font-semibold tracking-tight text-ink transition-colors hover:bg-gold-bright"
       >
         {copied ? (
           <>
@@ -218,7 +225,7 @@ function SuccessPanel({
             Copiar al portapapeles
           </>
         )}
-      </button>
+      </motion.button>
       <a
         href={`/admin/instituciones/${state.institucion_id}`}
         className="mt-2 inline-flex h-9 w-full items-center justify-center rounded-full bg-[var(--ink-raised)]/40 text-xs font-medium text-primary-foreground/85 ring-1 ring-primary-foreground/10 transition hover:bg-[var(--ink-raised)]/70"

@@ -31,6 +31,7 @@ export interface InstitucionRow {
   nombre_comercial: string | null;
   tipo: string;
   email_contacto: string;
+  telefono_contacto: string | null;
   created_at: Date;
   total_sesiones: number;
   ultimo_turno_at: Date | null;
@@ -53,7 +54,8 @@ export function InstitucionesView({ rows }: Props) {
         r.razon_social.toLowerCase().includes(normalizedQuery) ||
         (r.nombre_comercial?.toLowerCase().includes(normalizedQuery) ?? false) ||
         r.tipo.toLowerCase().includes(normalizedQuery) ||
-        r.email_contacto.toLowerCase().includes(normalizedQuery)
+        r.email_contacto.toLowerCase().includes(normalizedQuery) ||
+        (r.telefono_contacto?.toLowerCase().includes(normalizedQuery) ?? false)
     );
   }, [rows, normalizedQuery]);
 
@@ -177,6 +179,7 @@ export function InstitucionesView({ rows }: Props) {
                     nombreComercial={r.nombre_comercial}
                     tipo={r.tipo}
                     email={r.email_contacto}
+                    telefono={r.telefono_contacto}
                     totalSesiones={r.total_sesiones}
                     totalPerfiles={r.total_perfiles}
                     lastTurnRelative={
@@ -201,6 +204,7 @@ export function InstitucionesView({ rows }: Props) {
                     nombreComercial={r.nombre_comercial}
                     tipo={r.tipo}
                     email={r.email_contacto}
+                    telefono={r.telefono_contacto}
                     totalSesiones={r.total_sesiones}
                     totalPerfiles={r.total_perfiles}
                     lastTurnRelative={
