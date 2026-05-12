@@ -29,10 +29,13 @@ import { Stepper } from '@/components/entrevista/Stepper';
 import { BrandSuccessGlyph } from '@/components/landing/BrandSuccessGlyph';
 import { useEntrevistaStore } from '@/lib/state/entrevista';
 import { getCajaAny, type GrupoUI } from '@/lib/schemas/cajas';
+import { SPRING_BUTTON, solidButtonVariants } from '@/lib/motion-presets';
+import { cn } from '@/lib/utils';
 import {
   Loader2,
   AlertCircle,
   CheckCircle2,
+  ArrowRight,
 } from 'lucide-react';
 
 interface Props {
@@ -341,12 +344,58 @@ export function EntrevistaShell({
             )}
           </motion.div>
 
-          {/* BatchNav minimal — footer de card 2, separado por hairline.
-              "← Anterior · 1 / 3 · Siguiente →" sin pills ni rings. */}
+          {/* Action row — Enviar turno (CTA principal) + BatchNav debajo.
+              Anti-shift: container con min-h reservado para el CTA, opacity
+              toggle entre disabled (cuando faltan respuestas) y enabled
+              (cuando todasMarcadas). Loading state durante enviando/procesando. */}
           {!sesionCerrada && batch && total > 0 && (
             <>
               <div className="h-px bg-[color:var(--survey-hairline)]" aria-hidden />
-              <div className="px-6 py-4 md:px-10 md:py-5">
+              <div className="flex flex-col gap-4 px-6 py-5 md:px-10 md:py-6">
+                <div className="flex min-h-[48px] items-center justify-center">
+                  <motion.button
+                    type="button"
+                    onClick={() => enviarBatch()}
+                    disabled={!todasMarcadas || enviando}
+                    aria-label="Enviar respuestas del turno al motor"
+                    initial="rest"
+                    animate="rest"
+                    whileHover={todasMarcadas && !enviando ? 'hover' : 'rest'}
+                    whileFocus={todasMarcadas && !enviando ? 'hover' : 'rest'}
+                    whileTap={todasMarcadas && !enviando ? 'tap' : 'rest'}
+                    variants={solidButtonVariants}
+                    transition={SPRING_BUTTON}
+                    className={cn(
+                      'inline-flex h-12 min-w-[220px] items-center justify-center gap-3 rounded-full px-6 text-[13.5px] font-medium tracking-tight transition-colors',
+                      'focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[color:var(--gold)]/40 focus-visible:ring-offset-2 focus-visible:ring-offset-[color:var(--survey-card-2)]',
+                      todasMarcadas && !enviando
+                        ? 'cursor-pointer bg-ink text-cream-pure shadow-[0_0_0_1px_rgba(244,241,234,0.04),0_20px_50px_-18px_rgba(200,168,100,0.32)] hover:bg-ink-raised'
+                        : 'cursor-not-allowed bg-[color:var(--ink)]/25 text-[color:var(--cream-pure)]/70'
+                    )}
+                  >
+                    {enviando ? (
+                      <>
+                        <Loader2 className="size-4 animate-spin" aria-hidden />
+                        <span>
+                          {status === 'enviando'
+                            ? 'Enviando…'
+                            : 'Generando siguiente batch…'}
+                        </span>
+                      </>
+                    ) : (
+                      <>
+                        <span>
+                          {todasMarcadas
+                            ? 'Enviar respuestas'
+                            : `Falta${total - Object.values(marcadas).filter(Boolean).length === 1 ? '' : 'n'} ${total - Object.values(marcadas).filter(Boolean).length} pregunta${total - Object.values(marcadas).filter(Boolean).length === 1 ? '' : 's'}`}
+                        </span>
+                        {todasMarcadas && (
+                          <ArrowRight className="size-4" aria-hidden />
+                        )}
+                      </>
+                    )}
+                  </motion.button>
+                </div>
                 <BatchNav
                   preguntas={batch.preguntas.map((p) => ({
                     id: p.id,
