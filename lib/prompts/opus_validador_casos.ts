@@ -73,7 +73,7 @@ Si pasa === true, razones_falla debe ser []. Si pasa === false, razones_falla de
 </output_contract>
 
 <calibration>
-Aplica los 4 chequeos en orden. Si UNO falla, reporta y termina (no enumeres todos los chequeos restantes — el motor descarta el caso al primer fallo y el generador reintenta). Esto mantiene la latencia bajo objetivo.
+Aplica los 4 chequeos en orden. Si UNO falla, reporta y termina (no enumeres todos los chequeos restantes; el motor descarta el caso al primer fallo y el generador reintenta). Esto mantiene la latencia bajo objetivo.
 
 <check id="1" nombre="realismo_mx">
   ¿El caso es plausible en el contexto mexicano de crédito mid-market?
@@ -134,9 +134,9 @@ Tolerancias para los chequeos numéricos del check #4:
 | garantias.suma_mxn                     | ±$1 MXN             | Solo error de redondeo aritmético.             |
 | garantias.cobertura_x                  | ±0.1                | Redondeo a 1 decimal.                          |
 | facturacion_anual_mxn ↔ mensual × 12   | ±20%                | Estacionalidad declarada permitida.            |
-| DSCR proyectado mid-market MX          | rango 0.8–5x        | Fuera del rango → ratio mágico, falla.         |
-| deuda/EBITDA mid-market MX             | rango 1.5–6x        | Idem.                                          |
-| Margen EBITDA en sectores tradicionales| rango 5–18%         | Construcción/transporte/manufactura. >25% sospechoso. |
+| DSCR proyectado mid-market MX          | rango 0.8 a 5x      | Fuera del rango → ratio mágico, falla.         |
+| deuda/EBITDA mid-market MX             | rango 1.5 a 6x      | Idem.                                          |
+| Margen EBITDA en sectores tradicionales| rango 5 a 18%       | Construcción/transporte/manufactura. >25% sospechoso. |
 </numeric_tolerances>
 
 <guardrails>
@@ -201,13 +201,13 @@ tipo_institucion: sofom_er
 {
   "pasa": false,
   "razones_falla": [
-    "monto_solicitado_mxn=95000000 excede credit_box_parcial.ru_monto_max=80000000 — fuera de boundary",
-    "garantias.suma_mxn=50000000 no coincide con sum(items.valor_mxn)=20000000 — inconsistencia numérica"
+    "monto_solicitado_mxn=95000000 excede credit_box_parcial.ru_monto_max=80000000, fuera de boundary",
+    "garantias.suma_mxn=50000000 no coincide con sum(items.valor_mxn)=20000000, inconsistencia numérica"
   ]
 }
 </output>
 <razonamiento_interno>
-Aplica regla "primer fallo encontrado": check #3 (boundary) detecta monto fuera de rango — falla inmediato. Adicional reporta inconsistencia numérica de garantías porque el motor ya verá ambos en una sola pasada del rubric. No enumera los otros 4 defectos (complicaciones vacías, 32-D huérfana, todos rechazan); el caso se regenera y esos no se acumulan.
+Aplica regla "primer fallo encontrado": check #3 (boundary) detecta monto fuera de rango; falla inmediato. Adicional reporta inconsistencia numérica de garantías porque el motor ya verá ambos en una sola pasada del rubric. No enumera los otros 4 defectos (complicaciones vacías, 32-D huérfana, todos rechazan); el caso se regenera y esos no se acumulan.
 </razonamiento_interno>
 </ejemplo>
 
@@ -230,18 +230,18 @@ tipo_institucion: sofom_er
 {
   "pasa": false,
   "razones_falla": [
-    "cajas_objetivo declara 'to_historial_credito' pero historial está limpio sin manchas — caso no destraba la caja",
-    "cajas_objetivo declara 'se_sat_32d_negativa' pero opinion_sat_32d='positiva' — caso no aplica a esa caja",
+    "cajas_objetivo declara 'to_historial_credito' pero historial está limpio sin manchas, caso no destraba la caja",
+    "cajas_objetivo declara 'se_sat_32d_negativa' pero opinion_sat_32d='positiva', caso no aplica a esa caja",
     "Solo gr_dscr_min queda atacado por una sola complicación; las otras 2 cajas declaradas no encuentran tensión en el caso"
   ]
 }
 </output>
 <razonamiento_interno>
-El caso es internamente consistente y plausible, pero declara 3 cajas_objetivo y solo ataca 1 (gr_dscr_min). Las otras 2 quedan huérfanas — el caso no las destraba. Falla.
+El caso es internamente consistente y plausible, pero declara 3 cajas_objetivo y solo ataca 1 (gr_dscr_min). Las otras 2 quedan huérfanas: el caso no las destraba. Falla.
 </razonamiento_interno>
 </ejemplo>
 
-<ejemplo numero="4" tipo="falla por boundary — sector excluido + tipo crédito inconsistente">
+<ejemplo numero="4" tipo="falla por boundary: sector excluido + tipo crédito inconsistente">
 <input_resumido>
 caso: {
   id: "CASO-220", titulo: "Servicios apuestas en línea con factoraje sin recurso", monto_solicitado_mxn: 18000000,
@@ -262,14 +262,14 @@ tipo_institucion: sofom_er
 {
   "pasa": false,
   "razones_falla": [
-    "caso.sector='apuestas_en_linea' está en credit_box_parcial.nm_sectores_excluidos — caso obviamente rechazado, no destraba señal",
-    "tipo_credito='factoraje_sin_recurso' pero garantias.items no incluye cesión de derechos ni facturas — inconsistencia semántica",
+    "caso.sector='apuestas_en_linea' está en credit_box_parcial.nm_sectores_excluidos: caso obviamente rechazado, no destraba señal",
+    "tipo_credito='factoraje_sin_recurso' pero garantias.items no incluye cesión de derechos ni facturas, inconsistencia semántica",
     "decision_esperada_por_tipo todos rechazan → no hay boundary real, caso no destraba postura"
   ]
 }
 </output>
 <razonamiento_interno>
-Tres fallos críticos del check #3 (boundary) + #4 (consistencia semántica). El sector está obviamente excluido, así que mostrar el caso al entrevistado es desperdiciar uno del cap de 5 sin posibilidad de destrabar — el entrevistado dirá "lo rechazamos por sector" y la caja nm_sectores_aceptados ya estaba clara. Adicionalmente, factoraje sin recurso necesita cesión de facturas, no hipoteca de oficina. Y todas las decisiones esperadas son rechazo — sin divergencia no hay boundary que probar.
+Tres fallos críticos del check #3 (boundary) + #4 (consistencia semántica). El sector está obviamente excluido, así que mostrar el caso al entrevistado es desperdiciar uno del cap de 5 sin posibilidad de destrabar: el entrevistado dirá "lo rechazamos por sector" y la caja nm_sectores_aceptados ya estaba clara. Adicionalmente, factoraje sin recurso necesita cesión de facturas, no hipoteca de oficina. Y todas las decisiones esperadas son rechazo, sin divergencia no hay boundary que probar.
 </razonamiento_interno>
 </ejemplo>
 </examples>

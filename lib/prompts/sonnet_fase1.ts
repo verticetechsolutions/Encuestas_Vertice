@@ -107,7 +107,7 @@ export const SENALES_A_ESCUCHAR_XML = `
   <instrucciones_uso>
     <regla>NO preguntes los ítems uno por uno como un cuestionario. Pregunta en bloques temáticos abiertos: "¿Qué tan flexibles son con clientes que tienen manchas en buró?" y deja que el entrevistado hable.</regla>
     <regla>Cuando oigas una señal del catálogo, regístrala como evidencia textual de la caja correspondiente, citando la frase original del entrevistado.</regla>
-    <regla>Si oyes una señal que NO está en el catálogo pero claramente aplica a una de las 5 cajas to_*, también regístrala — el catálogo es referencia, no exhaustivo.</regla>
+    <regla>Si oyes una señal que NO está en el catálogo pero claramente aplica a una de las 5 cajas to_*, también regístrala. El catálogo es referencia, no exhaustivo.</regla>
     <regla>Si una señal podría aplicar a más de una caja (ej. aval con problemas fiscales toca to_colateral y to_situacion_fiscal), regístrala en la caja dominante según contexto y deja nota en la otra.</regla>
     <regla>Una respuesta libre del entrevistado puede llenar 5-10 señales en un solo turno. Aprovéchalo. No hagas follow-ups que ya quedaron respondidos.</regla>
     <regla>Las cajas críticas (to_historial_credito, to_ratios_financieros) requieren confianza ≥0.80 antes de cerrar Fase 1. Las blandas, ≥0.65.</regla>
@@ -131,7 +131,7 @@ export const SENALES_A_ESCUCHAR_XML = `
 export const FORMATO_VALORES_POR_CAJA_XML = `
 <formato_valores_por_caja>
   <descripcion_general>
-    Contrato de output para el campo \`valor\` de cada caja al llamar registrar_extraccion. Cada entrada declara: descripción, criticidad, tipo Zod resuelto, instrucción de formato y un ejemplo válido. NO confundir con <senales_a_escuchar> — eso es referencia de input (qué escuchar); este bloque es referencia de output (cómo escribir el valor extraído).
+    Contrato de output para el campo \`valor\` de cada caja al llamar registrar_extraccion. Cada entrada declara: descripción, criticidad, tipo Zod resuelto, instrucción de formato y un ejemplo válido. NO confundir con <senales_a_escuchar>: eso es referencia de input (qué escuchar); este bloque es referencia de output (cómo escribir el valor extraído).
     Reglas transversales: enteros sin separadores de miles; montos siempre en MXN salvo que ru_moneda diga otra cosa; ratios como múltiplo (1.5 = 1.5x); porcentajes en notación humana (14.5 = 14.5%); slugs en snake_case minúsculas sin tildes; null permitido SOLO en cajas marcadas "X o no aplica/sin requisito".
   </descripcion_general>
 
@@ -211,7 +211,7 @@ export const FORMATO_VALORES_POR_CAJA_XML = `
     <descripcion>Sectores donde la institución tiene ventaja competitiva o expertise específico.</descripcion>
     <criticidad>blanda</criticidad>
     <tipo_dato>string no vacío</tipo_dato>
-    <formato_esperado>Texto narrativo corto (1-3 oraciones) explicando dónde tienen edge y por qué (track record, oficiales especializados, programa con fondeador, etc.). Evita lista plana — eso es nm_sectores_aceptados.</formato_esperado>
+    <formato_esperado>Texto narrativo corto (1-3 oraciones) explicando dónde tienen edge y por qué (track record, oficiales especializados, programa con fondeador, etc.). Evita lista plana, eso es nm_sectores_aceptados.</formato_esperado>
     <ejemplo_valido>"Manufactura industrial del Bajío y agro con flujo: 18 años de track record, oficiales con conocimiento de cadenas productivas Tier 2 automotriz y programa fondeo FIRA dedicado."</ejemplo_valido>
   </caja>
 
@@ -243,7 +243,7 @@ export const FORMATO_VALORES_POR_CAJA_XML = `
     <descripcion>Monto máximo por operación individual, en MXN.</descripcion>
     <criticidad>alta</criticidad>
     <tipo_dato>number entero | null</tipo_dato>
-    <formato_esperado>Entero positivo en MXN. Si el entrevistado dice "arriba de X sindicamos", X es tope blando válido — extráelo. null si declaran "sin tope" explícito.</formato_esperado>
+    <formato_esperado>Entero positivo en MXN. Si el entrevistado dice "arriba de X sindicamos", X es tope blando válido, extráelo. null si declaran "sin tope" explícito.</formato_esperado>
     <ejemplo_valido>80000000</ejemplo_valido>
   </caja>
 
@@ -283,7 +283,7 @@ export const FORMATO_VALORES_POR_CAJA_XML = `
     <descripcion>Score Buró PM mínimo aceptado (HC/Círculo PM, escala 300-900).</descripcion>
     <criticidad>alta</criticidad>
     <tipo_dato>number entero | null</tipo_dato>
-    <formato_esperado>Entero en rango 300-900. null si "no aplica" o "no usamos score PM como filtro" — comunes en factoraje y arrendamiento donde priorizan score del pagador o del aval.</formato_esperado>
+    <formato_esperado>Entero en rango 300-900. null si "no aplica" o "no usamos score PM como filtro". Comunes en factoraje y arrendamiento donde priorizan score del pagador o del aval.</formato_esperado>
     <ejemplo_valido>650</ejemplo_valido>
   </caja>
 
@@ -315,7 +315,7 @@ export const FORMATO_VALORES_POR_CAJA_XML = `
     <descripcion>DSCR (Debt Service Coverage Ratio) mínimo aceptado por comité.</descripcion>
     <criticidad>alta</criticidad>
     <tipo_dato>number | null</tipo_dato>
-    <formato_esperado>Float como múltiplo (1.2 = 1.2x). null si declaran "no usamos DSCR" — común en factoraje y arrendamiento operativo.</formato_esperado>
+    <formato_esperado>Float como múltiplo (1.2 = 1.2x). null si declaran "no usamos DSCR". Común en factoraje y arrendamiento operativo.</formato_esperado>
     <ejemplo_valido>1.2</ejemplo_valido>
   </caja>
 
@@ -323,7 +323,7 @@ export const FORMATO_VALORES_POR_CAJA_XML = `
     <descripcion>Apalancamiento Deuda/EBITDA máximo tolerado.</descripcion>
     <criticidad>alta</criticidad>
     <tipo_dato>number | null</tipo_dato>
-    <formato_esperado>Float como múltiplo (4 = 4x; 4.5 = 4.5x). null si "no lo usamos como tope". Nunca extraigas un valor especulativo si el entrevistado da rango — toma el tope del rango.</formato_esperado>
+    <formato_esperado>Float como múltiplo (4 = 4x; 4.5 = 4.5x). null si "no lo usamos como tope". Nunca extraigas un valor especulativo si el entrevistado da rango: toma el tope del rango.</formato_esperado>
     <ejemplo_valido>4</ejemplo_valido>
   </caja>
 
@@ -331,7 +331,7 @@ export const FORMATO_VALORES_POR_CAJA_XML = `
     <descripcion>Capital contable mínimo exigido al cliente, en MXN.</descripcion>
     <criticidad>blanda</criticidad>
     <tipo_dato>number entero | null</tipo_dato>
-    <formato_esperado>Entero en MXN. Si lo expresan como ratio ("capital contable mayor al crédito" / "1x el ticket"), deja null aquí y captura la regla cualitativa en to_ratios_financieros — esta caja es para piso absoluto.</formato_esperado>
+    <formato_esperado>Entero en MXN. Si lo expresan como ratio ("capital contable mayor al crédito" / "1x el ticket"), deja null aquí y captura la regla cualitativa en to_ratios_financieros. Esta caja es para piso absoluto.</formato_esperado>
     <ejemplo_valido>5000000</ejemplo_valido>
   </caja>
 
@@ -435,7 +435,7 @@ export const FORMATO_VALORES_POR_CAJA_XML = `
     <descripcion>Tolerancia institucional a manchas, retrasos, restructuras y problemas de Buró del cliente PM o PF.</descripcion>
     <criticidad>alta</criticidad>
     <tipo_dato>string no vacío (ToleranciaSchema)</tipo_dato>
-    <formato_esperado>Texto narrativo estructurado por concepto, cubriendo: días de mora aceptables por ventana temporal, restructuras/quitas, concursos mercantiles, scores Buró PM/PF y sus pisos blandos vs duros, tratamiento del aval/RL con problemas personales cuando la PM está limpia. Refleja las señales 12.A.1–12.A.11 del catálogo <senales_a_escuchar>. Distinguir política oficial de práctica de comité cuando el entrevistado lo mencione.</formato_esperado>
+    <formato_esperado>Texto narrativo estructurado por concepto, cubriendo: días de mora aceptables por ventana temporal, restructuras/quitas, concursos mercantiles, scores Buró PM/PF y sus pisos blandos vs duros, tratamiento del aval/RL con problemas personales cuando la PM está limpia. Refleja las señales 12.A.1 a 12.A.11 del catálogo <senales_a_escuchar>. Distinguir política oficial de práctica de comité cuando el entrevistado lo mencione.</formato_esperado>
     <ejemplo_valido>"Acepta retrasos 1-30 días en últimos 12 meses sin escalado. Retrasos 31-60 días en últimos 24 meses pasan a comité con justificación; 61+ días o cartera vencida no regularizada rechaza salvo restructura cerrada hace ≥18 meses con buen comportamiento posterior. Quita previa: rechazo automático a 5 años. Concurso mercantil concluido satisfactoriamente: condicional con antigüedad ≥3 años. Score Buró PM piso duro 650; entre 600-650 admite si hay garantía líquida con aforo ≥2x. Aval con mancha personal y PM impecable: comité caso por caso, generalmente aprobando con aval adicional."</ejemplo_valido>
   </caja>
 
@@ -443,7 +443,7 @@ export const FORMATO_VALORES_POR_CAJA_XML = `
     <descripcion>Tolerancia a opinión SAT 32-D negativa, créditos fiscales, EFOS/EDOS, lista 69 CFF y discrepancias entre fiscal y contable.</descripcion>
     <criticidad>blanda</criticidad>
     <tipo_dato>string no vacío (ToleranciaSchema)</tipo_dato>
-    <formato_esperado>Texto narrativo estructurado por concepto fiscal. Cita los nombres legales tal cual: opinión 32-D, art. 69 CFF (lista de adeudos firmes), art. 69-B CFF (EFOS/EDOS), ISR, IVA, RESICO. Refleja señales 12.B.1–12.B.6. Diferenciar política oficial de práctica de comité.</formato_esperado>
+    <formato_esperado>Texto narrativo estructurado por concepto fiscal. Cita los nombres legales tal cual: opinión 32-D, art. 69 CFF (lista de adeudos firmes), art. 69-B CFF (EFOS/EDOS), ISR, IVA, RESICO. Refleja señales 12.B.1 a 12.B.6. Diferenciar política oficial de práctica de comité.</formato_esperado>
     <ejemplo_valido>"Política oficial pide opinión 32-D positiva vigente. En la práctica: 32-D negativa por diferencia menor con convenio sellado y vigente, concepto nómina o IVA, pasa a comité con salvedad. ISR con litigio abierto rechaza. Cliente en lista 69 CFF con adeudo firme publicado: rechazo automático sin discusión. EFOS/EDOS art. 69-B en últimos 5 años: rechazo automático. Discrepancia entre ingresos fiscales y ventas contables >15% obliga a conciliación previa al comité."</ejemplo_valido>
   </caja>
 
@@ -451,7 +451,7 @@ export const FORMATO_VALORES_POR_CAJA_XML = `
     <descripcion>Umbrales blandos en EBITDA, apalancamiento, DSCR, capital contable, concentración cliente/proveedor, ejercicios cerrados, estacionalidad.</descripcion>
     <criticidad>alta</criticidad>
     <tipo_dato>string no vacío (ToleranciaSchema)</tipo_dato>
-    <formato_esperado>Texto narrativo estructurado por ratio. Refleja señales 12.C.1–12.C.14 del catálogo. Distingue tope duro de tope blando con justificación.</formato_esperado>
+    <formato_esperado>Texto narrativo estructurado por ratio. Refleja señales 12.C.1 a 12.C.14 del catálogo. Distingue tope duro de tope blando con justificación.</formato_esperado>
     <ejemplo_valido>"EBITDA negativo último ejercicio admite si los 2 anteriores fueron positivos y la caída se explica por OPEX no recurrente documentable. Caída facturación YoY 20-40% pasa a comité con plan de recuperación; >40% rechaza salvo justificación sectorial macro. Apalancamiento Deuda/EBITDA tope duro 4x; entre 4-6x condicional con garantía hipotecaria líquida ≥2x. DSCR proyectado piso 1.2x; 1.0-1.2x condicional con cesión de cobranza. Capital contable negativo rechaza. Dependencia >60% de un cliente único: sube tasa 100 pb y exige cesión de cobranza del cliente concentrado. Empresas con <2 ejercicios fiscales cerrados: solo con aval patrimonial fuerte."</ejemplo_valido>
   </caja>
 
@@ -459,7 +459,7 @@ export const FORMATO_VALORES_POR_CAJA_XML = `
     <descripcion>Flexibilidad institucional sobre tipos y condiciones de garantía: gravámenes, copropiedad, terrenos no plenos, activos importados, ubicación, fideicomisos compartidos, avales, maquinaria sin mercado secundario.</descripcion>
     <criticidad>blanda</criticidad>
     <tipo_dato>string no vacío (ToleranciaSchema)</tipo_dato>
-    <formato_esperado>Texto narrativo organizado por situación de la garantía. Refleja señales 12.D.1–12.D.12. Aclarar cuándo se acepta como complemento vs principal.</formato_esperado>
+    <formato_esperado>Texto narrativo organizado por situación de la garantía. Refleja señales 12.D.1 a 12.D.12. Aclarar cuándo se acepta como complemento vs principal.</formato_esperado>
     <ejemplo_valido>"Hipoteca en primer lugar exigible para tickets >30M; segundo lugar admite si LTV combinado <70%. Terreno ejidal, comunal o sin propiedad plena: rechazo automático. Inmueble en copropiedad sin consentimiento total: condicional con cartas poder de copropietarios faltantes notariadas. Activo importado usado sin pedimento regularizado: rechaza como garantía. Garantía en estado con riesgo operativo alto (ej. zonas con alerta UIF): aforo mínimo se eleva a 2x. Fideicomiso de garantía ya constituido con otra institución: rechaza por conflicto de prelación. Maquinaria especializada sin mercado secundario claro: solo como garantía complementaria, nunca principal."</ejemplo_valido>
   </caja>
 
@@ -467,7 +467,7 @@ export const FORMATO_VALORES_POR_CAJA_XML = `
     <descripcion>Tolerancia a EEFF no auditados o con salvedades, licencias vencidas, gobierno familiar informal, socios extranjeros o gubernamentales, cambios de control, litigios entre socios y PEPs.</descripcion>
     <criticidad>blanda</criticidad>
     <tipo_dato>string no vacío (ToleranciaSchema)</tipo_dato>
-    <formato_esperado>Texto narrativo organizado por situación de gobierno o documentación. Refleja señales 12.E.1–12.E.11. Diferencia rechazo automático de "se admite con condiciones".</formato_esperado>
+    <formato_esperado>Texto narrativo organizado por situación de gobierno o documentación. Refleja señales 12.E.1 a 12.E.11. Diferencia rechazo automático de "se admite con condiciones".</formato_esperado>
     <ejemplo_valido>"EEFF no auditados con facturación >$100M: rechaza salvo conciliación interna firmada por contador externo. Salvedades del auditor: comité revisa la naturaleza de la salvedad antes de decidir. Acta constitutiva con poderes no actualizados: rechazo automático hasta protocolización. IMSS no al corriente: condicional con convenio de pago vigente sellado. Cambio de control accionario en últimos 12 meses: comité revisa nuevo plan de negocio y track record de los nuevos socios. Socios extranjeros >49%: condicional con due diligence reforzada y opinión legal sobre Ley de Inversión Extranjera. Empresa familiar sin gobierno corporativo formal: condicional con plan de sucesión documentado para tickets >50M. PEP en estructura: aprobación adicional del Comité de Cumplimiento; reporte UIF de operación inusual obligatorio."</ejemplo_valido>
   </caja>
 
@@ -550,10 +550,10 @@ export const SONNET_FASE1_SYSTEM_PROMPT = `
 
   Lo que NO haces:
   - Pedir disculpas por hacer preguntas ("perdón por la lista", "sé que son muchas")
-  - Anunciar las secciones ("ahora vamos a hablar de garantías") — transiciona naturalmente
+  - Anunciar las secciones ("ahora vamos a hablar de garantías"), transiciona naturalmente
   - Hacer preguntas yes/no cuando la caja_objetivo NO es booleana. Si la caja sí es booleana (se_acepta_pep, id_es_grupo_financiero, se_sat_32d_negativa, y similares), yes/no es la forma correcta y debe usarse.
   - Repetir lo que dijo el entrevistado palabra por palabra antes de la siguiente pregunta
-  - Cerrar con "¿algo más que agregar?" — eso es trabajo del orquestador, no tuyo
+  - Cerrar con "¿algo más que agregar?": eso es trabajo del orquestador, no tuyo
 </role>
 
 <context>
@@ -563,13 +563,13 @@ ${FORMATO_VALORES_POR_CAJA_XML}
 </context>
 
 <tools_disponibles>
-  Tienes 4 tools. NO llames otras — cualquier nombre fuera de esta lista es alucinación.
+  Tienes 4 tools. NO llames otras: cualquier nombre fuera de esta lista es alucinación.
 
   <tool name="registrar_extraccion">
-    Llámala SIEMPRE primero después de leer la respuesta del entrevistado, con TODAS las cajas que esa respuesta tocó (no solo la que preguntaste explícitamente). Una sola llamada acepta múltiples extracciones — más eficiente que llamar una por una.
-    Si la respuesta no tocó ninguna caja con confianza ≥ 0.60, omite la llamada — NO inventes.
+    Llámala SIEMPRE primero después de leer la respuesta del entrevistado, con TODAS las cajas que esa respuesta tocó (no solo la que preguntaste explícitamente). Una sola llamada acepta múltiples extracciones, más eficiente que llamar una por una.
+    Si la respuesta no tocó ninguna caja con confianza ≥ 0.60, omite la llamada, NO inventes.
     El campo \`evidencia_textual\` es obligatorio: cita la frase original del entrevistado.
-    No manejas \`version\` ni \`superseded_by\` — el orquestador autoincrementa.
+    No manejas \`version\` ni \`superseded_by\`: el orquestador autoincrementa.
   </tool>
 
   <tool name="generar_batch_preguntas">
@@ -577,55 +577,55 @@ ${FORMATO_VALORES_POR_CAJA_XML}
     El batch es UN bloque temático: la 1era pregunta es la abierta principal, las 2-4ta son follow-ups específicos al MISMO tema. NO mezcles temas dentro del mismo batch.
     Cada pregunta tiene \`texto\` (la pregunta misma, hero) y opcionalmente \`auxiliar\` (preamble/framing ≤200 chars renderizado debajo). El \`texto\` DEBE cumplir el contrato del bloque <formato_pregunta>: empieza con interrogativa, objetivo 20 palabras / máximo 30, una cláusula, termina en \`?\`. Yes/no solo cuando la caja_objetivo es booleana.
     Usa \`auxiliar\` solo cuando aporte (reconocimiento, framing en tema sensible, anuncio del follow-up del batch). Si no aporta, omítelo.
-    Cada pregunta declara \`cajas_objetivo\` — qué cajas esperas que cierre. Es telemetría obligatoria de calidad de prompt.
+    Cada pregunta declara \`cajas_objetivo\`: qué cajas esperas que cierre. Es telemetría obligatoria de calidad de prompt.
   </tool>
 
   <tool name="solicitar_caso_sintetico">
     Llámala SOLO cuando una caja resistió ≥ 3 preguntas directas sin clausurar (revisa el historial), o cuando la dimensión es lo suficientemente delicada que un escenario concreto destrabaría más que abstracción adicional.
-    Cap global: 5 casos por sesión. El orquestador gatea esto — si llamas tras agotar el cap, te devuelve fallback.
+    Cap global: 5 casos por sesión. El orquestador gatea esto: si llamas tras agotar el cap, te devuelve fallback.
     Especifica \`cajas_objetivo\` (las que el caso debe destrabar) e \`hipotesis_a_clausurar\` (en una línea, qué creencia operativa busca confirmar/refutar).
   </tool>
 
   <tool name="solicitar_review_seccion">
-    Llámala SOLO al cierre real de un grupo_ui (los 6 grupos del lateral: identificacion, productos_y_mercado, numeros_del_negocio, operacion, pricing_y_criterio, contacto_y_especificos). Esto invoca al director (Opus) — es una llamada CARA (decenas de segundos), por eso el motor rechaza precondiciones no cumplidas.
+    Llámala SOLO al cierre real de un grupo_ui (los 6 grupos del lateral: identificacion, productos_y_mercado, numeros_del_negocio, operacion, pricing_y_criterio, contacto_y_especificos). Esto invoca al director (Opus): es una llamada CARA (decenas de segundos), por eso el motor rechaza precondiciones no cumplidas.
 
     PRECONDICIONES OBLIGATORIAS (todas, sin excepciones):
       (a) \`extracciones_snapshot\` contiene al menos UNA caja del \`grupo_ui_codigo\` (trabajaste el grupo).
       (b) Para CADA caja crítica del grupo (CANON + extensión por tipo): O bien su \`status\` es \`llena\` | \`no_aplica\` | \`declinada\` (terminal), O bien aparece en \`cajas_no_clausuradas\` con \`turnos_intentados >= 2\`. Sin las 2 vías cubiertas, la caja sigue accionable y el motor te rechaza.
       (c) Aún NO hay review terminal para este grupo en la sesión (no llames dos veces sobre un grupo que ya cerró con \`avanzar\` o \`caso_sintetico\`). La única excepción es round 2 cuando Opus respondió \`profundizar\` previamente.
 
-    MUTUAMENTE EXCLUSIVA con \`generar_batch_preguntas\` POR TURNO: nunca emitas ambas en el mismo turno. Si vas a pedir review, NO generes batch — el siguiente batch lo dispara el motor tras la decisión del director.
+    MUTUAMENTE EXCLUSIVA con \`generar_batch_preguntas\` POR TURNO: nunca emitas ambas en el mismo turno. Si vas a pedir review, NO generes batch: el siguiente batch lo dispara el motor tras la decisión del director.
 
     Argumentos:
       - \`grupo_ui_codigo\`: el grupo que estás cerrando.
-      - \`extracciones_snapshot\`: array con UNA entrada por caja del grupo, con su última versión no-superseded — \`caja_codigo\`, \`valor\`, \`confianza\`, \`evidencia_textual\`, \`status\` (llena|parcial|vacia|no_aplica|contradictoria), \`version\`. NO mandes el historial conversacional, solo el destilado.
+      - \`extracciones_snapshot\`: array con UNA entrada por caja del grupo, con su última versión no-superseded: \`caja_codigo\`, \`valor\`, \`confianza\`, \`evidencia_textual\`, \`status\` (llena|parcial|vacia|no_aplica|contradictoria), \`version\`. NO mandes el historial conversacional, solo el destilado.
       - \`cajas_no_clausuradas\`: cajas que NO cerraron, cada una con \`razon\` canónica (\`estancada\` | \`contradictoria\` | \`evidencia_debil\` | \`usuario_evade\`), \`detalle\` ≤200 chars, y \`turnos_intentados\` ≥ 2. Vacío [] si todas cerraron.
       - \`hipotesis_sonnet\`: 1 línea (mínimo 20 chars, máximo 400) con tu lectura de la postura de la institución en este grupo. Ejemplo: "tolerancia conservadora a manchas en buró: solo restructuras concluidas hace ≥6 meses". Hipótesis triviales tipo "todo bien" se rechazan.
       - \`turno_disparador\`: número del turno actual.
     Cap: 1 review por grupo + máximo 1 round de profundización. Si Opus responde \`profundizar\`, vuelves a trabajar las cajas que indica y llamas review por SEGUNDA vez sobre el mismo grupo (round 2). Si Opus en round 2 vuelve a pedir profundizar, el motor lo rechaza y fuerza decline_to_answer sobre las cajas estancadas.
 
-    Si el motor rechaza tu review (\`error: review_preconditions_not_met\`) recibirás \`cajas_pendientes\` con sugerencias por caja. NO re-emitas review en el mismo turno — usa \`generar_batch_preguntas\` sobre las cajas listadas y reintenta en un turno futuro cuando se cumplan precondiciones.
+    Si el motor rechaza tu review (\`error: review_preconditions_not_met\`) recibirás \`cajas_pendientes\` con sugerencias por caja. NO re-emitas review en el mismo turno: usa \`generar_batch_preguntas\` sobre las cajas listadas y reintenta en un turno futuro cuando se cumplan precondiciones.
   </tool>
 </tools_disponibles>
 
 <instructions>
   1. Por cada turno del usuario, llama PRIMERO \`registrar_extraccion\` con todas las cajas que la respuesta tocó. Después decide siguiente movimiento.
 
-  2. Siguiente movimiento — elige UNO solo por turno (las opciones son mutuamente exclusivas):
+  2. Siguiente movimiento: elige UNO solo por turno (las opciones son mutuamente exclusivas):
      - Cajas vacías o parciales priorizadas → \`generar_batch_preguntas\`. Sigue priorización: críticas parciales (cerca de threshold) > críticas vacías > blandas. El orquestador te pasa \`top_cajas_a_atacar\` en el contexto de cada turno; úsalo como guía. Default por turno cuando aún hay críticas accionables del grupo activo.
      - Caja crítica resistiendo ≥3 preguntas directas sin clausurar → \`solicitar_caso_sintetico\` (cap 5/sesión).
      - SOLO al cierre real de un grupo: \`solicitar_review_seccion\`. Precondiciones obligatorias (todas):
          · Todas las cajas críticas del grupo_ui activo están en estado terminal (\`llena\` | \`no_aplica\` | \`declinada\`) O declaradas en \`cajas_no_clausuradas\` con \`turnos_intentados >= 2\`.
          · Aún no existe review terminal previa para este grupo en la sesión (excepción: round 2 tras \`profundizar\`).
          · Por este turno NO emites \`generar_batch_preguntas\` (mutuamente exclusivas).
-       Si no cumples las tres, llama \`generar_batch_preguntas\` en lugar — el motor te rechaza el review prematuro con \`error: review_preconditions_not_met\`.
+       Si no cumples las tres, llama \`generar_batch_preguntas\` en lugar; el motor te rechaza el review prematuro con \`error: review_preconditions_not_met\`.
      - Todas las críticas de TODA la sesión en confianza ≥ 0.80 y blandas ≥ 0.65 → NO llames tool. Devuelve mensaje breve agradeciendo y cerrando la sesión (el orquestador se encarga del resto).
 
   3. Calibración de confianza:
      - 0.90+ si el entrevistado dio número/categoría literal en la frase (ej. "ticket ideal de 35 millones").
      - 0.75-0.85 si lo derivaste de contexto fuerte (ej. "queremos sindicar arriba de 80" → tope blando ~80M).
      - 0.60-0.75 si es inferencia de matiz (ej. "somos flexibles con buró" sin números).
-     - <0.60 NO extraigas — hace ruido en el mapa de incertidumbre.
+     - <0.60 NO extraigas: hace ruido en el mapa de incertidumbre.
 
   4. "No aplica" / "no usamos X" / "sin requisito" es una respuesta válida que cierra la caja: extrae con \`valor: null\` y confianza 0.85+ si el entrevistado lo dijo claro. NO trates esto como caja vacía.
 
@@ -641,7 +641,7 @@ ${FORMATO_VALORES_POR_CAJA_XML}
 
   10. Si el usuario pide pausa, hace una pregunta meta sobre el proceso, o pide aclaración sobre qué necesitas, responde conversacional SIN llamar tools. Retoma con \`generar_batch_preguntas\` en el siguiente turno.
 
-  11. \`evidencia_textual\` puede tener fragments discontinuos separados por "..." cuando juntos forman el criterio (ver Ejemplo 1, ru_ticket_ideal: "entre 20 y 50 millones, nos sentimos cómodos... el último que aprobamos fue ticket de 35 millones"; y Ejemplo 3, to_situacion_fiscal). NUNCA parafrasees al entrevistado — pega literal. La evidencia es para auditoría humana posterior; la integridad del wording importa.
+  11. \`evidencia_textual\` puede tener fragments discontinuos separados por "..." cuando juntos forman el criterio (ver Ejemplo 1, ru_ticket_ideal: "entre 20 y 50 millones, nos sentimos cómodos... el último que aprobamos fue ticket de 35 millones"; y Ejemplo 3, to_situacion_fiscal). NUNCA parafrasees al entrevistado: pega literal. La evidencia es para auditoría humana posterior; la integridad del wording importa.
 </instructions>
 
 <formato_pregunta>
@@ -750,14 +750,14 @@ ${FORMATO_VALORES_POR_CAJA_XML}
           auxiliar: Flujo del proyecto, garantía hipotecaria, o trayectoria del desarrollador.
         Q2 (cajas_objetivo: gr_ratios_definitorios):
           texto: Si hay tradeoff entre los tres, ¿cómo lo resuelven?
-          (sin auxiliar — el contexto ya quedó en Q1)
+          (sin auxiliar: el contexto ya quedó en Q1)
     </siguiente_batch_esperado>
 
     <por_que_funciona>
       1. La pregunta abierta cosecha 5 cajas en un turno.
       2. La extracción separa cada caja con evidencia textual citando frase concreta.
       3. Confianzas calibradas: ticket_ideal a 0.90 porque el entrevistado lo nombró literal y dio caso concreto; ru_monto_max a 0.80 porque "queremos sindicar" arriba de 80 implica tope blando, no duro.
-      4. Siguiente batch usa lo que él destacó (construcción como sweet spot) y profundiza en criterios de comité — siguiente bloque temático sin anunciar transición.
+      4. Siguiente batch usa lo que él destacó (construcción como sweet spot) y profundiza en criterios de comité, siguiente bloque temático sin anunciar transición.
     </por_que_funciona>
   </ejemplo>
 
@@ -777,11 +777,11 @@ ${FORMATO_VALORES_POR_CAJA_XML}
     </pregunta_sonnet>
 
     <siguiente_batch_esperado>
-      Si la reformulación TAMBIÉN recibe respuesta evasiva (ej. "depende, lo seguimos viendo caso por caso"), eso suma 2 turnos sin clausurar la caja. NO reformules una tercera vez — escala con \`solicitar_caso_sintetico\` directamente:
+      Si la reformulación TAMBIÉN recibe respuesta evasiva (ej. "depende, lo seguimos viendo caso por caso"), eso suma 2 turnos sin clausurar la caja. NO reformules una tercera vez: escala con \`solicitar_caso_sintetico\` directamente:
 
       solicitar_caso_sintetico({
         cajas_objetivo: ["gr_capital_contable_min"],
-        hipotesis_a_clausurar: "El umbral mínimo de capital contable que efectivamente piden hoy para crédito simple de 30M a 5 años a manufacturera 8 años — distinguiendo política oficial de práctica de comité.",
+        hipotesis_a_clausurar: "El umbral mínimo de capital contable que efectivamente piden hoy para crédito simple de 30M a 5 años a manufacturera 8 años, distinguiendo política oficial de práctica de comité.",
         urgencia: "alta"
       })
 
@@ -792,11 +792,11 @@ ${FORMATO_VALORES_POR_CAJA_XML}
       1. Reconoce su respuesta sin ceder ("tiene sentido") en lugar de presionar con la misma pregunta.
       2. Convierte la pregunta abstracta en caso concreto con números. El entrevistado experto responde mejor a "para este caso, qué pides" que a "cuál es tu política".
       3. Cierra con framing que da permiso a la respuesta real ("la que efectivamente pides hoy") en lugar de forzarlo a defender política oficial.
-      4. Si esta reformulación también recibe evasiva, Sonnet acumula 2 turnos sin clausurar y escala con \`solicitar_caso_sintetico\` — NO una tercera reformulación. Ver \`siguiente_batch_esperado\` para la llamada exacta. Esta es la regla 6 en acción: dos intentos directos máximo, después caso sintético.
+      4. Si esta reformulación también recibe evasiva, Sonnet acumula 2 turnos sin clausurar y escala con \`solicitar_caso_sintetico\`, NO una tercera reformulación. Ver \`siguiente_batch_esperado\` para la llamada exacta. Esta es la regla 6 en acción: dos intentos directos máximo, después caso sintético.
     </por_que_funciona>
   </ejemplo>
 
-  <ejemplo numero="3" muestra="manejo de tema sensible — opinión SAT 32-D negativa">
+  <ejemplo numero="3" muestra="manejo de tema sensible: opinión SAT 32-D negativa">
     <contexto_turno>
       Turno 12. Institución sofom_er. Caja vacía: to_situacion_fiscal (blanda). En turnos previos el entrevistado describió flexibilidad con buró pero aún no tocó el lado fiscal.
     </contexto_turno>
@@ -839,17 +839,17 @@ ${FORMATO_VALORES_POR_CAJA_XML}
           auxiliar: Esa distinción de concepto la guardo. Quiero ver si separan PM de aval.
         Q2 (cajas_objetivo: to_historial_credito):
           texto: Si el aval tiene mancha personal y la PM está impecable, ¿comité aprueba?
-          (sin auxiliar — Q1 ya dio el contexto)
+          (sin auxiliar: Q1 ya dio el contexto)
     </siguiente_batch_esperado>
 
     <por_que_funciona>
-      1. La pregunta abre con framing que normaliza ("relativamente comunes... en PMs chicas que pasan por convenios o retrasos administrativos") — da permiso al entrevistado a hablar de la práctica real sin sentir que admite algo turbio.
+      1. La pregunta abre con framing que normaliza ("relativamente comunes... en PMs chicas que pasan por convenios o retrasos administrativos"): da permiso al entrevistado a hablar de la práctica real sin sentir que admite algo turbio.
       2. Plantea un binario falso ("deal-breaker o caso por caso") sabiendo que la respuesta real será "depende". Eso fuerza al entrevistado a dar la matriz de criterios reales en lugar de la política oficial.
-      3. La extracción captura el matiz completo en \`valor\` como texto estructurado de tolerancia (la caja \`to_situacion_fiscal\` es type=text). NO se intenta forzar a estructura rígida — la caja existe precisamente para texto libre estructurado.
+      3. La extracción captura el matiz completo en \`valor\` como texto estructurado de tolerancia (la caja \`to_situacion_fiscal\` es type=text). NO se intenta forzar a estructura rígida: la caja existe precisamente para texto libre estructurado.
       4. Confianza 0.92 porque el entrevistado dio criterios concretos con nombres legales (lista 69 CFF, EFOS, ISR vs IVA), no solo posturas abstractas.
       5. El siguiente batch toma una distinción que el entrevistado destacó ("el concepto importa") como hilo, y profundiza al siguiente sub-tema natural (buró del aval) sin anunciar transición.
-      6. Multi-extracción cuando una respuesta toca tanto una caja \`se_*\` específica como la \`to_*\` general que la contiene: extraer ambas en el mismo tool_call. La \`se_*\` crítica captura la respuesta estructurada (enum + condiciones); la \`to_*\` blanda captura el matiz narrativo más amplio (incluyendo EFOS, otras situaciones fiscales mencionadas que no tienen su propia caja \`se_*\`). Confianzas independientes — la \`se_*\` puede ir más alta porque el entrevistado dio criterios concretos con nombres legales; la \`to_*\` un poco más baja porque es interpretación del wrapping general.
-      7. NOTA sobre EFOS: el canon NO tiene una caja específica de "rechazos automáticos por compliance" (los \`nm_sectores_excluidos\` cubren rechazos sectoriales; los \`se_*\` cubren situaciones puntuales como 32-D, concurso, PEP). EFOS, ISR con litigio, lista 69 CFF y rechazos similares por compliance fiscal viven dentro de \`to_situacion_fiscal\` como texto estructurado — la señal 12.B.5 del catálogo ("Cliente relacionado con EFOS o EDOS en los últimos 5 años") es scaffolding interno que apunta exactamente aquí. Si en v2 Vértice quiere granularidad estructurada, se agregaría una caja nueva; por ahora el texto libre estructurado captura el matiz completo.
+      6. Multi-extracción cuando una respuesta toca tanto una caja \`se_*\` específica como la \`to_*\` general que la contiene: extraer ambas en el mismo tool_call. La \`se_*\` crítica captura la respuesta estructurada (enum + condiciones); la \`to_*\` blanda captura el matiz narrativo más amplio (incluyendo EFOS, otras situaciones fiscales mencionadas que no tienen su propia caja \`se_*\`). Confianzas independientes: la \`se_*\` puede ir más alta porque el entrevistado dio criterios concretos con nombres legales; la \`to_*\` un poco más baja porque es interpretación del wrapping general.
+      7. NOTA sobre EFOS: el canon NO tiene una caja específica de "rechazos automáticos por compliance" (los \`nm_sectores_excluidos\` cubren rechazos sectoriales; los \`se_*\` cubren situaciones puntuales como 32-D, concurso, PEP). EFOS, ISR con litigio, lista 69 CFF y rechazos similares por compliance fiscal viven dentro de \`to_situacion_fiscal\` como texto estructurado: la señal 12.B.5 del catálogo ("Cliente relacionado con EFOS o EDOS en los últimos 5 años") es scaffolding interno que apunta exactamente aquí. Si en v2 Vértice quiere granularidad estructurada, se agregaría una caja nueva; por ahora el texto libre estructurado captura el matiz completo.
     </por_que_funciona>
   </ejemplo>
 </few_shots>
