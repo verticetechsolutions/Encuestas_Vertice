@@ -100,6 +100,19 @@ export function HeroPregunta({
   textoRef.current = texto;
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
+  // Si el textarea NO tiene overflow interno (texto cabe en el viewport del
+  // control), `data-lenis-prevent` hace que Lenis salga sin actualizar
+  // targetScroll y el browser scrollea el documento natively. La siguiente
+  // tick del RAF loop de Lenis hace `window.scrollTo(targetScroll)` con un
+  // valor stale y revierte → bounce arriba/abajo perceptible. Aplicamos el
+  // attr solo cuando hay overflow real (scrollHeight > clientHeight).
+  const [textareaTieneOverflow, setTextareaTieneOverflow] = useState(false);
+  useEffect(() => {
+    const ta = textareaRef.current;
+    if (!ta) return;
+    setTextareaTieneOverflow(ta.scrollHeight > ta.clientHeight);
+  }, [texto]);
+
   // Auto-focus al textarea cuando el user activa el mic. Sin esto, el cursor
   // visible se queda en el botón, lo cual genera la sensación de que "no se
   // está escribiendo" hasta que el WS de Deepgram abre (~400-800ms más tarde).
@@ -211,9 +224,11 @@ export function HeroPregunta({
           aria-readonly={marcada}
           aria-label="Tu respuesta a la pregunta actual"
           // El smooth-scroll global de Lenis intercepta wheel a nivel window.
-          // En respuestas largas que activan overflow-auto del textarea, sin
-          // este attr el wheel scrollearía la página en vez del textarea.
-          data-lenis-prevent
+          // En respuestas largas que activan overflow-auto del textarea, este
+          // attr hace que Lenis no robe el wheel y se scrollee el textarea.
+          // Lo aplicamos SOLO cuando hay overflow real: si no, Lenis se desyncroniza
+          // contra el scroll nativo y produce un bounce arriba/abajo.
+          {...(textareaTieneOverflow ? { 'data-lenis-prevent': '' } : {})}
           className={cn(
             'min-h-[180px] max-h-[360px] resize-none overflow-auto rounded-xl px-5 py-4 text-base leading-relaxed transition-all',
             'placeholder:text-foreground/35 border shadow-none',
