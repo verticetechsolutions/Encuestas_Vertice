@@ -10,10 +10,11 @@ Este doc es el punto de entrada para retomar el proyecto en una computadora dist
 
 1. Este HANDOFF (5 min).
 2. **`docs/alpha-readiness-2026-05-12.md`** — reporte CTO con qué está cerrado técnicamente y qué requiere acción founder antes del primer aliado. Punto de entrada para entender el estado actual.
-3. `docs/smoke-entrevista-real-2026-05-12.md` — smoke real con voz que motivó los hardening fixes.
-4. `docs/bugs-encontrados-2026-05-11-stt.md` — bugs STT del smoke aislado en `/demo/stt` (PR #21).
-5. `docs/bugs-encontrados-2026-05-11-e2e.md` — bugs del E2E previo del motor.
-6. `README.md` + `IMPLEMENTATION.md` — overview general del proyecto.
+3. **`docs/deuda-tecnica-2026-05-12.md`** — inventario priorizado de items para cerrar en sesiones aparte (14 items, ninguno bloquea el primer piloto pero deben cerrarse antes del 2do/3er aliado).
+4. `docs/smoke-entrevista-real-2026-05-12.md` — smoke real con voz que motivó los hardening fixes.
+5. `docs/bugs-encontrados-2026-05-11-stt.md` — bugs STT del smoke aislado en `/demo/stt` (PR #21).
+6. `docs/bugs-encontrados-2026-05-11-e2e.md` — bugs del E2E previo del motor.
+7. `README.md` + `IMPLEMENTATION.md` — overview general del proyecto.
 
 ---
 
