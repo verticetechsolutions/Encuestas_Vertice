@@ -49,6 +49,10 @@ export function TranscriptionPanel({ transcripts, onEdit, className }: Props) {
   const lastHistoryLenRef = useRef<number>(0);
   const [editing, setEditing] = useState(false);
   const [editKey, setEditKey] = useState(0);
+  // Aplicamos data-lenis-prevent SOLO cuando el panel tiene overflow interno
+  // real. Si no, Lenis se desyncroniza contra el scroll nativo del browser y
+  // produce un bounce arriba/abajo (mismo patrón fix HeroPregunta).
+  const [tieneOverflow, setTieneOverflow] = useState(false);
 
   // Auto-scroll a fondo cuando llega un nuevo final, salvo en modo edit
   // (no queremos saltarle el viewport al user mientras edita).
@@ -60,6 +64,12 @@ export function TranscriptionPanel({ transcripts, onEdit, className }: Props) {
       if (el) el.scrollTop = el.scrollHeight;
     }
   }, [transcripts.history.length, editing]);
+
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    setTieneOverflow(el.scrollHeight > el.clientHeight);
+  }, [transcripts.history.length, transcripts.interim, editing, editKey]);
 
   function enterEdit(): void {
     // Snapshot inmutable de los segmentos al momento de entrar a edit.
@@ -104,8 +114,9 @@ export function TranscriptionPanel({ transcripts, onEdit, className }: Props) {
       ref={scrollRef}
       // data-lenis-prevent: Lenis (smooth-scroll global) intercepta wheel a
       // nivel window. Sin esto el wheel sobre el panel scrollearía la página
-      // en lugar de la transcripción.
-      data-lenis-prevent
+      // en lugar de la transcripción. Lo aplicamos SOLO cuando hay overflow
+      // interno: si no, Lenis se desyncroniza con el scroll nativo y bouncea.
+      {...(tieneOverflow ? { 'data-lenis-prevent': '' } : {})}
       className={cn(
         'h-72 overflow-y-auto rounded-lg border border-border bg-background p-4',
         'text-base leading-relaxed text-foreground',
