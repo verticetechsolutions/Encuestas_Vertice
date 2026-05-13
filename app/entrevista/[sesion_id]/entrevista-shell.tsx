@@ -223,20 +223,20 @@ export function EntrevistaShell({
               Jerarquía: Banco Demo es H1 (peer del logo, el sujeto de la
               entrevista) y domina la columna derecha. La eyebrow de contexto
               vive arriba como micro-pre-label, el chip de status va abajo. */}
-          <div className="relative flex items-start justify-between gap-6 px-6 py-5 md:px-9 md:py-6">
+          <div className="relative flex items-center justify-between gap-6 px-6 py-6 md:px-9 md:py-7">
             <Image
               src="/Logo_white.svg"
               alt="Vértice"
               width={7095}
               height={2369}
               priority
-              className="h-11 w-auto select-none md:h-14"
+              className="h-12 w-auto select-none md:h-16"
             />
             <div className="flex flex-col items-end gap-2 text-right">
               <p className="text-[10px] font-medium uppercase tracking-[0.16em] text-[color:var(--survey-card-1-fg-faint)]">
                 Entrevista de criterios
               </p>
-              <p className="text-[19px] font-semibold leading-none tracking-tight text-[color:var(--survey-card-1-fg)] md:text-[20px]">
+              <p className="text-[22px] font-semibold leading-none tracking-tight text-[color:var(--survey-card-1-fg)] md:text-[26px]">
                 {nombre_institucion}
               </p>
               {preview ? (
