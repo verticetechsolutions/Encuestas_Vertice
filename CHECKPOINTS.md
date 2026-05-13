@@ -24,6 +24,41 @@
 
 ---
 
+## 2026-05-13 — Cobertura tests admin + actions (deuda #5 cerrada)
+
+**Branch:** `master`  ·  **Suite:** 474/474 verdes (+25 nuevos) · typecheck limpio
+**Sesión:** ejecución de deuda alta #5 vía `/goal`. Auditoría inicial reveló que el item estaba mal calibrado: la deuda decía "23 archivos sin test" pero la realidad es que 5/9 actions y 2/2 routes admin críticos ya estaban cubiertos. Solo faltaban tests para 3 actions (`adminAuth`, `sesionLogout`, `adminInstituciones` parte editar/eliminar). Total: ~2.5h reales vs estimado 4-6h.
+
+### Lo que se hizo
+
+**Auditoría del estado real** (antes de escribir tests):
+- `app/actions/` con 9 archivos `.ts`: 5 ya con `.integration.test.ts` adyacente (`instituciones`, `respuestas`, `sesiones`, `auth`, `adminMagicLinks`). 3 sin test (`adminAuth`, `sesionLogout`, `adminInstituciones`). 1 no aplica (`respuestas.contracts.ts` solo schemas declarativos).
+- `app/admin/api/` routes: ambas cubiertas (`export/[entity]`, `search`).
+- `app/admin/*/page.tsx` (RSC pages): sin tests; decisión documentada de cubrir vía smoke manual + Playwright si surge regresión post-piloto.
+
+**Tests escritos:**
+- `app/actions/adminAuth.unit.test.ts` (9 tests): unit tests porque adminAuth no toca DB. `loginAdmin` con happy path + happy con `next`, security (next arbitrario → `/admin`), rate-limit, admin_disabled, admin_invalid_token, IP fallback `x-forwarded-for → x-real-ip`, user-agent truncado 200 chars. `logoutAdmin` con `clearAdminCookie` + redirect. Patrón clave: `redirect` mockeado para lanzar `TestRedirectError` y parar control flow en cascada.
+- `app/actions/sesionLogout.unit.test.ts` (2 tests): trivial. Verifica `clearSessionCookie` invocado + redirect a `/`. Segundo test es sanity guard contra futuros refactors que agreguen UPDATE sesiones SET status='abandonada' (decisión documentada en el archivo).
+- `app/actions/adminInstituciones.integration.test.ts` (14 tests): integration porque editar/eliminar tocan DB real. `editarInstitucion` con 8 casos (happy, parcial, nombre_comercial vacío explícito → null, sin auth, id vacío, id inexistente, email duplicado 23505, email inválido Zod). `eliminarInstitucion` con 6 casos (happy, sin auth, id vacío/inexistente, bloqueado por sesiones FK, bloqueado por magic_tokens FK). `crearInstitucionConLink` ya en `instituciones.integration.test.ts`.
+
+**Hallazgo durante implementación** (audit log):
+- La tabla `audit_admin_actions` se crea en migración 0006 que NO está aplicada al branch test-integration. El primer run del integration test falló con `relation "audit_admin_actions" does not exist`. Solución: mockear `@/lib/auth/audit` con `withAuditLog = (action, meta, fn) => fn()` — pass-through directo. Los tests focalizan en business logic de la action (UPDATE/DELETE + pre-check FK + return shape), no en el audit log que tiene cobertura propia.
+- Esta decisión deja el audit log SIN test E2E al pasar por `editarInstitucion`/`eliminarInstitucion`. Si se quiere validar el contenido del audit en el futuro, hay que aplicar 0006 al branch test (un alter table simple).
+
+### Pendientes / blockers
+
+**Sin nuevos bloqueantes.** Deuda #5 cerrada completa. 2 decisiones documentadas en DEUDA_TECNICA item #5 footer:
+- RSC pages (`app/admin/*/page.tsx`) sin test unit/integration. Cubiertas por smoke manual del founder. Si surge regresión, Playwright focal post-piloto.
+- Client form `nueva-form.tsx` sin test porque requiere `@testing-library/react` (deuda #12 lo declara como bloqueante). Cerrar al cerrar #12.
+
+### Cómo retomar
+
+- Si en una sesión futura aparece error `relation "audit_admin_actions" does not exist` en algún test integration: aplicar migración 0006 a la DB del branch test (`vertice-mvp/test-integration`). Toda la fila de migraciones 0000-0008 debería estar aplicada idempotentemente al branch test.
+- Si se quiere extender cobertura a las RSC pages admin: el patrón es `app/admin/instituciones/page.integration.test.ts` con un mock de `next/cache` + DB real test, importar la default export, llamar como función async, verificar el output JSX vía snapshot o querying específico. Pero RSC tests son frágiles ante cambios visuales; preferir Playwright para flujos críticos.
+- Si se quiere agregar audit log contenido al test de `eliminarInstitucion`: aplicar migración 0006 al branch test, quitar el mock de `@/lib/auth/audit` del archivo `adminInstituciones.integration.test.ts`, y agregar SELECT sobre `audit_admin_actions` después de cada action verificando que hubo INSERT con `action='instituciones.eliminar'`.
+
+---
+
 ## 2026-05-13 — Sign-off prompts Opus generador + validador casos sintéticos (Fase 5 sub-paso iv)
 
 **Branch:** `master`  ·  **HEAD:** `fd78e99` (commit consolidado del día con sign-off + barrida deuda + perf STT + Fase 8 + audit retention)  ·  **Suite:** 449/449 verdes · typecheck limpio

@@ -2,10 +2,10 @@
 
 > **Source of truth del proyecto.** Cualquier agente o sesión que toque este repo lee este documento primero y lo actualiza al cerrar tarea relevante. Si hay duda entre este doc y otros, **gana este doc** (excepto `IMPLEMENTATION.md` para detalles de contrato técnico de las fases).
 
-**Última actualización:** 2026-05-13 (cuarta pasada: sign-off prompts Opus generador + validador casos, cierre deuda #1)
+**Última actualización:** 2026-05-13 (quinta pasada: cobertura tests admin + actions, cierre deuda #5)
 **Branch canónica:** `master`
-**HEAD aproximado:** `fd78e99` (chore: consolidar trabajo 2026-05-13 — sign-off Opus + deuda + perf) · working tree limpio · ramas vivas: ninguna activa
-**Suite:** 449/449 tests verdes · typecheck limpio · `next build` OK
+**HEAD aproximado:** `dc18603` (docs: registrar HEAD fd78e99 en STATUS + CHECKPOINTS + DEUDA) · working tree con 3 archivos test nuevos sin commitear · ramas vivas: ninguna activa
+**Suite:** 474/474 tests verdes (+25 nuevos sobre 449) · typecheck limpio · `next build` OK
 
 ---
 
@@ -80,7 +80,7 @@ Ver registro detallado y vivo en [`docs/DEUDA_TECNICA.md`](docs/DEUDA_TECNICA.md
 | 2 | Bug O3-marca race condition (browser automation) | ✅ Cerrado (2026-05-13) | — |
 | 3 | STT keyterms incompletos | ✅ Cerrado (`53485b9`, 33 términos) | — |
 | 4 | Em-dashes residuales en few-shots | ✅ Cerrado (`786885f`) | — |
-| 5 | Cobertura tests en `app/admin/` y `app/actions/` | 🟡 Media | 4-6h |
+| 5 | Cobertura tests en `app/admin/` y `app/actions/` | ✅ Cerrado (2026-05-13, +25 tests sobre adminAuth/sesionLogout/adminInstituciones) | — |
 | 6 | `z.unknown()` en schemas críticos | 🟡 Media (plan revisado: B=2h, A=6-8h) | 2-8h |
 | 7 | Audit log sin retention policy | ✅ Cerrado (2026-05-13) | — |
 | 8 | `fuente: 'usuario_tipea'` hardcoded en `/api/turn` | ✅ Cerrado (2026-05-13) | — |
