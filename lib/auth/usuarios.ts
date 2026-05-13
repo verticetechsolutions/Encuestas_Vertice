@@ -27,10 +27,31 @@ import {
 } from '@/db/schema';
 import { logger } from '@/lib/observability/axiom';
 
-// Dominio reservado para el equipo Vértice → role='admin', sin institucion_id.
-// Hardcoded acá (no en DB) porque admin es una identidad organizacional fija,
-// no una "institución aliada".
-const VERTICE_ADMIN_DOMAIN = 'verticemexico.com';
+// Dominio(s) reservados para el equipo Vértice → role='admin', sin
+// institucion_id. Configurable vía env `VERTICE_ADMIN_DOMAINS` (lista
+// separada por comas) para soportar tanto el dominio corporativo
+// (verticemexico.com cuando se active Google Workspace) como cuentas
+// individuales (verticetechsolutions@gmail.com en pre-alpha).
+//
+// Formato env: `verticemexico.com,verticetechsolutions@gmail.com`
+//   - Sin @ → matchea el dominio (cualquier email @ese-dominio entra como admin).
+//   - Con @ → matchea el email completo (whitelist específica).
+//
+// Default si la env está vacía: `verticemexico.com` solamente.
+const VERTICE_ADMIN_DOMAINS = (
+  process.env.VERTICE_ADMIN_DOMAINS ?? 'verticemexico.com'
+)
+  .split(',')
+  .map((s) => s.trim().toLowerCase())
+  .filter(Boolean);
+
+/** Decide si un email tiene role='admin' según la whitelist configurada. */
+function esAdminEmail(emailNormalizado: string, dominio: string): boolean {
+  return VERTICE_ADMIN_DOMAINS.some((entry) => {
+    if (entry.includes('@')) return entry === emailNormalizado;
+    return entry === dominio;
+  });
+}
 
 export type Usuario = {
   id: string;
@@ -110,8 +131,9 @@ export async function resolverUsuarioPorEmail(
 
   // 2. Usuario no existe — resolver dominio → institución/admin.
 
-  // 2a. Equipo Vértice → admin sin institución.
-  if (dominio === VERTICE_ADMIN_DOMAIN) {
+  // 2a. Equipo Vértice (whitelist por env VERTICE_ADMIN_DOMAINS) → admin
+  //     sin institución.
+  if (esAdminEmail(emailNormalizado, dominio)) {
     const creado = await crearUsuarioInternal({
       institucion_id: null,
       email: emailNormalizado,
