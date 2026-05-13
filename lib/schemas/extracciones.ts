@@ -165,6 +165,75 @@ export function valorSchemaFor(caja_codigo: string): z.ZodTypeAny {
 }
 
 // =============================================================================
+// Type-narrow mapping: caja_codigo → shape concreta de `valor`
+// =============================================================================
+//
+// Plan B de deuda #6 (2026-05-13). El envelope `ExtraccionSchema.valor` queda
+// como `z.unknown()` porque el sitio común (route handler, snapshot, loops
+// genéricos) no conoce el caja_codigo en compile-time. Para sites que SÍ lo
+// conocen estáticamente, `parseValorPorCaja<C>` y `parseExtraccion<C>` con
+// hint reciben el codigo como literal type, validan runtime contra
+// `valorSchemaFor(codigo)`, y devuelven el shape concreto vía mapping type.
+//
+// Cubierto explícitamente: las 14 cajas con shape composite (5 to_*, 5 se_*,
+// co_email_telefono, op_eeff_auditados, 2 pc_*). Las cajas generic-por-tipo
+// (text/int/real/bool/enum/enum_multi/tabla/objeto) caen al fallback `unknown`
+// porque el caja_codigo no determina estáticamente el tipo_dato — habría que
+// enumerar los 81 codigos como un literal union para narrowearlos, que es
+// Plan A (queda para v2 si surge necesidad real de type-safety en loops).
+
+interface SpecialValorMap {
+  to_historial_credito: Tolerancia;
+  to_situacion_fiscal: Tolerancia;
+  to_ratios_financieros: Tolerancia;
+  to_colateral: Tolerancia;
+  to_gobierno_documentacion: Tolerancia;
+  se_sin_historial: SituacionEspecial;
+  se_sat_32d_negativa: SituacionEspecial;
+  se_concurso_mercantil: SituacionEspecial;
+  se_socios_extranjeros: SituacionEspecial;
+  se_pep_estructura: SituacionEspecial;
+  co_email_telefono: EmailTelefono;
+  op_eeff_auditados: EeffAuditados;
+  pc_tasas_por_producto: TasasPorProducto;
+  pc_plazos_por_producto: PlazosPorProducto;
+}
+
+/**
+ * Mapping type: caja_codigo literal → shape concreto del valor.
+ *
+ * Si `C` es uno de los 14 codigos en `SpecialValorMap`, devuelve el type concreto
+ * (`Tolerancia`, `SituacionEspecial`, `EmailTelefono`, etc.). Si `C` es cualquier
+ * otro string (o el wide type `string`), devuelve `unknown` — mismo comportamiento
+ * que el envelope actual.
+ */
+export type ValorPorCaja<C extends string> = C extends keyof SpecialValorMap
+  ? SpecialValorMap[C]
+  : unknown;
+
+/**
+ * Type-narrow parse helper. El call site pasa el caja_codigo que ya conoce y el
+ * valor (unknown), y obtiene de vuelta el shape concreto si la caja está en
+ * SpecialValorMap, o `unknown` si cae al fallback generic-by-tipo.
+ *
+ * Runtime: valida vía `valorSchemaFor(codigo).parse(valor)`. Si falla, throw
+ * ZodError (igual que `parseExtraccion`). Para variante safe (no-throw) usar
+ * `valorSchemaFor(codigo).safeParse(valor)` directo.
+ *
+ * Ejemplos:
+ *   const tol: Tolerancia = parseValorPorCaja('to_historial_credito', raw);
+ *   const eef: EeffAuditados = parseValorPorCaja('op_eeff_auditados', raw);
+ *   const dyn: unknown      = parseValorPorCaja(codigoVariable, raw);
+ *                              // ↑ codigoVariable: string → fallback unknown
+ */
+export function parseValorPorCaja<C extends string>(
+  codigo: C,
+  valor: unknown
+): ValorPorCaja<C> {
+  return valorSchemaFor(codigo).parse(valor) as ValorPorCaja<C>;
+}
+
+// =============================================================================
 // Envelope schema — mirrors the `extracciones` DB row
 // =============================================================================
 
@@ -190,11 +259,40 @@ export const ExtraccionSchema = z.object({
 });
 export type Extraccion = z.infer<typeof ExtraccionSchema>;
 
-// Combined envelope + per-caja value parse. Returns the fully typed extracción with
-// `valor` validated against the right sub-schema.
-export function parseExtraccion(raw: unknown): Extraccion & { valor: unknown } {
+// Combined envelope + per-caja value parse.
+//
+// Sin hint: devuelve `Extraccion & { valor: unknown }` — mismo comportamiento
+// que el original. Usar este shape cuando el caller no conoce el caja_codigo
+// estáticamente (route handlers, snapshots, loops genéricos).
+//
+// Con hint literal: devuelve `Extraccion & { valor: ValorPorCaja<C> }` —
+// narrow al shape concreto si la caja está en SpecialValorMap. El hint se
+// valida runtime contra `envelope.caja_codigo`: si difieren, throw
+// `ExtraccionHintMismatchError` (evita el "type lie" donde el type narrow
+// no coincide con el shape runtime).
+export class ExtraccionHintMismatchError extends Error {
+  constructor(
+    public readonly expected: string,
+    public readonly actual: string
+  ) {
+    super(
+      `parseExtraccion: hint='${expected}' no coincide con caja_codigo='${actual}'`
+    );
+    this.name = 'ExtraccionHintMismatchError';
+  }
+}
+
+export function parseExtraccion<C extends string = string>(
+  raw: unknown,
+  hint?: C
+): Extraccion & { valor: ValorPorCaja<C> } {
   const envelope = ExtraccionSchema.parse(raw);
-  const valor = valorSchemaFor(envelope.caja_codigo).parse(envelope.valor);
+  if (hint !== undefined && envelope.caja_codigo !== hint) {
+    throw new ExtraccionHintMismatchError(hint, envelope.caja_codigo);
+  }
+  const valor = valorSchemaFor(envelope.caja_codigo).parse(
+    envelope.valor
+  ) as ValorPorCaja<C>;
   return { ...envelope, valor };
 }
 
