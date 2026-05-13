@@ -2,6 +2,8 @@
 
 **Documento de implementación · 30 de abril 2026**
 
+**Última revisión:** 2026-05-13 (audit de sincronización con código real — §19 Google SSO movido a §20, §22.1 corregida sobre `pdf_url` columna, §22.1 actualizada con migraciones 0000-0007).
+
 Este documento es el contrato completo del producto que vas a construir. No es una guía abierta a interpretación. Es la fuente de verdad. Si encuentras una contradicción entre algo que digo aquí y algo que el founder te diga después en chat, **pregunta antes de asumir**.
 
 ---
@@ -1217,62 +1219,7 @@ las features que dependen:
 
 `extraccion.contradice_sin_previa` se resolvió 2026-05-10 (ver §20).
 
-### Google SSO real (post-MVP)
-
-**Estado:** la landing pública (`app/page.tsx:870`) muestra un botón
-"Continuar con Google" que abre un dialog "Próximamente. La autenticación
-con Google estará disponible al activar el panel". El flujo único activo
-hoy es magic link via email. El stub está intencional — la UI promete la
-opción para el día que aterrice.
-
-**Por qué importa para el roadmap:**
-- Aliados financieros institucionales (CNBV-regulados) esperan SSO con
-  cuenta corporativa (Google Workspace dominante en pyme MX). Magic link
-  por email funciona pero los compliance teams suelen requerir auth
-  federado.
-- Acelera onboarding al 2do, 3er, Nº piloto: en lugar de generar magic
-  link manual desde admin por cada nuevo usuario de la institución, el
-  founder pre-autoriza el dominio (e.g. `@bancodemo.mx`) y cualquier
-  empleado con cuenta Google de ese dominio entra directo.
-- Reduce superficie de ataque a magic links (que viven 7 días con TTL
-  fijo). SSO permite revocar al instante via Google Workspace admin.
-
-**Decisiones arquitectónicas pendientes (founder + tech):**
-1. **Scope:** ¿solo aliado-side, solo admin-side, ambos, o pivot completo
-   reemplazando magic link? `lib/auth/admin.ts:13` ya menciona "puede
-   pivotar a OAuth/SSO sin tocar el contrato".
-2. **Provider:** ¿`next-auth` (Auth.js) v5, `@auth/core` direct, o
-   implementación custom contra Google OAuth 2.0 + OIDC? next-auth da
-   más rápido (adapter Drizzle existe), implementación custom da control
-   sobre el cookie shape para no romper el contrato actual de
-   `vertice_session = sesion_id`.
-3. **Mapping a `sesiones`:** ¿la cuenta Google se ata 1:1 a una
-   `instituciones`? ¿Múltiples emails Google pueden compartir la misma
-   sesión activa de la institución? ¿Cómo se gestionan empleados que
-   rotan? (Workspace admin revoca → ¿cierra la sesión Vértice?)
-4. **Domain whitelist:** la admin debe poder agregar dominios autorizados
-   por institución. Tabla nueva o columna jsonb en `instituciones`.
-5. **Convivencia con magic link:** ¿se mantiene como fallback (cuenta
-   personal sin Google Workspace) o se desactiva? Decisión que afecta
-   la migración 0001 magic_tokens.
-
-**Cambios concretos que requeriría:**
-- Tabla `usuarios` (id, email, google_sub, institucion_id, role, created_at).
-- Tabla `dominios_autorizados` o columna jsonb en `instituciones`.
-- Server Actions: `signInWithGoogle`, `linkUsuarioToInstitucion`.
-- Middleware: extender el gate cookie `vertice_session` para resolver
-  vía usuario→institución (hoy es directo a sesion_id).
-- UI: `app/page.tsx` reemplazar el dialog "Próximamente" con flow real;
-  nuevo `/admin/usuarios` para gestión.
-- Env vars: `GOOGLE_CLIENT_ID`, `GOOGLE_CLIENT_SECRET`, `AUTH_SECRET`.
-
-**Cuándo:** post-MVP, pre-segundo piloto. No bloqueante para el primer
-aliado (puede entrar via magic link). Bloqueante para escalar a Nº pilotos
-sin overhead manual del founder en cada onboarding.
-
-**Tracker:** este item se mantiene en §19 hasta que aterrice (no
-graduarlo a §20 sin resolución completa). Cuando se cierre, mover toda
-la spec aquí escrita a §20 con cambios concretos aplicados.
+### ~~Google SSO real (post-MVP)~~ ✅ RESUELTO 2026-05-12 (commit `cc7de99`, ver §20)
 
 ### ~~Integration tests contra Neon branch efímero~~ ✅ RESUELTO 2026-05-10 (PR #8, ver §20)
 
@@ -1283,6 +1230,47 @@ la spec aquí escrita a §20 con cambios concretos aplicados.
 Registro auditable de items que estuvieron en §19 y se cerraron. Listar aquí
 (en vez de borrar) preserva el historial para postmortems y para entender por
 qué algo está como está al releer.
+
+### Google SSO + per-user auth — resuelto 2026-05-12 (commit `cc7de99` + Sprint 1 security audit)
+
+**Origen:** §19 (versión previa) listaba Google SSO como post-MVP con 5 decisiones
+arquitectónicas pendientes (scope, provider, mapping, domain whitelist, convivencia
+con magic link). Cerrado durante Sprint 1 security audit del 2026-05-12 (commits
+`cc7de99` + `7dadaaf` + `de7721d` + `28b96dd` + `ead8854` + `8ee2d63`).
+
+**Decisiones tomadas:**
+1. **Scope:** ambos — aliado-side + admin-side, con magic link conservado como
+   fallback de cuenta personal.
+2. **Provider:** Auth.js v6 (`next-auth@5.0.0-beta.31`) con JWT strategy
+   (sin DB adapter). Cookie cifrada lleva `usuario_id` + `institucion_id` + `role`.
+3. **Mapping a sesiones:** tabla `usuarios` separada; `usuarios.institucion_id`
+   NULL solo para `role='admin'`. El cookie `__Secure-vertice_auth` reemplaza
+   al viejo `vertice_session` para Auth.js v6, pero el middleware sigue
+   aceptando el viejo cookie para flujos magic-link en transición.
+4. **Domain whitelist:** tabla nueva `institucion_dominios_permitidos` (FK a
+   `instituciones`, dominio case-insensitive vía LOWER index). `VERTICE_ADMIN_DOMAINS`
+   env controla quién puede loguear como admin del equipo Vértice.
+5. **Convivencia con magic link:** SE MANTIENE como fallback (`ADMIN_EMERGENCY_MODE`
+   env permite reactivar form de token compartido durante incidente). El cookie
+   `vertice_session` magic-link sigue funcional.
+
+**Cambios concretos aplicados:**
+- Migración `0006_sso_usuarios_audit.sql` con 3 tablas nuevas (`usuarios`,
+  `institucion_dominios_permitidos`, `audit_admin_actions`) + enum `usuario_role`.
+- `auth.ts` raíz con `NextAuth({ providers: [Google], strategy: 'jwt' })`.
+- `lib/auth/usuarios.ts` con `signInGoogle` que matchea email contra
+  `institucion_dominios_permitidos` o dominio admin hardcoded.
+- `lib/auth/audit.ts` con `withAuditLog()` wrapper para server actions
+  (login, magic_links, instituciones, exports — todos auditados).
+- `app/admin/login/google-sign-in-button.tsx` reemplaza el dialog "Próximamente".
+- Middleware actualizado (`middleware.ts`) para aceptar tanto `vertice_session`
+  como `__Secure-vertice_auth` durante transición.
+
+**Pendiente para v2 (no es deuda nueva, solo nota de roadmap):**
+- UI `/admin/usuarios` para gestión de usuarios+dominios desde el panel (hoy
+  se hace vía SQL directo + env vars).
+- Onboarding self-service de aliados (hoy el admin sigue creando institución
+  y autorizando dominio manualmente).
 
 ### `mapa_incertidumbre` + `cajas_declinadas` — resuelto pre-2026-05-10
 
@@ -1465,7 +1453,7 @@ done sin verificación literal.
   - Set `BLOB_READ_WRITE_TOKEN` en Vercel env (Production + Preview).
   - Wire `lib/inngest/functions/sintetizarSesion.ts:generar-pdf` step para
     `await blobStorage.put(buffer)` y persistir URL en
-    `perfil_decision_final.pdf_url` (columna ya existe).
+    `perfil_decision_final.pdf_url` (columna agregada en migración 0007).
   - Done: una sesión completa en producción genera PDF y la URL queda
     accesible vía `/admin/instituciones/[id]` con expires según TTL del bucket.
 
@@ -1478,8 +1466,16 @@ done sin verificación literal.
 
 - [ ] **Neon production branch + migrations aplicadas** (owner: sesión A).
   - Confirmar que `vertice-mvp/main` tiene aplicadas las migraciones
-    0000-0004 (incluida la 0004 drop de magic_link cols).
-  - Smoke: `SELECT count(*) FROM reviews_seccion;` no falla shape-wise.
+    0000-0007:
+    - 0000 initial schema
+    - 0001 magic_tokens (Fase 4)
+    - 0002 phase5 step5 review handoff (reviews_seccion + cajas_declinadas)
+    - 0003 magic_token revoked_at
+    - 0004 drop dead magic_link cols en instituciones
+    - 0005 telefono_contacto
+    - 0006 SSO usuarios + audit (Sprint 1 security audit)
+    - 0007 add pdf_url en perfil_decision_final (Fase 8 storage prep)
+  - Smoke: `SELECT count(*) FROM reviews_seccion;` y `SELECT pdf_url FROM perfil_decision_final LIMIT 1;` no fallan shape-wise.
   - Done: `db/migrations/meta/_journal.json` actualizado y push a master.
 
 ### 22.2 LLM keys

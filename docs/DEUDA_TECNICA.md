@@ -10,42 +10,50 @@
 
 ## 🔴 Alta prioridad — cerrar antes del 2do aliado
 
-### 1. `solicitar_caso_sintetico` sigue stub
+### 1. `solicitar_caso_sintetico` sigue stub — ✅ CERRADO (2026-05-13)
 
-- **Archivo**: `app/api/turn/route.ts:533-545`
-- **Estado**: `execute` returna `{ ok: true, todo_step_posterior: true }` sin invocar pipeline real. `OPUS_GENERADOR_CASOS_PROMPT_READY = false` en `lib/prompts/opus_generador_casos.ts:519`.
-- **Impacto**: si Opus director decide `caso_sintetico` para destrabar una caja resistente, Sonnet recibe un ack vacío y no destraba. Sesión avanza con la caja en `decline_to_answer`. El cap de 5 casos por sesión limita el daño pero el feature está apagado de facto.
+- **Archivo**: `app/api/turn/route.ts:533-545` (invoca `procesarSolicitudCasoSintetico`); pipeline real en `lib/motor/casos_sinteticos.ts` (2026-05-13).
+- **Estado**: pipeline activo. `OPUS_GENERADOR_CASOS_PROMPT_READY` y `OPUS_VALIDADOR_CASOS_PROMPT_READY` flippeados a `true` con sign-off founder (2026-05-13). Generador corre con Opus 4.7 + `effort=high` + adaptive thinking. Validador corre con Sonnet 4.6 + `effort=low` (sin extended thinking) para cumplir latencia <2s declarada en el header del prompt.
+- **Cambios concretos (2026-05-13 sign-off)**:
+  - **`lib/prompts/opus_generador_casos.ts`** reescrito aplicando best-practices Anthropic Claude 4.7: estructura XML canónica (role, context, constraints, methodology, output_format, examples), instrucciones positivas en lugar de negativas, palabra "think/thinking" removida del system body (Opus 4.5+ keyword), 5 few-shots con arquetipos contrastantes (servicios profesionales CDMX, construcción Bajío, factoraje agro Sinaloa, comercio Yucatán, hotelería Quintana Roo) para anti-mode-collapse. `OPUS_GENERADOR_CASOS_PROMPT_READY = true`.
+  - **`lib/prompts/opus_validador_casos.ts`** reescrito como LLM-as-judge canónico: evaluación criterio-por-criterio en orden fijo antes de emitir bool, fallback "evidencia_insuficiente" en lugar de "ante duda falla", instrucción "responde directamente" para suprimir thinking con `effort=low`. 5 few-shots (pasa + 4 falla por causa distinta). `OPUS_VALIDADOR_CASOS_PROMPT_READY = true`.
+  - **`lib/motor/casos_sinteticos.ts:131-176`**: agregado `providerOptions.anthropic` con `thinking: 'adaptive' + effort: 'high'` para generador; cambiado validador de Opus 4.7 a `claude-sonnet-4-6` con `effort: 'low'`.
 - **Criterio de cierre**:
-  - [ ] Flippar `OPUS_GENERADOR_CASOS_PROMPT_READY = true` tras validar prompt + few-shots con founder.
-  - [ ] Reemplazar stub por invocación al pipeline (referenciar `lib/motor/` scaffolding existente o crear nuevo módulo).
-  - [ ] Wirar validador (`lib/prompts/opus_validador_casos.ts`, flag también está en false).
-  - [ ] Test e2e con caso sintético real disparado por una respuesta evasiva persistente.
-- **Esfuerzo**: 3-4h (sub-paso 5.iv del plan original).
+  - [x] Pipeline real cableado, gated por flags. *(2026-05-13)*
+  - [x] Stub reemplazado en `app/api/turn/route.ts`. *(2026-05-13)*
+  - [x] typecheck limpio. *(2026-05-13)*
+  - [x] **Founder sign-off de `OPUS_GENERADOR_CASOS_PROMPT_READY`**. *(2026-05-13)*
+  - [x] **Founder sign-off de `OPUS_VALIDADOR_CASOS_PROMPT_READY`**. *(2026-05-13)*
+  - [x] 449/449 vitest verdes post sign-off. *(2026-05-13)*
+  - [ ] Validación empírica con caso real en re-smoke voz (founder). *(Post-piloto, no bloquea el cierre del item)*
+- **Esfuerzo**: estimado 1-2h → real ~2h.
 
-### 2. Bug O3-marca race condition
+### 2. Bug O3-marca race condition ✅ CERRADO (2026-05-13)
 
 - **Reproducible**: click "Marcar respondida" + click "Siguiente pregunta" con gap <2s. Solo se da en velocidad >humana (browser automation). Usuario humano natural no lo dispara.
-- **Síntoma**: el contador global "X MARCADAS" cuenta solo la última pregunta marcada; las anteriores muestran banner "Respuesta marcada" individual pero quedan fuera del set global. El botón "Enviar respuestas" puede quedar deshabilitado ("Falta N pregunta") aunque el usuario marcó todas.
-- **Localización tentativa**: race entre `marcarRespondida()` (Zustand `set()` síncrono, `lib/state/entrevista.ts:428`) y la navegación que cambia `pregIndex` via `setPregIndex` (`app/entrevista/[sesion_id]/entrevista-shell.tsx:98-102`).
-- **Hipótesis**: closure de `activePregunta.id` se mantiene estable pero algún effect derivado resetea silently. Investigar React 19 transitions interactuando con `set()`.
-- **Fix candidato**: envolver `setPregIndex` en `startTransition` o `flushSync` antes de cambiar pregunta, garantizando que el `set()` previo se commitee. Alternativa: usar `useTransition` en el callback.
+- **Síntoma original**: el contador global "X MARCADAS" cuenta solo la última pregunta marcada; las anteriores muestran banner "Respuesta marcada" individual pero quedan fuera del set global. El botón "Enviar respuestas" puede quedar deshabilitado ("Falta N pregunta") aunque el usuario marcó todas.
+- **Causa raíz identificada**: `MarcarButton.onToggle={() => onToggleMarcada(!marcada)}` en `components/entrevista/HeroPregunta.tsx:340` cerraba sobre el prop `marcada` que podía estar stale entre renders sub-segundo. Cuando dos clicks ocurrían en frames cercanos, el segundo cómputo `!marcada` veía un valor desactualizado y emitía el valor que el primero ya había escrito (race-of-stale-closure, no race-of-zustand-set).
+- **Fix aplicado (2026-05-13)**:
+  - `lib/state/entrevista.ts`: nueva action `togglearMarcada(preguntaId)` que hace `set((s) => ({...}: !s.marcadas_respondidas[preguntaId]))`. Atómico contra el state actual del store; no depende del closure del componente.
+  - `components/entrevista/HeroPregunta.tsx:Props`: signature `onToggleMarcada: () => void` (antes `(marcada: boolean) => void`). El componente NO computa el target; delega al store.
+  - `app/entrevista/[sesion_id]/entrevista-shell.tsx`: pasa `onToggleMarcada={() => togglearMarcada(activePregunta.id)}` en lugar de `(m) => marcarRespondida(activePregunta.id, m)`.
+  - `lib/state/entrevista-toggle.test.ts` (nuevo): 6 tests cubren idempotencia, secuencia sub-segundo sobre 3 preguntas (escenario exacto del bug), coexistencia con `marcarRespondida` explícito, state pre-seedeado, e invariantes (no toca `preguntas_con_stt` ni `cajas_llenas_por_grupo`).
 - **Criterio de cierre**:
-  - [ ] Test unit que reproduzca el race con timers fake.
-  - [ ] Fix verificado en automation (browser_batch sub-segundo) sin desincronizar.
-- **Esfuerzo**: 1-2h.
+  - [x] Tests unit que reproducen el race con state pre-seedeado. *(`lib/state/entrevista-toggle.test.ts`, 6/6 verdes)*
+  - [x] Fix verificado contra el patrón del bug (3 togglears secuenciales sub-frame).
+  - [x] typecheck limpio.
+  - [ ] Smoke en browser real con automation sub-segundo. *(Pendiente — opcional, los tests unit cubren la causa raíz)*
+- **Esfuerzo**: estimado 1-2h → real ~1h.
 
-### 3. STT keyterms incompletos
+### 3. STT keyterms incompletos ✅ CERRADO (`53485b9`)
 
-- **Archivo**: `lib/stt/client.ts` — `STT_KEYTERMS` array (20 términos actuales: CNBV, CONDUSEF, CNSF, IPAB, UIF, SHCP, BANXICO, SOFOM, SOFIPO, SOCAP, IFC, IFPE, DSCR, CETES, TIIE, UDIS, SAT, RESICO, RFC, INDAVAL).
-- **Faltantes confirmados en dictado del 2026-05-12**:
-  - `Vértice` (transcribed como "Bértice", V→B confusion)
-  - `factoraje` (transcribed como "facturaje", palabra inexistente)
-  - `leasing`, `arrendamiento puro`, `quirografario`, `refaccionario`, `prendario`, `avio`, `habilitación`, `descuento`, `confirming`, `crédito simple`
+- **Archivo**: `lib/stt/client.ts` — `STT_KEYTERMS` array.
+- **Estado**: cerrado 2026-05-12 (commit `53485b9`). Array expandido de 20 a **33 términos** con cobertura completa de reguladores MX, tipos institucionales, métricas, procesos, compliance MX (PLD/KYC/AML), productos por garantía (quirografario/prendario/refaccionario/hipotecario/avío/habilitación) y operaciones (factoraje/leasing/arrendamiento/confirming/descuento). `Vértice` agregado para fix V→B confusion en Latam Spanish.
 - **Criterio de cierre**:
-  - [ ] Agregar ≥10 términos del léxico crediticio MX al array.
-  - [ ] Tests de `lib/stt/client.test.ts` actualizados (regression guard contra cambio silencioso).
-  - [ ] Re-smoke con voz tras deploy: dictar "Vértice", "factoraje", "leasing" — transcribirse bien.
-- **Esfuerzo**: 15 min.
+  - [x] Agregar ≥10 términos del léxico crediticio MX al array. *(15 nuevos agregados)*
+  - [x] Tests de `lib/stt/client.test.ts` actualizados (regression guard `contiene operaciones financieras frecuentes en dictado`). *(20/20 verdes, typecheck limpio)*
+  - [ ] Re-smoke con voz tras deploy: dictar "Vértice", "factoraje", "leasing" para confirmar empíricamente. *(Pendiente del re-smoke founder, no bloquea el cierre del item)*
+- **Esfuerzo**: estimado 15 min → real ~30 min con tests.
 
 ---
 
@@ -81,51 +89,71 @@
 ### 6. `z.unknown()` en schemas críticos
 
 - **Archivos**:
-  - `lib/schemas/extracciones.ts` — `ValorTablaGenericaSchema`, `ValorObjetoGenericoSchema`, `ExtraccionSchema.valor`.
-  - `lib/schemas/review_seccion.ts` — campos `valor` en snapshots.
-  - `lib/schemas/perfil_decision_final.ts` — idem.
-  - `lib/motor/tools.ts` — `registrar_extraccion.valor`.
-- **Mitigación actual**: runtime check via `valorSchemaFor(caja_codigo)` que sí tipa el valor según la caja específica. Sin esto, datos malformados llegarían a DB.
-- **Impacto**: tipado weak en TS. Cualquier refactor del pipeline puede romper sin que tsc avise.
-- **Criterio de cierre**:
-  - [ ] Convertir `valor: z.unknown()` a discriminated union sobre `caja_codigo`.
-  - [ ] Eliminar el uso de `valorSchemaFor` runtime check si el union ya cubre.
-  - [ ] tsc limpio + tests pass.
-- **Esfuerzo**: 2-3h.
+  - `lib/schemas/extracciones.ts:181` — `ExtraccionSchema.valor: z.unknown()`. Resuelto en runtime via `valorSchemaFor(caja_codigo)`.
+  - `lib/schemas/extracciones.ts:100-101` — `ValorTablaGenericaSchema` y `ValorObjetoGenericoSchema` con `z.record(string, z.unknown())` para cajas tipo `tabla`/`objeto` sin schema específico.
+  - `lib/schemas/review_seccion.ts`, `lib/schemas/perfil_decision_final.ts`, `lib/motor/tools.ts` — re-usan el shape `valor: z.unknown()`.
+- **Mitigación actual**: runtime check via `valorSchemaFor(caja_codigo)` que sí tipa el valor según la caja específica. `parseExtraccion(raw)` hace envelope + valor en un paso (`lib/schemas/extracciones.ts:195`). Sin esto, datos malformados llegarían a DB.
+- **Impacto**: tipado weak en TS — `extraccion.valor` es `unknown` al leer post-parse, fuerza casts en call sites. Refactors del pipeline pueden romper sin que tsc avise hasta runtime.
+- **Estado del análisis (2026-05-13)**: revisado el alcance real. El refactor a `z.discriminatedUnion('caja_codigo', [...])` requiere ~52 variants explícitos (5 id + 44 núcleo + 32 extension). El envelope `ExtraccionSchema` actual NO es discriminated; convertirlo obliga a (a) listar todos los códigos como literals, (b) sincronizar con `CAJAS_CANON` + `CAJAS_EXTENSION_POR_TIPO`, (c) tocar todos los call sites que usan `ExtraccionSchema` (motor, persistence, snapshot, perfil_decision_final, review_seccion, tools, ~15 archivos). Esfuerzo real: 6-8h con tests, no las 2-3h estimadas originalmente.
+- **Criterio de cierre (revisado)**:
+  - **Opción A — refactor completo (6-8h)**: ZodDiscriminatedUnion explícito sobre los 52 códigos, eliminar `valorSchemaFor` runtime check, narrow types en todos los call sites.
+  - **Opción B — mejora type-narrow (2h)**: mantener `valor: z.unknown()` en el envelope pero agregar generic type `parseExtraccion<C extends CajaCodigo>(raw, c?: C): Extraccion & { valor: ValorPorCaja<C> }` que tipa el resultado vía mapping type. Esto da type-safety en sites donde se conoce el caja_codigo (la mayoría) sin refactor masivo. Los sites que iteran sobre extracciones heterogéneas siguen viendo `unknown`.
+  - **Decisión recomendada**: Opción B como paso intermedio; Opción A queda para v2 si el tipo `ValorPorCaja<C>` no cubre suficiente.
+- **Esfuerzo realista**: 2h Opción B, 6-8h Opción A. **No bloquea piloto** (runtime check ya garantiza data correctness).
 
-### 7. Audit log sin retention policy
+### 7. Audit log sin retention policy ✅ CERRADO (2026-05-13)
 
-- **Archivo**: `db/migrations/0006_sso_usuarios_audit.sql` — tabla `usuarios_admin_audit` crece sin límite.
-- **Impacto**: a 1 mes con 10 admins activos, ~30k rows. A 1 año, 400k+. Sin index strategy, las queries del panel admin se vuelven lentas.
+- **Archivo original**: `db/migrations/0006_sso_usuarios_audit.sql` — tabla `audit_admin_actions` (no `usuarios_admin_audit` como decía la deuda; nombre correcto en schema).
+- **Estado**: cerrado 2026-05-13.
+- **Cambios concretos**:
+  - **Migración `0008_audit_indexes.sql`**: 2 indexes non-unique en `audit_admin_actions`. `(admin_user_id, created_at DESC)` acelera queries del panel admin "qué hizo X". `(action, created_at DESC)` acelera queries por action prefix + el cron de retention que filtra por action LIKE 'auth.%' etc.
+  - **`db/schema.ts`**: agregada declaración Drizzle de los 2 indexes en la tabla `audit_admin_actions` para que `drizzle-kit` los regenere si se vuelve a sincronizar.
+  - **`lib/inngest/functions/purgarAuditLog.ts` (nuevo)**: cron Inngest diario 03:00 UTC (21:00 CDMX) con 2 buckets:
+    - Short (90 días): `auth.*`, `exports.*`, `login*` — alto volumen, bajo valor forensico.
+    - Long (365 días): el resto, incluye `*.crear`, `*.editar`, `*.eliminar`, `*.revocar`, `magic_links.*` — destructivas o de mutación que pueden requerir forensics.
+    DELETE batched de 1000 filas a la vez para no bloquear el panel admin; si quedan filas expiradas, el próximo run las limpia.
+  - **`app/api/inngest/route.ts`**: function `purgarAuditLog` registrada junto a `sintetizarSesion`.
 - **Criterio de cierre**:
-  - [ ] Definir retention policy (sugerencia: 90 días para login events, 1 año para acciones destructivas).
-  - [ ] Cron job (Inngest) para purgar rows viejas.
-  - [ ] Indexes en `(actor_id, created_at)` y `(action_type, created_at)`.
-- **Esfuerzo**: 1h.
+  - [x] Definir retention policy (90d / 365d). *(2026-05-13)*
+  - [x] Cron job Inngest para purgar. *(2026-05-13)*
+  - [x] Indexes `(admin_user_id, created_at)` y `(action, created_at)`. *(2026-05-13)*
+  - [x] typecheck limpio. *(2026-05-13)*
+  - [ ] Aplicar migración 0008 a `vertice-mvp/main`. *(Pendiente — listado en `STATUS.md §3.1` junto a 0002/0004/0006/0007)*
+- **Esfuerzo**: estimado 1h → real ~50 min.
 
 ---
 
 ## 🟢 Baja prioridad — backlog post-piloto
 
-### 8. `fuente: 'usuario_tipea'` hardcoded en `/api/turn`
+### 8. `fuente: 'usuario_tipea'` hardcoded en `/api/turn` ✅ CERRADO (2026-05-13)
 
-- **Archivo**: `app/api/turn/route.ts:269`
-- **Estado**: cada respuesta del entrevistado se persiste con `fuente: 'usuario_tipea'` independientemente de si vino de teclado o de STT (voz dictada). Comentado como `// TODO Fase 6 voz: discriminar según source request`.
-- **Impacto**: telemetría imprecisa para análisis post-mortem (¿qué porcentaje de respuestas son dictadas vs tipeadas?). No afecta funcionalidad.
+- **Archivo original**: `app/api/turn/route.ts:269` (TODO ya removido).
+- **Estado**: cerrado 2026-05-13. El enum DB `fuente_turno` ya tenía `'usuario_tipea'` y `'usuario_voz'` (de Fase 2 inicial), no requirió migración. La asimetría del item original (`usuario_dicta` vs `usuario_voz`) era solo de naming; el enum existente cumple el propósito.
+- **Cambios concretos**:
+  - `lib/state/entrevista.ts`: agregado `preguntas_con_stt: Record<string, boolean>` + action `marcarSttUsado(preguntaId)`. Reset en cada batch nuevo. En `enviarBatch`, computa `inputSource: 'voice' | 'keyboard' | 'mixed'` según cuántas preguntas del batch tienen el flag (todas→voice, ninguna→keyboard, mezcla→mixed).
+  - `lib/state/entrevista.ts:fetch /api/turn`: agrega header `X-Vertice-Input-Source` con el valor computado.
+  - `components/entrevista/HeroPregunta.tsx`: nueva prop `onSttAppend` invocada dentro del effect que aplica `appendTranscriptSegments`. Idempotente.
+  - `app/entrevista/[sesion_id]/entrevista-shell.tsx`: wire del callback `marcarSttUsado(activePregunta.id)`.
+  - `app/api/turn/route.ts`: lee header, mapea `voice|mixed → 'usuario_voz'`, default `keyboard → 'usuario_tipea'`. El caso 'mixed' colapsa a `usuario_voz` porque el componente voz es el discriminator más caro/notable; si en el futuro se necesita trackear mixto granular, agregar `usuario_mixto` al enum en una migración separada.
 - **Criterio de cierre**:
-  - [ ] Cliente envía header `X-Vertice-Input-Source: voice|keyboard|mixed`.
-  - [ ] Server lee header y persiste el discriminator correcto.
-  - [ ] Migración para enum `('usuario_tipea','usuario_dicta','usuario_mixto')` si no existe.
-- **Esfuerzo**: 1h.
+  - [x] Cliente envía header `X-Vertice-Input-Source: voice|keyboard|mixed`. *(2026-05-13)*
+  - [x] Server lee header y persiste el discriminator correcto. *(2026-05-13)*
+  - [x] Migración para enum si hace falta. *(No hizo falta: `usuario_voz` ya existía en enum desde Fase 2)*
+  - [x] typecheck limpio. *(2026-05-13)*
+- **Esfuerzo**: estimado 1h → real ~45 min.
 
-### 9. Chime audio mute toggle
+### 9. Chime audio mute toggle ✅ CERRADO (2026-05-13)
 
-- **Estado**: chime start/stop wirado en `lib/stt/chime.ts` + `lib/stt/use-deepgram-stream.ts` (`36026f7`). Volumen pico 0.08, sine wave. No hay forma de silenciarlo desde la UI.
-- **Impacto**: minor. Algunos entrevistados podrían encontrar el chime intrusivo.
+- **Estado**: cerrado 2026-05-13.
+- **Cambios concretos**:
+  - `lib/stt/chime.ts`: agregadas `isChimeMuted()` y `setChimeMuted(boolean)` que leen/escriben `localStorage['vertice:chime-muted']`. `playStartChime` y `playStopChime` ahora hacen early-return si muted. Dispatch de `vertice:chime-muted-change` CustomEvent para que la UI reactivamente se actualice sin polling.
+  - `components/entrevista/ChimeMuteToggle.tsx` (nuevo): botón Volume2/VolumeX compacto con prop `surface: 'dark' | 'light'`. Hydration guard (placeholder shape estable) para evitar mismatch SSR vs cliente cuando el setting está muted de una sesión previa.
+  - `app/entrevista/[sesion_id]/entrevista-shell.tsx`: toggle insertado en el header card 1 al lado del badge "Borrador autoguardado".
 - **Criterio de cierre**:
-  - [ ] Setting persistido (localStorage) para mute.
-  - [ ] Botón toggle en el header del entrevista shell.
-- **Esfuerzo**: 30 min.
+  - [x] Setting persistido (localStorage) para mute.
+  - [x] Botón toggle en el header del entrevista shell.
+  - [x] typecheck limpio.
+- **Esfuerzo**: estimado 30 min → real ~30 min.
 
 ### 10. O2 entrevista — BatchNav vs HeroPregunta desync animado
 
@@ -133,12 +161,19 @@
 - **Síntoma**: durante AnimatePresence del hero al cambiar de pregunta, el counter del nav inferior se actualiza unos ms antes que el hero. Cosmético, no afecta datos.
 - **Esfuerzo**: 1h.
 
-### 11. O2 STT — `pauseDetected` no dispara por MediaRecorder
+### 11. O2 STT — `pauseDetected` no dispara por MediaRecorder ✅ CERRADO (2026-05-13)
 
-- **Documentado en**: `docs/bugs-encontrados-2026-05-11-stt.md`.
-- **Síntoma**: indicador visual de pausa nunca aparece. Decorativo, en `/demo/stt`.
-- **Fix**: usar Deepgram `vad_events` en lugar de calcular pausa client-side.
-- **Esfuerzo**: 30 min.
+- **Documentado en**: `docs/archive/bugs/2026-05-11-stt.md`.
+- **Síntoma original**: indicador visual de pausa nunca aparece. Decorativo, en `/demo/stt`. La causa raíz era que `lastAudioAtRef` se actualizaba con cada `ondataavailable` (cada AUDIO_CHUNK_MS) aunque el usuario no hablase, así que el polling sobre `lastAudioAtRef + PAUSE_MS` nunca disparaba `setPauseDetected(true)`.
+- **Fix aplicado (2026-05-13)**: usar VAD events de Deepgram (`vad_events: 'true'` ya estaba en `STT_LIVE_CONFIG`).
+  - `lib/stt/use-deepgram-stream.ts:DeepgramResultMessage` ampliada con campos `channel_index`/`last_word_end` para mensajes VAD (subset opcional, no rompe el shape Results).
+  - `handleResult` ahora reconoce 2 mensajes nuevos: `SpeechStarted` → `setPauseDetected(false)`; `UtteranceEnd` → `setPauseDetected(true)`. Estos se emiten naturalmente por Deepgram tras `utterance_end_ms` de silencio (1000ms en config) y son la señal correcta de pausa.
+  - El polling timer (`startPauseTimer` + `lastAudioAtRef`) se mantiene como fallback defensivo: si Deepgram dejara de emitir VAD events por config drift, el timer recupera la detección aunque imprecisa.
+- **Criterio de cierre**:
+  - [x] `handleResult` procesa `SpeechStarted` y `UtteranceEnd`.
+  - [x] typecheck limpio.
+  - [ ] Smoke en `/demo/stt`: hablar 5s, callar 2s, verificar que "Pausa >1.5s" se vuelve "sí" cuando dejas de hablar y "no" cuando retomas. *(Pendiente — requiere `DEEPGRAM_API_KEY` operativa)*
+- **Esfuerzo**: estimado 30 min → real ~20 min.
 
 ### 12. Tests STT hook completos (jsdom + RTL)
 
@@ -155,6 +190,42 @@
 
 - **Status**: post-piloto. Entrevista actual asume desktop.
 - **Esfuerzo**: 6-8h.
+
+### 15. `@ts-nocheck` pragmas en 2 tests STT — ✅ PARCIAL (`route.test.ts` cerrado 2026-05-13)
+
+- **Archivos**:
+  - `lib/stt/use-deepgram-stream.test.ts:1` — todavía con pragma. Bloqueado por dep `@testing-library/react` no instalada (depende de deuda #12).
+  - `app/api/stt/token/route.test.ts:1` — pragma removido 2026-05-13. Fix paralelo: `POST()` ahora recibe un `Request` mock (matchea signature actual `POST(req: Request)`).
+- **Estado**: pragmas agregadas en una sesión paralela mientras vitest 4 estabilizaba. Hoy el suite corre con `vitest@4.1.5` (ver `package.json:64`). El pragma de `route.test.ts` se removió sin instalar deps adicionales; el de `use-deepgram-stream.test.ts` requiere `@testing-library/react` que pertenece a deuda #12.
+- **Impacto**: solo `use-deepgram-stream.test.ts` queda fuera del type-check; cualquier drift de tipos en `useDeepgramStream` no se atrapa hasta que se ejecuta el test.
+- **Criterio de cierre**:
+  - [x] Quitar `// @ts-nocheck` de `app/api/stt/token/route.test.ts:1`. *(2026-05-13)*
+  - [ ] Quitar `// @ts-nocheck` de `lib/stt/use-deepgram-stream.test.ts:1`. *(Pendiente — bloqueado por #12)*
+  - [x] `npx tsc --noEmit` sigue limpio post-cambio parcial. *(2026-05-13)*
+  - [ ] Tests siguen verdes. *(Tests en `describe.skip`, no corren — validación cierra con #12)*
+- **Esfuerzo**: estimado 30 min → real 15 min (parcial). Cierre completo bloqueado por #12.
+
+### 16. TODO v2 — `array<string>` sin enum cerrado runtime
+
+- **Archivo**: `lib/prompts/sonnet_fase1.ts:126` (`TODO(v2): Las cajas con tipo array<string> sin enum cerrado runtime...`).
+- **Estado**: bloque XML `<formato_valores_por_caja>` describe los valores aceptados por cada caja, pero algunas cajas tipo `array<string>` (ej. `nm_productos_ofrecidos`, `nm_sectores_aceptados`, `gr_tipos_garantia`) declaran enum solo en docs, no runtime. El extractor de Sonnet puede emitir valores fuera del enum esperado sin que Zod los rechace.
+- **Impacto**: silent drift en data normalizada. El admin viewer puede mostrar productos como `"credito_simple"` en una sesión y `"crédito simple"` en otra.
+- **Criterio de cierre**:
+  - [ ] Identificar las cajas afectadas (grep por `tipo_dato: 'array<string>'` en `CAJAS_CANON`).
+  - [ ] Refactor `valorSchemaFor()` para devolver `z.array(z.enum([...]))` cuando hay enum declarado.
+  - [ ] Backfill normalizado de datos existentes vía script idempotente.
+- **Esfuerzo**: 2-3h.
+
+### 17. TODO v2 — multi-turn memory para context window
+
+- **Archivo**: `lib/state/entrevista.ts:161` (`TODO when we add multi-turn memory: emitir la conversación previa via...`).
+- **Estado**: hoy cada turno arranca con un único `user` message (`mensaje_usuario`) sin contexto de turnos previos. Sonnet decide qué cajas atacar basado en el snapshot del mapa de incertidumbre que la tool `registrar_extraccion` retorna como `mapa_summary` + las extracciones persistidas, no en el historial conversacional crudo.
+- **Impacto**: el modelo no puede recordar phrasing exacto de turnos anteriores ni referenciar lo que el aliado dijo "hace dos preguntas". Funciona porque el mapa de incertidumbre es suficientemente expressive, pero limita la naturalidad del flujo cuando el aliado dice cosas como "como te dije antes...".
+- **Criterio de cierre**:
+  - [ ] Diseñar el shape de "context previo" que se envía a Sonnet (último N turnos textual? sumario compactado?).
+  - [ ] Trade-off de tokens vs calidad.
+  - [ ] Wirar en cliente (estado Zustand) y en server (request shape de `/api/turn`).
+- **Esfuerzo**: 3-4h. **v2 — no MVP**.
 
 ---
 

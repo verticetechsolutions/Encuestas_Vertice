@@ -10,6 +10,7 @@ import {
   jsonb,
   vector,
   uniqueIndex,
+  index,
   type AnyPgColumn,
 } from 'drizzle-orm/pg-core';
 import { sql } from 'drizzle-orm';
@@ -359,31 +360,54 @@ export const institucion_dominios_permitidos = pgTable(
 );
 
 // Audit log de acciones administrativas. Wrap helper en lib/auth/audit.ts inserta
-// una fila por cada server action admin con su payload + IP + UA. Append-only,
-// nunca DELETE (compliance trail).
-export const audit_admin_actions = pgTable('audit_admin_actions', {
-  // bigserial-equivalent en drizzle: uuid es overkill para audit (no se referencia
-  // como FK), pero mantiene consistencia con el resto del schema y evita un tipo
-  // nuevo. Si volumen explota, migrar a bigint con identity column.
-  id: uuid('id').primaryKey().defaultRandom(),
-  admin_user_id: uuid('admin_user_id').references(() => usuarios.id),
-  // action = nombre del server action wrappeado (ej. 'instituciones.crear',
-  // 'magic_links.emitir', 'instituciones.eliminar'). Convención: <recurso>.<verbo>.
-  action: text('action').notNull(),
-  // target_type + target_id permiten queries "¿qué pasó con la institución X?"
-  // sin parsear payload. NULL cuando la acción no tiene un target específico
-  // (ej. login admin).
-  target_type: text('target_type'),
-  target_id: text('target_id'),
-  // payload = snapshot del input al server action (zod-parsed). Útil para
-  // forensics: ¿qué valor exacto pasó al delete?
-  payload: jsonb('payload'),
-  // ip viene de x-forwarded-for / Vercel headers. NULL si no se pudo determinar
-  // (e.g. tests, internal jobs).
-  ip: text('ip'),
-  user_agent: text('user_agent'),
-  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
-});
+// una fila por cada server action admin con su payload + IP + UA.
+//
+// Retention policy (cron Inngest `purgar-audit-log`, deuda #7 cerrada 2026-05-13):
+//   - Acciones tipo `auth.*`, `exports.*` o `login*` → 90 días.
+//   - Resto (incluye `*.crear`, `*.editar`, `*.eliminar`, `*.revocar`) → 1 año.
+//   - El cron purga rows expiradas con DELETE batched de 1000 a la vez para no
+//     bloquear queries activas del panel admin.
+//   Append-only por convención (sin DELETE manual); el cron es la ÚNICA excepción.
+export const audit_admin_actions = pgTable(
+  'audit_admin_actions',
+  {
+    // bigserial-equivalent en drizzle: uuid es overkill para audit (no se referencia
+    // como FK), pero mantiene consistencia con el resto del schema y evita un tipo
+    // nuevo. Si volumen explota, migrar a bigint con identity column.
+    id: uuid('id').primaryKey().defaultRandom(),
+    admin_user_id: uuid('admin_user_id').references(() => usuarios.id),
+    // action = nombre del server action wrappeado (ej. 'instituciones.crear',
+    // 'magic_links.emitir', 'instituciones.eliminar'). Convención: <recurso>.<verbo>.
+    action: text('action').notNull(),
+    // target_type + target_id permiten queries "¿qué pasó con la institución X?"
+    // sin parsear payload. NULL cuando la acción no tiene un target específico
+    // (ej. login admin).
+    target_type: text('target_type'),
+    target_id: text('target_id'),
+    // payload = snapshot del input al server action (zod-parsed). Útil para
+    // forensics: ¿qué valor exacto pasó al delete?
+    payload: jsonb('payload'),
+    // ip viene de x-forwarded-for / Vercel headers. NULL si no se pudo determinar
+    // (e.g. tests, internal jobs).
+    ip: text('ip'),
+    user_agent: text('user_agent'),
+    created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    // Lookup rápido "qué hizo este admin": index (admin_user_id, created_at desc).
+    // NO unique: el mismo admin emite múltiples acciones.
+    admin_created_idx: index('audit_admin_actions_admin_created_idx').on(
+      table.admin_user_id,
+      table.created_at
+    ),
+    // Lookup por action prefix (auth.*, exports.*, *.eliminar): index (action, created_at desc).
+    // NO unique: el mismo action se ejecuta repetidamente.
+    action_created_idx: index('audit_admin_actions_action_created_idx').on(
+      table.action,
+      table.created_at
+    ),
+  })
+);
 
 export const perfil_decision_final = pgTable('perfil_decision_final', {
   id: uuid('id').primaryKey().defaultRandom(),
@@ -400,5 +424,10 @@ export const perfil_decision_final = pgTable('perfil_decision_final', {
   confianza_global: real('confianza_global').notNull(),
   // pgvector. Nullable — no embeddings in MVP, column ready for v2 RAG.
   embedding: vector('embedding', { dimensions: 1536 }),
+  // URL del PDF resumen en Vercel Blob (migración 0007). Nullable porque el
+  // perfil se persiste antes de generar el PDF (steps Inngest aislados): si
+  // `generar-pdf` falla, el perfil sigue válido sin PDF y un re-run puede
+  // llenar la URL sin reinsertar la fila.
+  pdf_url: text('pdf_url'),
   generado_at: timestamp('generado_at', { withTimezone: true }).defaultNow().notNull(),
 });

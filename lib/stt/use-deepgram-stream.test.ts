@@ -1,6 +1,9 @@
-// @ts-nocheck — TODO(session-1): remove this pragma once `vitest` lands on
-// master via the phase-5-step-5 review-handoff branch. Tests are wrapped in
-// `describe.skip` so they neither run nor fail until vitest is installed.
+// @ts-nocheck — `@testing-library/react` no está instalado en el repo. Estos
+// tests viven en `describe.skip` como smoke aspiracional; cuando se ejecute
+// deuda técnica #12 (tests STT hook completos con jsdom + RTL), agregar
+// `@testing-library/react` como devDependency, quitar el pragma y promover
+// los tests a run real. El sibling `app/api/stt/token/route.test.ts` ya no
+// requiere el pragma porque solo usa el Request global.
 //
 // Coverage intent (smoke only — full integration is manual QA on /demo/stt):
 //   1. Hook opens the websocket with the cemented STT_LIVE_CONFIG.

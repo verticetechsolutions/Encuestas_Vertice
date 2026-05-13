@@ -10,6 +10,9 @@ import {
   type GrupoUI,
 } from '@/lib/schemas/cajas';
 import { cargarRehidratacion } from '@/lib/motor/rehidratacion';
+import { grantEphemeralToken } from '@/lib/stt/client';
+import { logger } from '@/lib/observability/axiom';
+import type { InitialSttToken } from '@/lib/stt/use-deepgram-stream';
 import { EntrevistaShell } from './entrevista-shell';
 
 interface Props {
@@ -60,10 +63,31 @@ export default async function EntrevistaPage({ params }: Props) {
   // Rehidratación O1: si Sonnet ya emitió un batch en esta sesión y el último
   // turno agente coincide, lo cargamos server-side y se lo pasamos al shell
   // como estado inicial. Null si no hay batch persistido o si es stale.
-  const rehidratacion = await cargarRehidratacion({
-    sesion_id,
-    tipo: row.tipo,
-  });
+  // Pre-mint STT JWT en paralelo con la rehidratación. Sirve para saltarse
+  // el POST /api/stt/token en el PRIMER click del mic (~200-400ms). El
+  // token vive 60s; si el user clickea antes, el hook lo usa directo; si
+  // no, el hook fallback al fetch normal. Si el grant falla server-side
+  // (Deepgram down o sin key configurada), pasamos null y el hook fetchea
+  // como antes — sin regresión.
+  const [rehidratacion, initialSttTokenResult] = await Promise.all([
+    cargarRehidratacion({ sesion_id, tipo: row.tipo }),
+    grantEphemeralToken(60).catch((err) => {
+      logger.warn('stt.initial_token_grant_failed', {
+        sesion_id,
+        error_message: err instanceof Error ? err.message : String(err),
+      });
+      return null;
+    }),
+  ]);
+
+  const initialSttToken: InitialSttToken | null = initialSttTokenResult
+    ? {
+        value: initialSttTokenResult.access_token,
+        // 5s de margen vs el TTL real para no entregar tokens en su última
+        // milisegundo de vida. expires_in viene en seconds desde el grant.
+        expiresAt: Date.now() + (initialSttTokenResult.expires_in - 5) * 1000,
+      }
+    : null;
 
   return (
     <EntrevistaShell
@@ -71,6 +95,7 @@ export default async function EntrevistaPage({ params }: Props) {
       nombre_institucion={nombre_institucion}
       totales_por_grupo={totales_por_grupo}
       rehidratacion={rehidratacion}
+      initialSttToken={initialSttToken}
     />
   );
 }

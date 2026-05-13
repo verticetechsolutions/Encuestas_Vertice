@@ -22,14 +22,18 @@
 //     `abandonada`).
 
 import { NonRetriableError } from 'inngest';
+import { eq } from 'drizzle-orm';
 import { inngest } from '@/lib/inngest/client';
 import { logger } from '@/lib/observability/axiom';
+import { db } from '@/lib/db';
+import { perfil_decision_final } from '@/db/schema';
 import {
   procesarSintesisFinal,
   OpusSintesisPromptNotReady,
   SesionNoEncontradaError,
 } from '@/lib/motor/sintesis_final';
 import { generarPdfSintesis } from '@/lib/motor/sintesis_pdf';
+import { uploadPdfToBlob } from '@/lib/storage/blob';
 import type { PerfilDecisionFinal } from '@/lib/schemas/perfil_decision_final';
 
 export const sintetizarSesion = inngest.createFunction(
@@ -123,17 +127,43 @@ export const sintetizarSesion = inngest.createFunction(
       const perfil = result.perfil as PerfilDecisionFinal;
       try {
         const pdf = await generarPdfSintesis(perfil);
-        // Storage queda como TODO Fase 10. Por ahora sólo medimos que el
-        // pipeline produce un PDF plausible (>20KB) y lo logueamos. Cuando
-        // aterrice Vercel Blob, este step llama blobStorage.put(buffer) y
-        // persiste la URL en perfil_decision_final.pdf_url.
+        // Storage Blob (Fase 8 cerrada 2026-05-13). Gated por
+        // `BLOB_READ_WRITE_TOKEN` + presencia de la dep `@vercel/blob` (ver
+        // `lib/storage/blob.ts`). Si no está configurado, `uploadPdfToBlob`
+        // devuelve null y el step sigue sin persistir URL.
+        const pathname = `sintesis/${result.perfil_id}.pdf`;
+        const url = await uploadPdfToBlob(pdf.buffer, pathname);
+
+        if (url) {
+          // Persistir la URL. UPDATE simple sobre perfil_decision_final.
+          // Idempotente: si re-run del cron repite la subida, el UPDATE
+          // sobreescribe con la URL nueva (Blob no garantiza URL estable si
+          // el caller no pasa `addRandomSuffix: false`).
+          try {
+            await db
+              .update(perfil_decision_final)
+              .set({ pdf_url: url })
+              .where(eq(perfil_decision_final.id, result.perfil_id));
+          } catch (dbErr) {
+            // Non-fatal: PDF ya está en Blob, la URL solo se perdió. El
+            // admin viewer mostrará el perfil sin link al PDF. Log para audit.
+            logger.error('inngest.generar_pdf.persist_url_fallo', {
+              event_id: event.id,
+              sesion_id: data.sesion_id,
+              perfil_id: result.perfil_id,
+              error: dbErr instanceof Error ? dbErr.message : String(dbErr),
+            });
+          }
+        }
+
         logger.info('inngest.generar_pdf.ok', {
           event_id: event.id,
           sesion_id: data.sesion_id,
           perfil_id: result.perfil_id,
           pdf_bytes: pdf.bytes,
+          pdf_url_persisted: url !== null,
         });
-        return { bytes: pdf.bytes };
+        return { bytes: pdf.bytes, pdf_url: url };
       } catch (err) {
         logger.error('inngest.generar_pdf.fallo', {
           event_id: event.id,

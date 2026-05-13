@@ -41,6 +41,7 @@ import {
 import { SolicitarReviewSeccionInputSchema } from '@/lib/schemas/review_seccion';
 import { processSolicitarReview, OpusReviewPromptNotReady } from '@/lib/motor/review';
 import { canCloseSeccion } from '@/lib/motor/review-gate';
+import { procesarSolicitudCasoSintetico } from '@/lib/motor/casos_sinteticos';
 import {
   persistirTurnoUsuario,
   persistirTurnoAgente,
@@ -259,6 +260,17 @@ export async function POST(req: Request) {
   // Closure mutable per-request — re-instanciado por POST, no compartido.
   let batchEmittedThisTurn = false;
 
+  // Header opcional `X-Vertice-Input-Source` discrimina si el batch vino de voz,
+  // teclado o mezcla (deuda #8 cerrada 2026-05-13). El enum `fuente_turno` tiene
+  // 'usuario_tipea' y 'usuario_voz' pero no 'usuario_mixto'; cuando el cliente
+  // reporta 'mixed' mapeamos a 'usuario_voz' (el componente caro/notable manda
+  // en la auditoría). Default si falta header: keyboard → 'usuario_tipea'.
+  const inputSourceHeader = req.headers.get('X-Vertice-Input-Source')?.toLowerCase();
+  const fuenteUsuario: 'usuario_tipea' | 'usuario_voz' =
+    inputSourceHeader === 'voice' || inputSourceHeader === 'mixed'
+      ? 'usuario_voz'
+      : 'usuario_tipea';
+
   // 4. Persistir el turno usuario ANTES del stream. Las extracciones del
   //    siguiente turno agente lo necesitan para correlación pero se anclan al
   //    turno_id del agente (no al usuario). Aún así persistir el usuario aquí
@@ -266,7 +278,7 @@ export async function POST(req: Request) {
   const turnoUsuario = await persistirTurnoUsuario({
     sesion_id,
     contenido_texto: mensaje_usuario,
-    fuente: 'usuario_tipea', // TODO Fase 6 voz: discriminar según source request
+    fuente: fuenteUsuario,
   });
 
   // 5. Persistir el turno agente como placeholder (contenido_texto='') ANTES
@@ -531,7 +543,8 @@ export async function POST(req: Request) {
         },
       }),
       solicitar_caso_sintetico: tool({
-        description: 'Solicita caso sintético. TODO step posterior dispara generación con Opus.',
+        description:
+          'Solicita un caso sintético al orquestador. Pipeline real wirado a `lib/motor/casos_sinteticos.ts`. Gated por flags `OPUS_GENERADOR_CASOS_PROMPT_READY` y `OPUS_VALIDADOR_CASOS_PROMPT_READY`; cuando founder firme los prompts, el pipeline genera + valida + persiste sin más cambios.',
         inputSchema: SolicitarCasoSinteticoInputSchema,
         execute: async (input) => {
           logger.info('tool.solicitar_caso_sintetico.recibido', {
@@ -539,9 +552,22 @@ export async function POST(req: Request) {
             cajas_objetivo: input.cajas_objetivo,
             urgencia: input.urgencia,
           });
-          // TODO step posterior: invocar el pipeline de generación de casos
-          // (existing scaffolding en lib/motor o nuevo). Por ahora ack.
-          return { ok: true, todo_step_posterior: true };
+          const result = await procesarSolicitudCasoSintetico(input, { sesion_id });
+          if (result.ok) {
+            return {
+              ok: true,
+              caso_id: result.caso_id,
+              numero_caso: result.numero_caso,
+              caso: result.caso,
+              cajas_objetivo: result.cajas_objetivo,
+            };
+          }
+          return {
+            ok: false,
+            razon: result.razon,
+            message: result.mensaje,
+            ...(result.detalle ? { detalle: result.detalle } : {}),
+          };
         },
       }),
       solicitar_review_seccion: tool({

@@ -118,6 +118,10 @@ export function MicButton({
         'text-white transition-all duration-150',
         'outline-none focus-visible:ring-4',
         'disabled:cursor-not-allowed disabled:opacity-70',
+        // Press feedback inmediato: scale-95 al activar el click. Tailwind
+        // anima vía la transition-all de arriba (~150ms), así el botón se
+        // siente registrado en el frame del click sin esperar React rerender.
+        'cursor-pointer active:scale-95',
         // Touch target mínimo 44x44 ya cubierto con h-16/w-16 (64px).
         isError && 'bg-destructive/10 text-destructive border-2 border-destructive',
         isStreaming && 'animate-pulse',

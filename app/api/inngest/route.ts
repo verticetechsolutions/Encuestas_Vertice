@@ -11,8 +11,9 @@
 import { serve } from 'inngest/next';
 import { inngest } from '@/lib/inngest/client';
 import { sintetizarSesion } from '@/lib/inngest/functions/sintetizarSesion';
+import { purgarAuditLog } from '@/lib/inngest/functions/purgarAuditLog';
 
 export const { GET, POST, PUT } = serve({
   client: inngest,
-  functions: [sintetizarSesion],
+  functions: [sintetizarSesion, purgarAuditLog],
 });

@@ -30,6 +30,7 @@ import {
   useEffect,
   useState,
 } from 'react';
+import { createPortal } from 'react-dom';
 import { motion, AnimatePresence, type Variants } from 'motion/react';
 import Link from 'next/link';
 import {
@@ -121,16 +122,23 @@ function ModalContent({ onClose }: { onClose: () => void }) {
 
   const isSuccess = state.ok === true;
 
-  return (
+  // Portaled a document.body para escapar del AdminScrollArea Viewport.
+  // Sin portal el `fixed inset-0` queda anclado al scroll container; el
+  // AdminHeader (sticky z-50) y otros containers se renderean por encima
+  // del backdrop blur. Con portal el modal vive como hijo directo del body
+  // y cubre el viewport real del browser, incluyendo el header sticky.
+  const content = (
     <div className="fixed inset-0 z-[100]">
-          {/* Backdrop */}
+          {/* Backdrop. backdrop-blur-md para mirror del command-palette del
+              propio admin — el header sticky y los cards del catálogo
+              quedan empujados visualmente al 2do plano. */}
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
             transition={{ duration: 0.22, ease: 'easeOut' }}
             onClick={onClose}
-            className="absolute inset-0 bg-ink/45 backdrop-blur-[6px]"
+            className="absolute inset-0 bg-ink/55 backdrop-blur-md"
           />
 
           {/* Centering wrapper */}
@@ -277,6 +285,9 @@ function ModalContent({ onClose }: { onClose: () => void }) {
           </div>
         </div>
   );
+
+  if (typeof document === 'undefined') return null;
+  return createPortal(content, document.body);
 }
 
 // ════════════════════════════════════════════════════════════════════════════

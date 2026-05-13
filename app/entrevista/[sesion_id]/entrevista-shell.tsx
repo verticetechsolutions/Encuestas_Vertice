@@ -27,10 +27,12 @@ import { Check } from 'lucide-react';
 import { HeroPregunta } from '@/components/entrevista/HeroPregunta';
 import { BatchNav } from '@/components/entrevista/BatchNav';
 import { Stepper } from '@/components/entrevista/Stepper';
+import { ChimeMuteToggle } from '@/components/entrevista/ChimeMuteToggle';
 import { BrandSuccessGlyph } from '@/components/landing/BrandSuccessGlyph';
 import { useEntrevistaStore } from '@/lib/state/entrevista';
 import { getCajaAny, type GrupoUI } from '@/lib/schemas/cajas';
 import type { PreguntaBatch } from '@/lib/schemas/pregunta-batch';
+import type { InitialSttToken } from '@/lib/stt/use-deepgram-stream';
 import { SPRING_BUTTON, solidButtonVariants } from '@/lib/motion-presets';
 import { cn } from '@/lib/utils';
 import {
@@ -57,6 +59,12 @@ interface Props {
     llenas_por_grupo: Record<GrupoUI, number>;
     drafts: Record<string, string>;
   } | null;
+  /**
+   * Token Deepgram pre-minteado en el RSC. Se pasa al hook STT vía HeroPregunta
+   * para saltarse el POST /api/stt/token en el primer click del mic. null si
+   * el grant falló server-side; el hook fallback al fetch normal.
+   */
+  initialSttToken?: InitialSttToken | null;
 }
 
 function inferGrupoActivo(cajasObjetivo: string[] | undefined): GrupoUI {
@@ -74,6 +82,7 @@ export function EntrevistaShell({
   totales_por_grupo,
   preview = false,
   rehidratacion = null,
+  initialSttToken = null,
 }: Props) {
   const init = useEntrevistaStore((s) => s.init);
   const cargarFixtureMock = useEntrevistaStore((s) => s.cargarFixtureMock);
@@ -89,7 +98,8 @@ export function EntrevistaShell({
   const ultimo_error_turn = useEntrevistaStore((s) => s.ultimo_error_turn);
   const mensaje_estado = useEntrevistaStore((s) => s.mensaje_estado);
   const setRespuesta = useEntrevistaStore((s) => s.setRespuesta);
-  const marcarRespondida = useEntrevistaStore((s) => s.marcarRespondida);
+  const togglearMarcada = useEntrevistaStore((s) => s.togglearMarcada);
+  const marcarSttUsado = useEntrevistaStore((s) => s.marcarSttUsado);
   const enviarBatch = useEntrevistaStore((s) => s.enviarBatch);
 
   // Índice de la pregunta activa dentro del batch. Local porque es UI-only;
@@ -239,23 +249,26 @@ export function EntrevistaShell({
               <p className="text-[22px] font-semibold leading-none tracking-tight text-[color:var(--survey-card-1-fg)] md:text-[26px]">
                 {nombre_institucion}
               </p>
-              {preview ? (
-                <span className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.16em] text-gold-bright">
-                  <span
-                    className="size-1.5 rounded-full bg-gold-bright animate-pulse-ring"
-                    aria-hidden
-                  />
-                  Preview UI
-                </span>
-              ) : (
-                <span className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.16em] text-[color:var(--survey-card-1-fg-faint)]">
-                  <span
-                    className="size-1.5 rounded-full bg-gold animate-pulse-ring"
-                    aria-hidden
-                  />
-                  Borrador autoguardado
-                </span>
-              )}
+              <div className="flex items-center gap-2.5">
+                {preview ? (
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.16em] text-gold-bright">
+                    <span
+                      className="size-1.5 rounded-full bg-gold-bright animate-pulse-ring"
+                      aria-hidden
+                    />
+                    Preview UI
+                  </span>
+                ) : (
+                  <span className="inline-flex items-center gap-1.5 text-[10px] font-medium uppercase tracking-[0.16em] text-[color:var(--survey-card-1-fg-faint)]">
+                    <span
+                      className="size-1.5 rounded-full bg-gold animate-pulse-ring"
+                      aria-hidden
+                    />
+                    Borrador autoguardado
+                  </span>
+                )}
+                <ChimeMuteToggle surface="dark" />
+              </div>
             </div>
           </div>
         </section>
@@ -353,8 +366,13 @@ export function EntrevistaShell({
                   marcada={marcadas[activePregunta.id] === true}
                   autosave={autosave[activePregunta.id] ?? 'idle'}
                   onChangeTexto={(t) => setRespuesta(activePregunta.id, t)}
-                  onToggleMarcada={(m) => marcarRespondida(activePregunta.id, m)}
-                  sttEnabled={!preview}
+                  onToggleMarcada={() => togglearMarcada(activePregunta.id)}
+                  onSttAppend={() => marcarSttUsado(activePregunta.id)}
+                  // Preview UI: STT habilitado en dev para QA del botón dictar.
+                  // El endpoint /api/stt/token tiene bypass NODE_ENV=development
+                  // cuando no hay cookie de sesión (mintea token sin DB lookup).
+                  sttEnabled
+                  initialSttToken={initialSttToken}
                 />
               </>
             ) : enviando ? (

@@ -27,7 +27,10 @@ import { motion } from 'motion/react';
 import { Check, Lock, Mic, RotateCcw } from 'lucide-react';
 import { Textarea } from '@/components/ui/textarea';
 import { MicButton } from '@/components/stt/MicButton';
-import { useDeepgramStream } from '@/lib/stt/use-deepgram-stream';
+import {
+  useDeepgramStream,
+  type InitialSttToken,
+} from '@/lib/stt/use-deepgram-stream';
 import { appendTranscriptSegments } from '@/lib/stt/append-transcript';
 import {
   SPRING_BUTTON,
@@ -44,9 +47,20 @@ interface Props {
   marcada: boolean;
   autosave: AutosaveStatus;
   onChangeTexto: (texto: string) => void;
-  onToggleMarcada: (marcada: boolean) => void;
+  /** Toggle atómico — el caller delega al store sin pasar el valor target. Evita
+   * el closure stale del prop `marcada` durante navegación sub-segundo entre
+   * preguntas del batch (deuda #2 race condition O3). */
+  onToggleMarcada: () => void;
   /** STT live wiring. False en preview/dev (sin cookie). */
   sttEnabled?: boolean;
+  /** Notifica al store que esta pregunta recibió input desde STT (voz). Idempotente;
+   * el caller hace guard interno. Cierra deuda #8 (`fuente: 'usuario_tipea'`
+   * discriminator real). */
+  onSttAppend?: () => void;
+  /** Token Deepgram pre-minteado por el RSC. Se pasa al hook STT para saltarse
+   * el POST /api/stt/token en el primer click (~200-400ms shaved). null si
+   * el grant server-side falló — el hook fallback al fetch normal. */
+  initialSttToken?: InitialSttToken | null;
 }
 
 // Resuelve { pregunta, auxiliar } a renderizar. Si la Pregunta trae `auxiliar`
@@ -88,13 +102,23 @@ export function HeroPregunta({
   onChangeTexto,
   onToggleMarcada,
   sttEnabled = false,
+  onSttAppend,
+  initialSttToken = null,
 }: Props) {
   const [showMicTooltip, setShowMicTooltip] = useState(false);
   const meta = AUTOSAVE_META[autosave];
   const { pregunta: q, auxiliar } = resolverPreguntaYAuxiliar(pregunta);
 
-  // STT wiring
-  const stt = useDeepgramStream();
+  // STT wiring. initialToken viene del RSC (pre-mint) y se consume una sola
+  // vez en el primer start() — siguientes clicks fetchean normal.
+  // prewarmMicOnMount: solo si STT está habilitado para esta pregunta. El
+  // hook valida internamente que el browser reporte permission='granted'
+  // antes de adquirir el mic; en cold-first-visit (permission='prompt') no
+  // hace nada (no quema el prompt sin gesture).
+  const stt = useDeepgramStream({
+    initialToken: initialSttToken,
+    prewarmMicOnMount: sttEnabled,
+  });
   const lastAppendedRef = useRef(0);
   const textoRef = useRef(texto);
   textoRef.current = texto;
@@ -191,8 +215,13 @@ export function HeroPregunta({
     );
     if (consumidos === lastAppendedRef.current) return;
     lastAppendedRef.current = consumidos;
-    if (nextTexto !== textoRef.current) onChangeTexto(nextTexto);
-  }, [stt.transcripts.history, onChangeTexto]);
+    if (nextTexto !== textoRef.current) {
+      onChangeTexto(nextTexto);
+      // Marca la pregunta como STT-source para el discriminator de fuente
+      // (deuda #8). El handler es idempotente; no hace falta guard adicional.
+      onSttAppend?.();
+    }
+  }, [stt.transcripts.history, onChangeTexto, onSttAppend]);
 
   return (
     <article className="flex flex-col gap-6 animate-fade-up">
@@ -284,6 +313,19 @@ export function HeroPregunta({
             Reconectando con el servicio de voz…
           </p>
         )}
+        {sttEnabled && stt.lowAudioWarning && stt.status === 'streaming' && (
+          <p
+            className="flex items-center gap-2 px-1 text-xs text-amber-600"
+            role="status"
+            aria-live="polite"
+          >
+            <span
+              aria-hidden
+              className="inline-block size-1.5 rounded-full bg-amber-500 animate-pulse-ring"
+            />
+            Habla más fuerte o acércate al micrófono — la señal está muy baja.
+          </p>
+        )}
         {sttEnabled && stt.longRecordingWarning && stt.status === 'streaming' && (
           <p
             className="px-1 text-xs text-amber-600"
@@ -327,7 +369,7 @@ export function HeroPregunta({
 
           <MarcarButton
             marcada={marcada}
-            onToggle={() => onToggleMarcada(!marcada)}
+            onToggle={onToggleMarcada}
           />
         </div>
       </footer>

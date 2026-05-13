@@ -92,6 +92,9 @@ interface EntrevistaState {
   batch_actual: PreguntaBatch | null;
   respuestas_pendientes: Record<string, string>; // preguntaId → texto
   marcadas_respondidas: Record<string, boolean>; // preguntaId → boolean
+  // preguntaId → true cuando el texto recibió append desde STT. Default ausente
+  // ⇒ teclado puro. Reset al recibir un batch nuevo. Deuda #8.
+  preguntas_con_stt: Record<string, boolean>;
   cajas_llenas_por_grupo: Record<GrupoUI, CajasGrupoCount>;
   // Per-pregunta autosave UI state (status text in the card footer).
   autosave_estado: Record<string, AutosaveStatus>;
@@ -128,6 +131,17 @@ interface EntrevistaState {
   ) => void;
   setRespuesta: (preguntaId: string, texto: string) => void;
   marcarRespondida: (preguntaId: string, marcada: boolean) => void;
+  /** Toggle atómico del flag `marcadas_respondidas[preguntaId]`. Lee el estado
+   * actual del store y emite el valor contrario en un único `set`. Reemplaza el
+   * patrón `onToggle={() => marcarRespondida(id, !marcada)}` que cerraba sobre
+   * un `marcada` (prop) potencialmente stale entre renders rápidos — fuente del
+   * bug O3 race condition (deuda #2). El callback `set((s) => ...)` garantiza
+   * que el cómputo ocurre contra el último state aunque haya `set` en flight. */
+  togglearMarcada: (preguntaId: string) => void;
+  /** Marca que una pregunta recibió input de STT (voz). Si CUALQUIER pregunta
+   * del batch tiene este flag, el header `X-Vertice-Input-Source` se envía como
+   * 'voice' o 'mixed' según corresponda. Cierra deuda #8 (discriminator real). */
+  marcarSttUsado: (preguntaId: string) => void;
   enviarBatch: () => Promise<void>;
   cargarPrimerBatch: () => void;
   cargarFixtureMock: () => void;
@@ -319,6 +333,7 @@ export const useEntrevistaStore = create<EntrevistaState>((set, get) => ({
   batch_actual: null,
   respuestas_pendientes: {},
   marcadas_respondidas: {},
+  preguntas_con_stt: {},
   cajas_llenas_por_grupo: emptyGrupoCounts(),
   autosave_estado: {},
   ultimo_error_turn: null,
@@ -364,6 +379,7 @@ export const useEntrevistaStore = create<EntrevistaState>((set, get) => ({
           respuestas_pendientes: drafts,
           autosave_estado,
           marcadas_respondidas: {},
+          preguntas_con_stt: {},
           preview_mode: options?.preview === true,
         });
         return;
@@ -456,6 +472,24 @@ export const useEntrevistaStore = create<EntrevistaState>((set, get) => ({
     }));
   },
 
+  togglearMarcada: (preguntaId) => {
+    set((s) => ({
+      marcadas_respondidas: {
+        ...s.marcadas_respondidas,
+        [preguntaId]: !s.marcadas_respondidas[preguntaId],
+      },
+    }));
+  },
+
+  marcarSttUsado: (preguntaId) => {
+    // Idempotente: si ya está true, no recrea el objeto (evita re-renders
+    // innecesarios). El HeroPregunta llama esto cada vez que aplica un
+    // append-from-STT, así que el guard es importante.
+    const prev = get().preguntas_con_stt;
+    if (prev[preguntaId] === true) return;
+    set({ preguntas_con_stt: { ...prev, [preguntaId]: true } });
+  },
+
   enviarBatch: async () => {
     const { batch_actual, respuestas_pendientes, marcadas_respondidas, sesion_id, preview_mode } = get();
     if (!batch_actual) return;
@@ -491,6 +525,7 @@ export const useEntrevistaStore = create<EntrevistaState>((set, get) => ({
           batch_actual: next,
           respuestas_pendientes: {},
           marcadas_respondidas: {},
+          preguntas_con_stt: {},
           autosave_estado: {},
           cajas_llenas_por_grupo: {
             ...s.cajas_llenas_por_grupo,
@@ -502,13 +537,27 @@ export const useEntrevistaStore = create<EntrevistaState>((set, get) => ({
     }
 
     const mensaje_usuario = composeMensajeUsuario(batch_actual, respuestas_pendientes);
+    // Discriminator de fuente para deuda #8: si TODAS las preguntas del batch
+    // tuvieron append-from-STT → 'voice'. Si NINGUNA → 'keyboard'. Mezcla → 'mixed'.
+    // El server mapea esto a `fuente_turno` (enum DB).
+    const preguntasConStt = get().preguntas_con_stt;
+    const sttCount = batch_actual.preguntas.filter((p) => preguntasConStt[p.id]).length;
+    const inputSource: 'voice' | 'keyboard' | 'mixed' =
+      sttCount === 0
+        ? 'keyboard'
+        : sttCount === batch_actual.preguntas.length
+        ? 'voice'
+        : 'mixed';
 
     set({ status: 'enviando', ultimo_error_turn: null, mensaje_estado: null });
 
     try {
       const res = await fetch('/api/turn', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Vertice-Input-Source': inputSource,
+        },
         body: JSON.stringify({ sesion_id, mensaje_usuario }),
       });
 
@@ -604,6 +653,7 @@ export const useEntrevistaStore = create<EntrevistaState>((set, get) => ({
           batch_actual: null,
           respuestas_pendientes: {},
           marcadas_respondidas: {},
+          preguntas_con_stt: {},
           autosave_estado: {},
           ultimo_error_turn: null,
           mensaje_estado: describeReviewState(reviewOut),
@@ -623,6 +673,7 @@ export const useEntrevistaStore = create<EntrevistaState>((set, get) => ({
           batch_actual: nuevoBatch,
           respuestas_pendientes: {},
           marcadas_respondidas: {},
+          preguntas_con_stt: {},
           autosave_estado: {},
           mensaje_estado: mensaje,
         });

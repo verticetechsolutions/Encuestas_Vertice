@@ -8,12 +8,44 @@
 //   - Start chime: tono ascendente 600 → 900 Hz, sine wave, gain pico 0.08.
 //   - Stop chime: tono descendente 700 → 400 Hz, sine wave, gain pico 0.08.
 //   - Envelope: attack 10ms, release 140ms (total 150ms), sin clipping.
-//   - Volumen bajo intencional. El UI tiene mute toggle (no implementado aún;
-//     mute via prefers-reduced-motion no aplica, audio es señal funcional).
+//   - Volumen bajo intencional. Mute toggle persistido en localStorage para
+//     entrevistados que prefieren feedback silencioso (deuda #9 cerrada
+//     2026-05-13).
 //
 // El AudioContext se crea lazy en el primer playStartChime (algunos browsers
 // requieren un user gesture previo, garantizado porque el chime se dispara
 // post-click del mic). El context se reutiliza entre chimes.
+
+// localStorage key para el setting de mute. "1" = muted, ausente o "0" = sonando.
+const CHIME_MUTED_LOCALSTORAGE_KEY = 'vertice:chime-muted';
+
+export function isChimeMuted(): boolean {
+  if (typeof window === 'undefined') return false;
+  try {
+    return window.localStorage.getItem(CHIME_MUTED_LOCALSTORAGE_KEY) === '1';
+  } catch {
+    // localStorage puede arrojar en private mode + Safari strict. Fallback: no muted.
+    return false;
+  }
+}
+
+export function setChimeMuted(muted: boolean): void {
+  if (typeof window === 'undefined') return;
+  try {
+    if (muted) {
+      window.localStorage.setItem(CHIME_MUTED_LOCALSTORAGE_KEY, '1');
+    } else {
+      window.localStorage.removeItem(CHIME_MUTED_LOCALSTORAGE_KEY);
+    }
+    // Dispatch a custom event para que componentes que lean el setting puedan
+    // re-renderear sin polling. El storage event nativo no se dispara para
+    // cambios desde la misma tab.
+    window.dispatchEvent(new CustomEvent('vertice:chime-muted-change', { detail: { muted } }));
+  } catch {
+    // Best-effort: si localStorage no disponible, el toggle no persiste pero
+    // la UI sigue funcionando (el caller maneja in-memory state).
+  }
+}
 
 let chimeContext: AudioContext | null = null;
 
@@ -73,10 +105,12 @@ function playChime({ fromHz, toHz, durationMs, peakGain }: ChimeParams): void {
 }
 
 export function playStartChime(): void {
+  if (isChimeMuted()) return;
   playChime({ fromHz: 600, toHz: 900, durationMs: 150, peakGain: 0.08 });
 }
 
 export function playStopChime(): void {
+  if (isChimeMuted()) return;
   playChime({ fromHz: 700, toHz: 400, durationMs: 150, peakGain: 0.08 });
 }
 

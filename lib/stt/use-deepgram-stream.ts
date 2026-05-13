@@ -6,22 +6,26 @@
 //   Reconnecting es estado distinto a connecting: ya hubo open previo, ahora
 //   se está restaurando (mejor UX que mostrar "connecting" otra vez).
 //
-// Owns: MediaStream (mic), MediaRecorder (chunker), Deepgram WS, AudioContext
-// (level meter), KeepAlive timer, Pause timer, Retry timer, Long-recording
-// auto-stop timer. `stop()` y unmount cleanup llaman al mismo teardown.
+// Owns: MediaStream (mic), AudioContext + AudioWorkletNode (PCM streamer +
+// level meter), Deepgram WS, KeepAlive timer, Pause timer, Retry timer,
+// Long-recording auto-stop timer. `stop()` y unmount cleanup llaman al
+// mismo teardown.
 //
-// Production-grade features (CTO audit 2026-05-12):
+// Production-grade features (CTO audit 2026-05-12, AudioWorklet migration 2026-05-13):
+//   - AudioWorklet `pcm-processor` emite Int16 PCM @ 16kHz directo (NO Opus/WebM):
+//     elimina el buffering interno de MediaRecorder + container muxing (~100-300ms
+//     menos latency hasta el primer transcript).
 //   - KeepAlive cada 8s: previene cierre por timeout idle de Deepgram (~10-12s).
 //   - sendFinalize antes de close: no perdemos la última palabra dictada.
 //   - Audio constraints: echoCancellation + noiseSuppression + AGC para WER.
 //   - track.onended: detecta bluetooth disconnect / permission revoke mid-stream.
-//   - Cold-start buffer FIFO (max 10s) — chunks pre-socket-open se preservan.
+//   - Cold-start buffer FIFO (cap por bytes ≈ 10s) — frames pre-socket-open se preservan.
 //   - Retry con jitter (500ms-2s + ±20% jitter) hasta 3 intentos.
 //   - Hard cap 30min recording + warning a los 25 — anti-runaway.
-//   - AudioContext level meter (RMS 0-1) para feedback visual.
+//   - AudioContext analyser (RMS 0-1) para feedback visual del nivel de mic.
 //   - Telemetry estructurada: time_to_open, time_to_first_transcript, reconnects.
 //   - Errores categorizados: token, permission, device, network, codec, idle.
-//   - visibilitychange: pausa recorder cuando tab está oculta; iOS Safari friendly.
+//   - visibilitychange: suspende AudioContext cuando tab está oculta; iOS Safari friendly.
 //
 // Auth: el browser usa JWT del endpoint /api/stt/token (mintea cada start o retry).
 // Audio NUNCA toca nuestro server — va directo browser → Deepgram WS.
@@ -96,6 +100,36 @@ export interface SttMetrics {
   finalsReceived: number;
 }
 
+/**
+ * Token pre-minteado en el Server Component que sirve la página de entrevista.
+ * Permite saltarse el POST `/api/stt/token` en el PRIMER start() — el endpoint
+ * cuesta ~200-400ms por CSRF + DB SELECT + Deepgram grant. Si el user clickea
+ * el mic dentro de los ~55s del page load, ese roundtrip se elide. Después se
+ * consume y los siguientes start() fetchean normal.
+ */
+export interface InitialSttToken {
+  /** JWT crudo que el browser pasa via subprotocol `['bearer', value]`. */
+  value: string;
+  /** Unix ms cuando el token expira en Deepgram. Hook verifica antes de usar. */
+  expiresAt: number;
+}
+
+export interface UseDeepgramStreamOptions {
+  /** Token pre-minteado por el RSC. null si el grant falló server-side. */
+  initialToken?: InitialSttToken | null;
+  /**
+   * Si true Y `navigator.permissions.query({name:'microphone'})` reporta
+   * 'granted', el hook adquiere el MediaStream del mic al MOUNT del componente
+   * (no al click). El primer click reusa ese stream y saltea getUserMedia
+   * (~100-300ms shaved del path crítico). Trade-off: el indicador "mic activo"
+   * del browser aparece apenas el componente monta, antes de dictar. Apropiado
+   * solo en pantallas claramente identificadas como "sala de entrevista". Si
+   * permission es 'prompt' o 'denied', no hace nada (no triggear prompt sin
+   * gesture). Default: false.
+   */
+  prewarmMicOnMount?: boolean;
+}
+
 export interface UseDeepgramStreamReturn {
   status: SttStatus;
   error: string | null;
@@ -109,6 +143,13 @@ export interface UseDeepgramStreamReturn {
    * 1 saturación. Útil para waveform/meter UI. Solo se computa mientras streaming.
    */
   audioLevel: number;
+  /**
+   * True cuando el peak del audioLevel sobre los últimos 4s cae en la banda
+   * "señal débil" — el user está produciendo sonido pero por debajo del nivel
+   * que Deepgram transcribe bien. Self-clear cuando el user habla más fuerte
+   * o cuando entra en silencio puro (pausa natural).
+   */
+  lowAudioWarning: boolean;
   /** Warning visible cuando la grabación pasa 25 min (faltan 5 para auto-stop). */
   longRecordingWarning: boolean;
   /** Métricas para observabilidad. */
@@ -122,13 +163,31 @@ export interface UseDeepgramStreamReturn {
 const PAUSE_MS = 1500;
 const PAUSE_TICK_MS = 250;
 const MAX_RETRIES = 3;
-const AUDIO_CHUNK_MS = 250;
+// Sample rate target. Match con el query param del STT_LIVE_CONFIG
+// (encoding=linear16&sample_rate=16000) y con el constraint pedido al
+// getUserMedia. El AudioWorklet downsample si el AudioContext no respetó
+// el sampleRate solicitado (Chrome a menudo entrega 48000).
+const STT_SAMPLE_RATE = 16000;
+
+// Low-audio warning thresholds. audioLevel viene scaled 0-1 (raw RMS * 3).
+// Voz normal cae en ~0.15-0.6; voz baja/whisper en ~0.04-0.12; silencio < 0.04.
+// Si el peak del rolling window (LOW_AUDIO_WINDOW_MS) queda EN la banda de
+// señal débil — ni silencio puro ni voz audible — el user probablemente está
+// hablando muy bajo y disparamos el warning. Banda silencio queda fuera para
+// no nag al user durante pausas naturales/pensamiento.
+const LOW_AUDIO_SILENCE_FLOOR = 0.04;
+const LOW_AUDIO_VOICE_THRESHOLD = 0.15;
+const LOW_AUDIO_WINDOW_MS = 4000;
+const LOW_AUDIO_CHECK_TICK_MS = 500;
+const LOW_AUDIO_MIN_SAMPLES = 8;
 
 // Cold-start buffer (bug O1 STT — doc bugs-encontrados-2026-05-11-stt §O1).
-// El recorder arranca al click; mientras el socket conecta los chunks bufferean
-// in-memory y se drenan al `socket.open` en orden FIFO. BUFFER_MAX_CHUNKS acota
-// memoria (10s a 250ms = 40 chunks).
-export const BUFFER_MAX_CHUNKS = 40;
+// El AudioWorklet arranca al click; mientras el socket conecta los frames PCM
+// bufferean in-memory y se drenan al `socket.open` en orden FIFO.
+// BUFFER_MAX_BYTES acota memoria por bytes en lugar de chunks porque el
+// worklet emite a cadencia ~2.67ms (128 samples / 48kHz) en lugar de los
+// 250ms del antiguo MediaRecorder. 16kHz × 2 bytes/sample × 10s = 320KB.
+export const BUFFER_MAX_BYTES = 320_000;
 
 const MIC_ERROR_INFO: Record<string, { code: SttErrorCode; message: string }> = {
   NotAllowedError: {
@@ -162,6 +221,7 @@ const MIC_ERROR_INFO: Record<string, { code: SttErrorCode; message: string }> = 
 };
 
 interface DeepgramResultMessage {
+  // 'Results' | 'SpeechStarted' | 'UtteranceEnd' | 'Metadata' | 'Error' | 'Warning'
   type: string;
   is_final?: boolean;
   start?: number;
@@ -173,6 +233,12 @@ interface DeepgramResultMessage {
       words: Array<{ word: string; start: number; end: number; speaker?: number }>;
     }>;
   };
+  // VAD events (vad_events=true en STT_LIVE_CONFIG). `SpeechStarted` viene con
+  // un timestamp en segundos desde el comienzo del stream; `UtteranceEnd` se
+  // emite tras `utterance_end_ms` de silencio post-final. Solo usamos estos
+  // mensajes para togglar `pauseDetected` (deuda #11 cerrada 2026-05-13).
+  channel_index?: number[];
+  last_word_end?: number;
 }
 
 function classifyMicError(err: unknown): { code: SttErrorCode; message: string } {
@@ -220,24 +286,24 @@ async function fetchEphemeralToken(): Promise<string> {
 }
 
 /**
- * Drena el buffer de chunks pre-socket-open al socket en orden FIFO.
+ * Drena el buffer de frames PCM pre-socket-open al socket en orden FIFO.
  *
  * Pure helper exportado para test. Mutación in-place del array es deliberada —
  * los useRef arrays compartidos no admiten reasignación desde fuera del hook.
  * Si sendMedia throws, dejamos el resto del buffer intacto para que la
  * siguiente vuelta del retry loop lo intente de nuevo.
  *
- * @returns número de chunks enviados exitosamente.
+ * @returns número de frames enviados exitosamente.
  */
 export function drainBufferToSocket(
-  buffer: Blob[],
-  socket: { sendMedia: (data: Blob) => void }
+  buffer: ArrayBuffer[],
+  socket: { sendMedia: (data: ArrayBuffer) => void }
 ): number {
   let sent = 0;
   while (buffer.length > 0) {
-    const chunk = buffer[0]; // peek
+    const frame = buffer[0]; // peek
     try {
-      socket.sendMedia(chunk);
+      socket.sendMedia(frame);
       buffer.shift(); // consume only after success
       sent += 1;
     } catch {
@@ -245,25 +311,6 @@ export function drainBufferToSocket(
     }
   }
   return sent;
-}
-
-function pickAudioMimeType(): string {
-  // Browsers vary; webm/opus es lo más eficiente. Safari 14.5+ ship solo
-  // `audio/mp4`. Si ninguno soporta MediaRecorder, devolvemos '' y dejamos
-  // a Deepgram autodetectar. iOS Safari < 14.5 no tiene MediaRecorder en
-  // absoluto — el caller debe verificar `typeof MediaRecorder` antes.
-  if (typeof MediaRecorder === 'undefined') return '';
-  const candidates = [
-    'audio/webm;codecs=opus',
-    'audio/webm',
-    'audio/mp4',
-    'audio/mp4;codecs=mp4a.40.2',
-    'audio/ogg;codecs=opus',
-  ];
-  for (const t of candidates) {
-    if (MediaRecorder.isTypeSupported(t)) return t;
-  }
-  return '';
 }
 
 interface DeepgramSocketHandle {
@@ -283,7 +330,17 @@ interface DeepgramSocketHandle {
   connect(): DeepgramSocketHandle;
 }
 
-export function useDeepgramStream(): UseDeepgramStreamReturn {
+export function useDeepgramStream(
+  opts: UseDeepgramStreamOptions = {},
+): UseDeepgramStreamReturn {
+  // Stash el initialToken en un ref para no re-disparar lógica en re-render
+  // si el RSC re-emite el mismo token. Una vez consumido (primer start), se
+  // pone a null para que siguientes starts fetcheen normal.
+  const initialTokenRef = useRef<InitialSttToken | null>(opts.initialToken ?? null);
+  // MediaStream pre-acquirido al mount (si prewarmMicOnMount + permission
+  // granted). Consumido por el primer start(); null'd después para que el
+  // siguiente start() haga getUserMedia normal.
+  const prewarmedStreamRef = useRef<MediaStream | null>(null);
   const [status, setStatus] = useState<SttStatus>('idle');
   const [error, setError] = useState<string | null>(null);
   const [errorCode, setErrorCode] = useState<SttErrorCode | null>(null);
@@ -294,6 +351,7 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
   });
   const [pauseDetected, setPauseDetected] = useState(false);
   const [audioLevel, setAudioLevel] = useState(0);
+  const [lowAudioWarning, setLowAudioWarning] = useState(false);
   const [longRecordingWarning, setLongRecordingWarning] = useState(false);
   const [metrics, setMetrics] = useState<SttMetrics>({
     timeToOpenMs: null,
@@ -304,11 +362,19 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
   });
 
   const socketRef = useRef<DeepgramSocketHandle | null>(null);
-  // socketOpenRef: true entre `on('open')` y `on('close')`. La ondataavailable
-  // del recorder decide buffer-vs-send-directo según este flag SIN tener que
-  // re-asignarse, evitando una clase de bugs por re-wireado fuera de orden.
+  // socketOpenRef: true entre `on('open')` y `on('close')`. El message handler
+  // del AudioWorklet decide buffer-vs-send-directo según este flag SIN tener
+  // que re-asignarse, evitando una clase de bugs por re-wireado fuera de orden.
   const socketOpenRef = useRef<boolean>(false);
-  const recorderRef = useRef<MediaRecorder | null>(null);
+  // AudioWorkletNode: corre el `pcm-processor` (public/stt/pcm-worklet.js) que
+  // downsample a 16kHz y emite Int16 PCM via port.postMessage. Reemplaza al
+  // MediaRecorder original (que añadía buffering interno + Opus encoding +
+  // container muxing ≈ 100-300ms de latency antes del primer chunk).
+  const workletNodeRef = useRef<AudioWorkletNode | null>(null);
+  // True una vez que `audioWorklet.addModule('/stt/pcm-worklet.js')` resolvió
+  // exitosamente — el module load es one-shot por AudioContext y subsequente
+  // calls retornan inmediatamente, pero evitamos race al primer start.
+  const workletInstalledRef = useRef<boolean>(false);
   const streamRef = useRef<MediaStream | null>(null);
   const lastAudioAtRef = useRef<number>(0);
   const pauseTimerRef = useRef<number | null>(null);
@@ -318,14 +384,22 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
   const stoppedByUserRef = useRef<boolean>(false);
   const retryTimerRef = useRef<number | null>(null);
   const segmentCounterRef = useRef<number>(0);
-  const recorderWasRunningOnHideRef = useRef<boolean>(false);
-  const bufferedChunksRef = useRef<Blob[]>([]);
+  // Tracks si el AudioContext estaba corriendo cuando la tab perdió foco —
+  // en ese caso lo resumimos al volver.
+  const wasRunningOnHideRef = useRef<boolean>(false);
+  const bufferedChunksRef = useRef<ArrayBuffer[]>([]);
+  // Bytes acumulados en el buffer cold-start. Cap por BUFFER_MAX_BYTES.
+  const bufferedBytesRef = useRef<number>(0);
   // AudioContext + Analyser para level meter. Lazy: creados al primer start
   // (iOS Safari requiere gesture). Reusados en starts subsiguientes.
   const audioCtxRef = useRef<AudioContext | null>(null);
   const analyserRef = useRef<AnalyserNode | null>(null);
   const audioSourceRef = useRef<MediaStreamAudioSourceNode | null>(null);
   const levelRafRef = useRef<number | null>(null);
+  // Rolling window de muestras de audioLevel para detección "habla más fuerte".
+  // Push en cada tick del meter, prune entries fuera de LOW_AUDIO_WINDOW_MS.
+  const audioLevelHistoryRef = useRef<Array<{ t: number; level: number }>>([]);
+  const lowAudioCheckTimerRef = useRef<number | null>(null);
   // Telemetría: timestamps por sesión de captura. Reset en start().
   const startedAtRef = useRef<number>(0);
   const firstOpenAtRef = useRef<number>(0);
@@ -359,13 +433,19 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
       window.cancelAnimationFrame(levelRafRef.current);
       levelRafRef.current = null;
     }
-    if (recorderRef.current) {
+    if (lowAudioCheckTimerRef.current !== null) {
+      window.clearInterval(lowAudioCheckTimerRef.current);
+      lowAudioCheckTimerRef.current = null;
+    }
+    audioLevelHistoryRef.current.length = 0;
+    if (workletNodeRef.current) {
       try {
-        if (recorderRef.current.state !== 'inactive') recorderRef.current.stop();
+        workletNodeRef.current.port.onmessage = null;
+        workletNodeRef.current.disconnect();
       } catch {
-        // Recorder puede estar en estado terminal.
+        // Already disconnected.
       }
-      recorderRef.current = null;
+      workletNodeRef.current = null;
     }
     if (audioSourceRef.current) {
       try {
@@ -398,11 +478,33 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
     }
     socketOpenRef.current = false;
     bufferedChunksRef.current.length = 0;
+    bufferedBytesRef.current = 0;
+    // Suspender el AudioContext en teardown libera el hardware del mic en
+    // browsers que lo respetan (Chrome >=120). El context se reusa al
+    // siguiente start con `resume()` — más barato que crear uno nuevo.
+    if (audioCtxRef.current && audioCtxRef.current.state === 'running') {
+      audioCtxRef.current.suspend().catch(() => undefined);
+    }
     setAudioLevel(0);
+    setLowAudioWarning(false);
     setLongRecordingWarning(false);
   }, []);
 
   const handleResult = useCallback((msg: DeepgramResultMessage) => {
+    // VAD events del modo `vad_events=true` (STT_LIVE_CONFIG). Reemplazan el
+    // polling sobre `lastAudioAtRef` que NUNCA disparaba via MediaRecorder
+    // porque los frames PCM llegan cada ~2.67ms aunque el user no hable
+    // (deuda #11 cerrada 2026-05-13). `SpeechStarted` = el modelo detectó
+    // inicio real de habla; `UtteranceEnd` = pasaron `utterance_end_ms` de
+    // silencio post-final (1000ms en config) y el utterance se cerró.
+    if (msg.type === 'SpeechStarted') {
+      setPauseDetected(false);
+      return;
+    }
+    if (msg.type === 'UtteranceEnd') {
+      setPauseDetected(true);
+      return;
+    }
     if (msg.type !== 'Results') return;
     const alt = msg.channel?.alternatives?.[0];
     if (!alt) return;
@@ -464,36 +566,40 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
   );
 
   /**
-   * Single ondataavailable handler que decide buffer vs send-directo según
-   * `socketOpenRef`. Set una vez al start; no se re-asigna por estado, lo
-   * cual elimina la clase de bugs por re-wireado fuera de orden.
+   * Handler del `port.onmessage` del AudioWorklet. Cada frame PCM (Int16 ~2.67ms
+   * a 48kHz, ~8ms a 16kHz) entra y se envía directo al socket o se bufferea
+   * con cap por bytes si el WS no abrió todavía. Set una vez al start.
    */
-  const installRecorderHandler = useCallback(
-    (recorder: MediaRecorder) => {
-      recorder.ondataavailable = (ev) => {
-        if (!ev.data || ev.data.size === 0) return;
+  const installWorkletHandler = useCallback(
+    (worklet: AudioWorkletNode) => {
+      worklet.port.onmessage = (ev: MessageEvent<ArrayBuffer>) => {
+        const frame = ev.data;
+        if (!frame || frame.byteLength === 0) return;
         const sock = socketRef.current;
         if (sock && socketOpenRef.current) {
           // Live mode.
           if (bufferedChunksRef.current.length > 0) {
             // Defensa: si quedó algo del cold-start (e.g. open llegó entre
-            // chunks), drenamos antes para preservar orden.
+            // frames), drenamos antes para preservar orden.
             drainBufferToSocket(bufferedChunksRef.current, sock);
+            bufferedBytesRef.current = 0;
           }
           try {
-            sock.sendMedia(ev.data);
+            sock.sendMedia(frame);
             lastAudioAtRef.current = Date.now();
             if (pauseDetected) setPauseDetected(false);
           } catch {
-            // Socket pudo cerrarse mid-chunk; el close handler dispara retry.
+            // Socket pudo cerrarse mid-frame; el close handler dispara retry.
           }
           return;
         }
-        // Cold-start mode: bufferear con cap acotado.
+        // Cold-start mode: bufferear con cap acotado en bytes.
         const buf = bufferedChunksRef.current;
-        buf.push(ev.data);
-        while (buf.length > BUFFER_MAX_CHUNKS) {
-          buf.shift(); // drop oldest
+        buf.push(frame);
+        bufferedBytesRef.current += frame.byteLength;
+        while (bufferedBytesRef.current > BUFFER_MAX_BYTES && buf.length > 0) {
+          const dropped = buf.shift();
+          if (dropped) bufferedBytesRef.current -= dropped.byteLength;
         }
       };
     },
@@ -508,6 +614,32 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
         setPauseDetected((prev) => (prev ? prev : true));
       }
     }, PAUSE_TICK_MS);
+  }, []);
+
+  /**
+   * Detector de "habla más fuerte". Cada LOW_AUDIO_CHECK_TICK_MS computa el
+   * peak del audioLevel sobre la ventana rodante LOW_AUDIO_WINDOW_MS. Si el
+   * peak cae en la banda de señal débil (entre silencio puro y voz audible)
+   * dispara el warning; auto-clear cuando el user habla más fuerte o se
+   * queda en silencio puro (pausa natural).
+   */
+  const startLowAudioCheckTimer = useCallback(() => {
+    if (lowAudioCheckTimerRef.current !== null) return;
+    lowAudioCheckTimerRef.current = window.setInterval(() => {
+      const hist = audioLevelHistoryRef.current;
+      // Esperamos a tener suficientes muestras para evitar disparar en el
+      // primer segundo donde el RMS apenas inicia a estabilizarse.
+      if (hist.length < LOW_AUDIO_MIN_SAMPLES) return;
+      let peak = 0;
+      for (const sample of hist) {
+        if (sample.level > peak) peak = sample.level;
+      }
+      // Zona débil = produciendo sonido pero no audible. Fuera de zona =
+      // voz normal (>=threshold) o silencio puro (<floor) — no alertamos.
+      const enZonaDebil =
+        peak >= LOW_AUDIO_SILENCE_FLOOR && peak < LOW_AUDIO_VOICE_THRESHOLD;
+      setLowAudioWarning((prev) => (prev === enZonaDebil ? prev : enZonaDebil));
+    }, LOW_AUDIO_CHECK_TICK_MS);
   }, []);
 
   /**
@@ -531,57 +663,126 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
   }, []);
 
   /**
-   * Tick del AudioContext analyser: lee RMS de la stream y publica audioLevel
-   * en 0-1. Usa rAF para no saturar React renders. Solo corre mientras streaming.
+   * Asegura AudioContext + MediaStreamSource compartidos por consumers
+   * (worklet PCM + analyser de level meter). El context se reusa entre starts
+   * (iOS Safari overhead al crear uno nuevo); la source es per-stream.
+   * Retorna null si el browser no soporta AudioContext.
    */
-  const startAudioLevelMeter = useCallback((stream: MediaStream) => {
-    // iOS Safari: AudioContext requiere user gesture en mobile. start() YA
-    // viene de un click handler así que es seguro instanciar.
-    try {
+  const ensureAudioGraph = useCallback(
+    (stream: MediaStream): { ctx: AudioContext; source: MediaStreamAudioSourceNode } | null => {
       const AudioCtx =
         window.AudioContext ||
         (window as unknown as { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
-      if (!AudioCtx) return;
+      if (!AudioCtx) return null;
       if (!audioCtxRef.current) {
-        audioCtxRef.current = new AudioCtx();
-      }
-      const ctx = audioCtxRef.current;
-      // iOS suspende el context si no hay gesture reciente — resume defensivo.
-      if (ctx.state === 'suspended') {
-        ctx.resume().catch(() => {
-          // No-fail: si no podemos resume, simplemente no hay meter.
+        // `latencyHint: 'interactive'` reduce el buffer interno del pipeline
+        // (vs 'balanced' default que prioriza throughput). Match sampleRate
+        // con STT_AUDIO_CONSTRAINTS para que el browser no resamplee el
+        // stream del mic antes de entregárnoslo (evita ~10-30ms extra). Si
+        // el AudioCtx no soporta sampleRate exacto, el browser lo ignora
+        // silenciosamente y cae al default (típico 48000 en Chrome).
+        audioCtxRef.current = new AudioCtx({
+          latencyHint: 'interactive',
+          sampleRate: STT_SAMPLE_RATE,
         });
       }
-      const source = ctx.createMediaStreamSource(stream);
-      const analyser = ctx.createAnalyser();
-      analyser.fftSize = 512;
-      analyser.smoothingTimeConstant = 0.6;
-      source.connect(analyser);
-      audioSourceRef.current = source;
-      analyserRef.current = analyser;
+      const ctx = audioCtxRef.current;
+      // iOS / teardown suspenden el context — resume defensivo.
+      if (ctx.state === 'suspended') {
+        ctx.resume().catch(() => undefined);
+      }
+      if (!audioSourceRef.current) {
+        audioSourceRef.current = ctx.createMediaStreamSource(stream);
+      }
+      return { ctx, source: audioSourceRef.current };
+    },
+    [],
+  );
 
-      const buf = new Uint8Array(analyser.frequencyBinCount);
-      const tick = () => {
-        if (!analyserRef.current) return;
-        analyserRef.current.getByteTimeDomainData(buf);
-        // RMS sobre el waveform centrado en 128 (uint8 → -1..+1).
-        let sum = 0;
-        for (let i = 0; i < buf.length; i++) {
-          const v = (buf[i] - 128) / 128;
-          sum += v * v;
-        }
-        const rms = Math.sqrt(sum / buf.length);
-        // Scale: voz típica ~0.05-0.2 RMS. Multiplicamos por 3 para que el
-        // meter llegue a ~0.5-0.6 con voz normal y reserve headroom para gritos.
-        setAudioLevel(Math.min(1, rms * 3));
+  /**
+   * Carga el AudioWorklet `pcm-processor` (one-shot por AudioContext), crea
+   * el node, conecta a la source compartida, sink a un GainNode(0) para que
+   * el grafo se mantenga activo (sin generar audio audible). El node emite
+   * frames PCM Int16 via port.onmessage → installWorkletHandler.
+   */
+  const setupPcmWorklet = useCallback(
+    async (stream: MediaStream): Promise<void> => {
+      const graph = ensureAudioGraph(stream);
+      if (!graph) {
+        throw new Error('AudioContext no soportado por este browser.');
+      }
+      const { ctx, source } = graph;
+      if (!workletInstalledRef.current) {
+        await ctx.audioWorklet.addModule('/stt/pcm-worklet.js');
+        workletInstalledRef.current = true;
+      }
+      const worklet = new AudioWorkletNode(ctx, 'pcm-processor', {
+        numberOfInputs: 1,
+        numberOfOutputs: 1,
+        outputChannelCount: [1],
+      });
+      workletNodeRef.current = worklet;
+      installWorkletHandler(worklet);
+      source.connect(worklet);
+      // Sink silencioso para mantener activo el grafo cross-browser. Gain=0
+      // garantiza zero audio audible (sin echo en headphones).
+      const silentGain = ctx.createGain();
+      silentGain.gain.value = 0;
+      worklet.connect(silentGain);
+      silentGain.connect(ctx.destination);
+    },
+    [ensureAudioGraph, installWorkletHandler],
+  );
+
+  /**
+   * Tick del AudioContext analyser: lee RMS de la stream y publica audioLevel
+   * en 0-1. Usa rAF para no saturar React renders. Solo corre mientras streaming.
+   */
+  const startAudioLevelMeter = useCallback(
+    (stream: MediaStream) => {
+      const graph = ensureAudioGraph(stream);
+      if (!graph) return;
+      const { ctx, source } = graph;
+      try {
+        const analyser = ctx.createAnalyser();
+        analyser.fftSize = 512;
+        analyser.smoothingTimeConstant = 0.6;
+        source.connect(analyser);
+        analyserRef.current = analyser;
+
+        const buf = new Uint8Array(analyser.frequencyBinCount);
+        const tick = () => {
+          if (!analyserRef.current) return;
+          analyserRef.current.getByteTimeDomainData(buf);
+          // RMS sobre el waveform centrado en 128 (uint8 → -1..+1).
+          let sum = 0;
+          for (let i = 0; i < buf.length; i++) {
+            const v = (buf[i] - 128) / 128;
+            sum += v * v;
+          }
+          const rms = Math.sqrt(sum / buf.length);
+          // Scale: voz típica ~0.05-0.2 RMS. Multiplicamos por 3 para que el
+          // meter llegue a ~0.5-0.6 con voz normal y reserve headroom para gritos.
+          const scaled = Math.min(1, rms * 3);
+          setAudioLevel(scaled);
+          // Push al rolling window del low-audio detector. Prune entries viejos
+          // (más antiguos que LOW_AUDIO_WINDOW_MS). Mantener el array compacto
+          // evita memory leak en sesiones largas (rAF a 60fps × 30min = 108K).
+          const now = Date.now();
+          const hist = audioLevelHistoryRef.current;
+          hist.push({ t: now, level: scaled });
+          const cutoff = now - LOW_AUDIO_WINDOW_MS;
+          while (hist.length > 0 && hist[0].t < cutoff) hist.shift();
+          levelRafRef.current = window.requestAnimationFrame(tick);
+        };
         levelRafRef.current = window.requestAnimationFrame(tick);
-      };
-      levelRafRef.current = window.requestAnimationFrame(tick);
-    } catch {
-      // Si AudioContext falla por cualquier razón, el meter queda en 0 — no
-      // afecta la grabación. No-fail explícito.
-    }
-  }, []);
+      } catch {
+        // Si AudioContext falla por cualquier razón, el meter queda en 0 — no
+        // afecta la grabación. No-fail explícito.
+      }
+    },
+    [ensureAudioGraph],
+  );
 
   const scheduleRetry = useCallback(
     (boot: () => Promise<void>) => {
@@ -611,11 +812,15 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
     [teardown],
   );
 
-  const boot = useCallback(async (): Promise<void> => {
+  // boot acepta un tokenPromise pre-flying para elidir la latencia del
+  // POST /api/stt/token detrás de getUserMedia (ver `start`). Si no se pasa,
+  // mintea uno fresco — ese camino lo usan los retries de scheduleRetry, que
+  // necesitan token nuevo porque el original (60s TTL) puede haber caducado.
+  const boot = useCallback(async (tokenPromise?: Promise<string>): Promise<void> => {
     setStatus(retryCountRef.current === 0 ? 'connecting' : 'reconnecting');
     let token: string;
     try {
-      token = await fetchEphemeralToken();
+      token = await (tokenPromise ?? fetchEphemeralToken());
     } catch (err) {
       const status = (err as { status?: number }).status;
       if (status === 429) {
@@ -638,17 +843,26 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
 
     socket.on('open', () => {
       retryCountRef.current = 0;
+      // isFirstOpen: distinguir primer open exitoso vs reconnects para que
+      // (a) telemetría solo registre time_to_open la primera vez y (b) el
+      // chime de inicio NO se replay en cada reconnect.
+      const isFirstOpen = firstOpenAtRef.current === 0;
       setStatus('streaming');
       setError(null);
       setErrorCode(null);
       // Telemetría: time to first open (solo en primer open, no retries).
-      if (firstOpenAtRef.current === 0 && startedAtRef.current > 0) {
+      if (isFirstOpen && startedAtRef.current > 0) {
         firstOpenAtRef.current = Date.now();
         setMetrics((m) => ({
           ...m,
           timeToOpenMs: firstOpenAtRef.current - startedAtRef.current,
         }));
       }
+      // Chime de inicio: el user lo oye cuando el mic está REALMENTE activo
+      // (audio fluyendo a Deepgram), no al clickear el botón. Antes vivía en
+      // recorder.start() abajo, que es ~300-700ms antes del open del WS y
+      // generaba la sensación de "se activó pero no transcribe".
+      if (isFirstOpen) playStartChime();
       // Drenar el buffer cold-start ANTES de marcar live. Preserva orden FIFO.
       const sock = socketRef.current;
       if (sock && bufferedChunksRef.current.length > 0) {
@@ -657,6 +871,7 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
       socketOpenRef.current = true;
       startPauseTimer();
       startKeepAliveTimer();
+      startLowAudioCheckTimer();
     });
 
     socket.on('message', (msg: unknown) => {
@@ -687,6 +902,7 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
     openSocket,
     scheduleRetry,
     startKeepAliveTimer,
+    startLowAudioCheckTimer,
     startPauseTimer,
   ]);
 
@@ -699,6 +915,7 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
     setTranscripts({ interim: '', final: '', history: [] });
     setPauseDetected(false);
     setAudioLevel(0);
+    setLowAudioWarning(false);
     setLongRecordingWarning(false);
     setMetrics({
       timeToOpenMs: null,
@@ -710,25 +927,67 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
     stoppedByUserRef.current = false;
     retryCountRef.current = 0;
     bufferedChunksRef.current.length = 0;
+    bufferedBytesRef.current = 0;
     socketOpenRef.current = false;
     firstOpenAtRef.current = 0;
     firstTranscriptAtRef.current = 0;
     startedAtRef.current = Date.now();
 
     setStatus('requesting_mic');
+
+    // Token resolution:
+    //   1. Si el RSC pre-minteó un token y aún tiene >5s de vida, usarlo
+    //      directamente (saca ~200-400ms del path crítico — primer click).
+    //   2. Si no, lanzar fetchEphemeralToken EN PARALELO con getUserMedia.
+    // El POST /api/stt/token (CSRF + DB SELECT + Deepgram grant) cuesta
+    // ~150-400ms; getUserMedia ~10-100ms con mic ya autorizado, o 500-3000ms
+    // en el primer permission prompt. Correrlos serialmente sumaba toda esa
+    // latencia al click → streaming; en paralelo, el token queda listo (o
+    // muy cerca) cuando el mic resuelve. Si getUserMedia falla, el token
+    // se descarta (60s TTL caduca sin uso); el .catch silencia
+    // unhandled-rejection en ese path de abandono.
+    let tokenPromise: Promise<string>;
+    const initial = initialTokenRef.current;
+    if (initial && Date.now() < initial.expiresAt - 5_000) {
+      tokenPromise = Promise.resolve(initial.value);
+      // Consumir: el siguiente start fetcheará uno fresco vía /api/stt/token.
+      initialTokenRef.current = null;
+    } else {
+      tokenPromise = fetchEphemeralToken();
+      tokenPromise.catch(() => undefined);
+    }
+
     let stream: MediaStream;
-    try {
-      // Audio constraints profesionales: EC + NS + AGC + mono + 16kHz.
-      // Browsers que no soporten constraint específico lo ignoran (no throw).
-      stream = await navigator.mediaDevices.getUserMedia({
-        audio: STT_AUDIO_CONSTRAINTS,
-      });
-    } catch (err) {
-      const info = classifyMicError(err);
-      setStatus('error');
-      setError(info.message);
-      setErrorCode(info.code);
-      return;
+    // Si el hook hizo prewarm en mount Y el stream sigue vivo, reusarlo
+    // saltea el getUserMedia (~50-300ms shaved). El track puede haberse
+    // muerto entremedio (BT disconnect, OS revoke) — validamos readyState
+    // antes de confiar.
+    const prewarmed = prewarmedStreamRef.current;
+    if (
+      prewarmed &&
+      prewarmed.getAudioTracks().some((t) => t.readyState === 'live')
+    ) {
+      stream = prewarmed;
+      prewarmedStreamRef.current = null;
+    } else {
+      if (prewarmed) {
+        // Stream stale — limpiar tracks antes de soltar la ref.
+        for (const t of prewarmed.getTracks()) t.stop();
+        prewarmedStreamRef.current = null;
+      }
+      try {
+        // Audio constraints profesionales: EC + NS + AGC + mono + 16kHz.
+        // Browsers que no soporten constraint específico lo ignoran (no throw).
+        stream = await navigator.mediaDevices.getUserMedia({
+          audio: STT_AUDIO_CONSTRAINTS,
+        });
+      } catch (err) {
+        const info = classifyMicError(err);
+        setStatus('error');
+        setError(info.message);
+        setErrorCode(info.code);
+        return;
+      }
     }
     streamRef.current = stream;
 
@@ -752,45 +1011,28 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
       teardown();
     };
 
-    const mimeType = pickAudioMimeType();
-    let recorder: MediaRecorder;
+    // FIX cold-start: arrancar el AudioWorklet AHORA, sin esperar al socket.
+    // Los frames PCM dichos antes del socket.open caen al buffer in-memory
+    // (bufferedChunksRef) y se drenan al abrir, en orden FIFO.
     try {
-      recorder = mimeType
-        ? new MediaRecorder(stream, { mimeType })
-        : new MediaRecorder(stream);
+      await setupPcmWorklet(stream);
+      // playStartChime() vive en socket.on('open') para que solo suene cuando
+      // el mic está realmente conectado a Deepgram, no al iniciar la captura
+      // local.
     } catch (err) {
+      teardown();
       setStatus('error');
       setError(
         err instanceof Error
-          ? `Tu navegador no puede grabar audio: ${err.message}`
-          : 'Tu navegador no puede grabar audio en un formato compatible.'
+          ? `No pudimos iniciar la captura de audio: ${err.message}`
+          : 'No pudimos iniciar la captura de audio.'
       );
       setErrorCode('codec_unsupported');
-      teardown();
-      return;
-    }
-    recorderRef.current = recorder;
-
-    // FIX cold-start: instalar handler ANTES de start() y arrancar AHORA,
-    // sin esperar al socket. Chunks dichos antes del socket.open caen al
-    // buffer in-memory y se drenan al abrir.
-    installRecorderHandler(recorder);
-    try {
-      recorder.start(AUDIO_CHUNK_MS);
-      playStartChime();
-    } catch (err) {
-      teardown();
-      setStatus('error');
-      setError(
-        err instanceof Error
-          ? `No pudimos iniciar la grabación: ${err.message}`
-          : 'No pudimos iniciar la grabación.'
-      );
-      setErrorCode('unknown');
       return;
     }
 
-    // Audio level meter (UX): no-fail si falla.
+    // Audio level meter (UX): no-fail si falla. Reusa el AudioContext + source
+    // ya creados por setupPcmWorklet vía ensureAudioGraph.
     startAudioLevelMeter(stream);
 
     // Hard cap 30min + warning 25min — anti-runaway.
@@ -807,7 +1049,7 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
     }, STT_MAX_RECORDING_MS);
 
     try {
-      await boot();
+      await boot(tokenPromise);
     } catch (err) {
       // Initial connect failure: el recorder sigue corriendo y bufferea
       // chunks hasta que el retry conecte (o se agote MAX_RETRIES y teardown).
@@ -822,7 +1064,7 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     boot,
-    installRecorderHandler,
+    setupPcmWorklet,
     scheduleRetry,
     startAudioLevelMeter,
     status,
@@ -873,34 +1115,74 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
     }));
   }, []);
 
+  // Pre-warm getUserMedia al MOUNT si el caller lo pide Y el browser reporta
+  // permission='granted'. Acquired stream queda en prewarmedStreamRef, que
+  // start() consume saltando getUserMedia (~100-300ms shaved en mic-ya-
+  // autorizado, que es el caso típico durante una sesión).
+  //
+  // Si permission es 'prompt' o 'denied', no hacemos nada (no triggear el
+  // permission UI sin gesture). Si el query API no existe (Safari < 16),
+  // tampoco — el fallback es el camino normal del click.
+  useEffect(() => {
+    if (!opts.prewarmMicOnMount) return;
+    if (typeof navigator === 'undefined' || !navigator.mediaDevices) return;
+    if (!navigator.permissions || typeof navigator.permissions.query !== 'function') return;
+
+    let cancelled = false;
+    const acquireIfGranted = async (): Promise<void> => {
+      try {
+        // `microphone` no está en el tipado oficial de PermissionName pero
+        // sí lo soportan todos los browsers que nos importan. Cast forzado.
+        const result = await navigator.permissions.query({
+          name: 'microphone' as PermissionName,
+        });
+        if (cancelled || result.state !== 'granted') return;
+        const stream = await navigator.mediaDevices.getUserMedia({
+          audio: STT_AUDIO_CONSTRAINTS,
+        });
+        if (cancelled) {
+          for (const t of stream.getTracks()) t.stop();
+          return;
+        }
+        prewarmedStreamRef.current = stream;
+      } catch {
+        // No-fail: cualquier error deja el flujo normal del click intacto.
+      }
+    };
+    void acquireIfGranted();
+    return () => {
+      cancelled = true;
+      // Si todavía no se consumió, liberar el stream al unmount/re-prewarm.
+      const stream = prewarmedStreamRef.current;
+      if (stream && !streamRef.current) {
+        // streamRef.current existe solo si start() ya consumió el prewarmed —
+        // en ese caso NO debemos cerrar tracks porque están vivos en streamRef.
+        for (const t of stream.getTracks()) t.stop();
+        prewarmedStreamRef.current = null;
+      }
+    };
+  }, [opts.prewarmMicOnMount]);
+
   // Pause stream when tab loses focus; resume when it returns. iOS Safari
-  // friendly: suspende AudioContext si está activo, resume al volver.
+  // friendly: suspende AudioContext si está activo, resume al volver. Con
+  // AudioWorklet, suspender el ctx pausa el process() del processor, los
+  // frames PCM dejan de emitirse, y el socket WS sigue abierto vía KeepAlive.
   useEffect(() => {
     const onVisibilityChange = (): void => {
-      const recorder = recorderRef.current;
-      if (!recorder) return;
+      const ctx = audioCtxRef.current;
+      if (!ctx) return;
       if (document.hidden) {
-        if (recorder.state === 'recording') {
-          recorderWasRunningOnHideRef.current = true;
-          try {
-            recorder.pause();
-          } catch {
-            // Recorder might be inactive already.
-          }
+        if (ctx.state === 'running') {
+          wasRunningOnHideRef.current = true;
+          ctx.suspend().catch(() => undefined);
         }
-      } else if (recorderWasRunningOnHideRef.current) {
-        recorderWasRunningOnHideRef.current = false;
-        if (recorder.state === 'paused') {
-          try {
-            recorder.resume();
+      } else if (wasRunningOnHideRef.current) {
+        wasRunningOnHideRef.current = false;
+        ctx.resume()
+          .then(() => {
             lastAudioAtRef.current = Date.now();
-            // iOS Safari: AudioContext queda suspendido al backgrounding;
-            // resume defensivo para que el meter siga vivo.
-            audioCtxRef.current?.resume().catch(() => {});
-          } catch {
-            // Resume may fail if the underlying track was stopped.
-          }
-        }
+          })
+          .catch(() => undefined);
       }
     };
     document.addEventListener('visibilitychange', onVisibilityChange);
@@ -947,6 +1229,7 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
     transcripts,
     pauseDetected,
     audioLevel,
+    lowAudioWarning,
     longRecordingWarning,
     metrics,
     start,

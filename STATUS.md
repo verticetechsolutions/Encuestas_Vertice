@@ -2,10 +2,10 @@
 
 > **Source of truth del proyecto.** Cualquier agente o sesión que toque este repo lee este documento primero y lo actualiza al cerrar tarea relevante. Si hay duda entre este doc y otros, **gana este doc** (excepto `IMPLEMENTATION.md` para detalles de contrato técnico de las fases).
 
-**Última actualización:** 2026-05-13
+**Última actualización:** 2026-05-13 (cuarta pasada: sign-off prompts Opus generador + validador casos, cierre deuda #1)
 **Branch canónica:** `master`
-**HEAD aproximado:** `6a7f4b0` (feat F1 consent promoted) · ramas vivas: `feat/promote-consent-f1-to-real`
-**Suite:** ~440 tests verdes · typecheck limpio · `next build` OK
+**HEAD aproximado:** `bc805eb` (fix stt/transcription-panel: data-lenis-prevent con overflow real) · working tree con cambios sin commitear de sign-off prompts Opus + cableado runtime config · ramas vivas: ninguna activa
+**Suite:** 449/449 tests verdes · typecheck limpio · `next build` OK
 
 ---
 
@@ -18,7 +18,7 @@
 1. Re-smoke entrevista entera con voz (≥10 turnos) midiendo latencia p50/p95 + costo USD.
 2. Provisionar Upstash Redis + pegar credenciales en `.env.local` (rate-limit en serverless).
 3. Aprovisionar 7 keys/recursos prod en Vercel (Blob, Resend, Anthropic, Deepgram, Inngest, Axiom, Sentry).
-4. Aplicar migraciones DB `0002`, `0004`, `0006` a `vertice-mvp/main`.
+4. Aplicar migraciones DB `0002`, `0004`, `0006`, `0007`, `0008` a `vertice-mvp/main`.
 5. Smoke E2E post-deploy contra prod.
 6. Pilotos: 2-3 aliados con magic link + soporte directo founder.
 
@@ -36,10 +36,10 @@
 | 2 | Schema + migraciones Drizzle/Neon | ✅ Cerrada | Migraciones 0001-0006 |
 | 3 | Schemas Zod credit box | ✅ Cerrada (95%) | TODO menor: founder sweep criticidad/tipo de 32 extension cajas |
 | 4 | Auth + onboarding (magic link + admin SSO Google) | ✅ Cerrada | E2E 6/6, Auth.js v6 con dominios permitidos |
-| 5 | Motor conversacional (Sonnet 4.6 + Opus 4.7) | 🟡 ~85% | Solo falta sub-paso 5.iv: prompts Opus generador/validador casos sintéticos |
+| 5 | Motor conversacional (Sonnet 4.6 + Opus 4.7) | ✅ ~95% | Director + síntesis + generador casos + validador casos SIGNED OFF (2026-05-13). Pipeline activo con Opus 4.7 generador (`effort=high` + adaptive thinking) + Sonnet 4.6 validador (`effort=low`, latencia <2s). Pendiente solo: validación empírica con caso real en re-smoke voz |
 | 6 | Integración Deepgram STT | ✅ ~95% | Cableado al motor real validado, smoke 7/7 verde |
 | 7 | UI entrevista (preguntas + sidebar + autosave) | 🟡 ~85% | F1 consent promovido, F2 prompts cortos commiteado; falta validación con voz |
-| 8 | Síntesis final con Inngest (PDF + email) | 🟡 ~50% | PDF generator hecho; falta Vercel Blob storage + Resend email |
+| 8 | Síntesis final con Inngest (PDF + email) | 🟡 ~75% | Wire-up Blob cerrado 2026-05-13 (`lib/storage/blob.ts` gated por `BLOB_READ_WRITE_TOKEN` + dep dynamic import). Pendiente: `npm i @vercel/blob` + provisionar token + Resend email |
 | 9 | Vista admin | ✅ Cerrada | Wave 1 productiva. Wave 2 redesign queda como post-alpha |
 | 10 | Telemetría + deploy + pilotos | 🟡 ~30% | Logs Axiom wirados; falta keys prod + alertas + smoke prod + pilotos |
 
@@ -49,20 +49,21 @@
 
 ### 3.1 Acciones de founder (bloqueantes)
 
+> **Checklist canónico detallado:** [`IMPLEMENTATION.md` §22 Pre-deploy](IMPLEMENTATION.md#22--pre-deploy-checklist-fase-10) (7 subsecciones con owner y criterio de done explícitos). Lo que sigue es el resumen ejecutivo.
+
 - **Re-smoke entrevista entera con voz** (60-90 min). ≥10 turnos cubriendo varios grupos. Medir p50/p95 + WER + USD. Criterio go/no-go alpha definido arriba.
 - **Validar F2 en producción**: dictar Q1 + Q2 con mic real, capturar el batch que Sonnet emite tras el primer turn, validar formato (≤30 palabras, empieza con interrogativa, auxiliar opcional ≤200 chars).
 - **Provisionar Upstash Redis** (3 min). Crear DB `vertice-ratelimit` en Free tier, copiar `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` a `.env.local`. Sin esto el rate-limit cae al fallback in-memory que NO funciona correctamente en Vercel multi-instance.
 - **Aprovisionar Vercel + dominio**: `BLOB_READ_WRITE_TOKEN`, `RESEND_API_KEY` + dominio verificado con DKIM/SPF/DMARC, `ANTHROPIC_API_KEY`, `DEEPGRAM_API_KEY` (role Member), `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY`, `AXIOM_TOKEN`, `SENTRY_DSN`.
 - **Rotación** `ADMIN_PANEL_TOKEN` + `AXIOM_TOKEN` con scope mínimo (`Ingest` solamente).
-- **Migraciones DB** `0002`, `0004`, `0006` aplicadas a `vertice-mvp/main` (idempotentes).
+- **Migraciones DB** `0002`, `0004`, `0006`, `0007`, `0008` aplicadas a `vertice-mvp/main` (idempotentes). La `0007` agrega `perfil_decision_final.pdf_url` para Fase 8 storage; la `0008` agrega indexes en `audit_admin_actions` para cron retention.
 - **3 alertas Axiom** configuradas: Sonnet threshold > 40%, latencia Opus > 12s, Inngest sintesis fail > 5%.
 - **Smoke prod end-to-end** post-deploy (1 entrevista completa contra prod, no localhost).
 - **Pilotos iniciales**: lista de 2-3 aliados financieros + magic link + email bienvenida + ventana soporte directo founder + feedback form post-sesión.
 
 ### 3.2 Trabajo técnico pendiente (puede ejecutarlo un agente)
 
-- **Sub-paso 5.iv — prompts Opus director + generador casos sintéticos** (3-4h, requiere co-redacción founder + CTO). `OPUS_GENERADOR_CASOS_PROMPT_READY` y `OPUS_VALIDADOR_CASOS_PROMPT_READY` siguen en `false`. `solicitar_caso_sintetico` es stub en `app/api/turn/route.ts:533-545`. Es item #1 de la deuda técnica alta.
-- **Cerrar Fase 8**: wirar `generar-pdf` step con Vercel Blob para storage del PDF + email Resend de entrega de síntesis.
+- **Cerrar Fase 8 storage**: wire-up Blob cerrado 2026-05-13 (`lib/storage/blob.ts` + step `generar-pdf` cablea `uploadPdfToBlob` + persiste `pdf_url` via UPDATE). Migración 0007 ya agrega `perfil_decision_final.pdf_url`. Falta: (a) `npm i @vercel/blob` (1 min), (b) provisionar `BLOB_READ_WRITE_TOKEN` en Vercel env, (c) integración Resend para email de notificación al admin.
 - **Commit Sprint 2 Upstash final**: una vez provisionado, agregar las dos vars a `lib/env.ts` como optional + commit + push. El código ya está code-complete con fallback.
 
 ---
@@ -75,20 +76,23 @@ Ver registro detallado y vivo en [`docs/DEUDA_TECNICA.md`](docs/DEUDA_TECNICA.md
 
 | # | Item | Prioridad | Esfuerzo |
 |---|---|---|---|
-| 1 | `solicitar_caso_sintetico` sigue stub (sub-paso 5.iv) | 🔴 Alta | 3-4h |
-| 2 | Bug O3-marca race condition (browser automation) | 🔴 Alta | 1-2h |
-| 3 | STT keyterms incompletos (Vértice, factoraje, leasing, etc.) | 🔴 Alta | 15 min |
+| 1 | `solicitar_caso_sintetico` sigue stub (sub-paso 5.iv parcial) | ✅ Cerrado (2026-05-13, sign-off founder + rewrite prompts + cableado Sonnet validador) | — |
+| 2 | Bug O3-marca race condition (browser automation) | ✅ Cerrado (2026-05-13) | — |
+| 3 | STT keyterms incompletos | ✅ Cerrado (`53485b9`, 33 términos) | — |
 | 4 | Em-dashes residuales en few-shots | ✅ Cerrado (`786885f`) | — |
 | 5 | Cobertura tests en `app/admin/` y `app/actions/` | 🟡 Media | 4-6h |
-| 6 | `z.unknown()` en schemas críticos | 🟡 Media | 2-3h |
-| 7 | Audit log sin retention policy | 🟡 Media | 1h |
-| 8 | `fuente: 'usuario_tipea'` hardcoded en `/api/turn` | 🟢 Baja | 1h |
-| 9 | Chime audio mute toggle | 🟢 Baja | 30 min |
+| 6 | `z.unknown()` en schemas críticos | 🟡 Media (plan revisado: B=2h, A=6-8h) | 2-8h |
+| 7 | Audit log sin retention policy | ✅ Cerrado (2026-05-13) | — |
+| 8 | `fuente: 'usuario_tipea'` hardcoded en `/api/turn` | ✅ Cerrado (2026-05-13) | — |
+| 9 | Chime audio mute toggle | ✅ Cerrado (2026-05-13) | — |
 | 10 | O2 entrevista — BatchNav vs HeroPregunta desync | 🟢 Baja | 1h |
-| 11 | O2 STT — `pauseDetected` no dispara via MediaRecorder | 🟢 Baja | 30 min |
+| 11 | O2 STT — `pauseDetected` no dispara via MediaRecorder | ✅ Cerrado (2026-05-13) | — |
 | 12 | Tests STT hook completos (jsdom + RTL) | 🟢 Baja | 4h |
 | 13 | Wave 2 admin redesign | 🟢 Baja | TBD |
 | 14 | Mobile/iPad responsive | 🟢 Baja | 6-8h |
+| 15 | `@ts-nocheck` pragmas en 2 tests STT (`use-deepgram-stream.test.ts`, `stt/token/route.test.ts`) | 🟢 Baja | 30 min |
+| 16 | TODO v2: `array<string>` sin enum cerrado runtime (`sonnet_fase1.ts:126`) | 🟢 Baja (v2) | 2-3h |
+| 17 | TODO v2: multi-turn memory para context window (`lib/state/entrevista.ts:161`) | 🟢 Baja (v2) | 3-4h |
 
 **Regla:** 🔴 antes que 🟡 antes que 🟢. La 🔴 alta no bloquea el primer aliado pero sí el segundo.
 
@@ -139,11 +143,15 @@ Vertice_Encuesta/
 
 Todo lo anterior a esta consolidación vive en `docs/archive/`:
 
-- `docs/archive/checkpoints/` — 5 checkpoints históricos (design research, ui refactor, post-smoke, sprint-2-upstash)
+- `docs/archive/checkpoints/` — 5 checkpoints históricos (design research, ui refactor cards unificadas, ui refactor entrevista, post-smoke real 2026-05-12, sprint-2-upstash)
 - `docs/archive/smokes/` — alpha-readiness + smoke entrevista real
 - `docs/archive/bugs/` — bugs encontrados STT + E2E
 - `docs/archive/handoff/` — HANDOFF original
 - `docs/archive/plans/` + `specs/` — 9 plans y specs históricos de superpowers
-- `docs/archive/reviews/` — reviews admin panel + PR4
+- `docs/archive/reviews/` — reviews admin panel + PR4 + screenshots admin wave 1
+
+Material vivo no archivado (research vigente):
+
+- `docs/design/research/admin-dashboard-2026-redesign.md` — input para Wave 2 admin (deuda #13).
 
 Consultable pero no canónico. Si necesitas info histórica, búscala ahí. Si necesitas el estado actual, está en este doc.

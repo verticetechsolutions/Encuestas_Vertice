@@ -107,6 +107,16 @@ export const STT_LIVE_CONFIG = Object.freeze({
   // tras un final. Útil para detectar fin de turno preciso (mejor que VAD raw).
   // 1000ms = 1s de silencio post-final → considera turn terminado.
   utterance_end_ms: '1000',
+  // encoding + sample_rate: indican a Deepgram que el browser le envía Int16
+  // PCM crudo (linear16) a 16kHz, NO un container WebM/Opus. El AudioWorklet
+  // del lado del cliente (`public/stt/pcm-worklet.js`) downsample y empaqueta
+  // a Int16 directo, eliminando el buffering interno del MediaRecorder
+  // (~100-300ms de latencia) + el costo de muxing del container. Bandwidth
+  // sube ~8x (~256kbps vs 32kbps de Opus) — irrelevante en WiFi/4G, irrelevante
+  // para billing Deepgram (cobra por minutos, no bytes).
+  encoding: 'linear16',
+  sample_rate: '16000',
+  channels: '1',
   // Keyterm: sesga el reconocedor hacia acrónimos regulatorios MX. Deepgram
   // acepta lista coma-separada como query param. Lista cementada en
   // `STT_KEYTERMS` arriba.
