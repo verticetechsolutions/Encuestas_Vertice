@@ -1,7 +1,14 @@
 'use client';
 
+// Form de consent con paridad funcional al original (checkbox + CTA con
+// transition) estilado al Design System admin (cream-pure card, ink CTA pill,
+// gold-deep accent). Promoción del preview `/preview/consent` (commit 9124c78)
+// al path real.
+
 import { useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
+import { motion } from 'motion/react';
+import { Check } from 'lucide-react';
 import { registrarConsentimiento } from '@/app/actions/sesiones';
 
 export function ConsentimientoForm({ sesion_id }: { sesion_id: string }) {
@@ -16,37 +23,108 @@ export function ConsentimientoForm({ sesion_id }: { sesion_id: string }) {
     });
   };
 
+  const canContinue = aceptado && !isPending;
+
   return (
-    <div>
-      <label style={{ display: 'flex', gap: 12, alignItems: 'flex-start', marginBottom: 24, cursor: 'pointer' }}>
+    <div className="flex flex-col gap-6">
+      <label className="group/checkbox flex cursor-pointer items-start gap-4 rounded-2xl px-4 py-4 transition-colors hover:bg-foreground/[0.025] focus-within:bg-foreground/[0.03]">
         <input
           type="checkbox"
           checked={aceptado}
           onChange={(e) => setAceptado(e.target.checked)}
-          style={{ marginTop: 4 }}
+          className="sr-only"
         />
-        <span style={{ fontSize: 14, lineHeight: 1.5 }}>
-          He leído el aviso de privacidad y otorgo mi consentimiento para que Vértice
-          procese los datos de esta entrevista bajo los términos descritos.
+        <span
+          aria-hidden
+          className={`squircle relative mt-[2px] flex size-[22px] shrink-0 items-center justify-center rounded-md ring-1 transition-all ${
+            aceptado
+              ? 'bg-ink ring-ink'
+              : 'bg-cream-pure ring-foreground/20 group-hover/checkbox:ring-foreground/35'
+          }`}
+        >
+          {aceptado && (
+            <motion.span
+              initial={{ scale: 0.6, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              transition={{ type: 'spring', stiffness: 460, damping: 24 }}
+              className="flex"
+            >
+              <Check className="size-[14px] text-cream-pure" strokeWidth={3} />
+            </motion.span>
+          )}
+        </span>
+        <span className="text-[14px] leading-relaxed text-foreground/85">
+          He leído el aviso de privacidad y otorgo mi consentimiento para el
+          tratamiento de los datos de esta entrevista bajo los términos
+          descritos.
         </span>
       </label>
-      <button
+
+      <motion.button
         type="button"
-        disabled={!aceptado || isPending}
+        disabled={!canContinue}
         onClick={onContinuar}
-        style={{
-          padding: '12px 24px',
-          fontSize: 15,
-          fontWeight: 500,
-          background: !aceptado || isPending ? '#999' : '#111',
-          color: '#fff',
-          border: 'none',
-          borderRadius: 6,
-          cursor: !aceptado || isPending ? 'not-allowed' : 'pointer',
+        initial="idle"
+        whileHover={canContinue ? 'hover' : undefined}
+        whileTap={canContinue ? 'tap' : undefined}
+        variants={{
+          idle: { scale: 1 },
+          hover: { scale: 1 },
+          tap: { scale: 0.985 },
         }}
+        transition={{ type: 'spring', stiffness: 420, damping: 26 }}
+        className={`squircle group/cta inline-flex h-12 items-center justify-center gap-2.5 self-stretch rounded-full px-6 text-[14px] font-semibold tracking-tight transition-colors duration-300 ${
+          canContinue
+            ? 'bg-ink text-cream-pure shadow-[0_0_0_1px_rgb(10_15_28/0.04),0_18px_44px_-22px_rgb(200_168_100/0.40)] hover:bg-[var(--ink-raised)]'
+            : 'cursor-not-allowed bg-foreground/[0.06] text-foreground/40'
+        }`}
       >
-        {isPending ? 'Iniciando…' : 'Iniciar entrevista'}
-      </button>
+        <span>{isPending ? 'Iniciando…' : 'Iniciar entrevista'}</span>
+        {canContinue && !isPending && <ArrowDrawIcon />}
+      </motion.button>
     </div>
+  );
+}
+
+function ArrowDrawIcon() {
+  return (
+    <motion.svg
+      width="16"
+      height="16"
+      viewBox="0 0 24 24"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth={2.25}
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      aria-hidden
+    >
+      <motion.path
+        d="M5 12h14"
+        variants={{
+          idle: { pathLength: 1, transition: { duration: 0 } },
+          hover: {
+            pathLength: [0, 1],
+            transition: { duration: 0.28, ease: [0.22, 1, 0.36, 1] },
+          },
+          tap: { pathLength: 1, transition: { duration: 0 } },
+        }}
+      />
+      <motion.path
+        d="m13 5 7 7-7 7"
+        variants={{
+          idle: { pathLength: 1, transition: { duration: 0 } },
+          hover: {
+            pathLength: [0, 1],
+            transition: {
+              duration: 0.28,
+              delay: 0.05,
+              ease: [0.22, 1, 0.36, 1],
+            },
+          },
+          tap: { pathLength: 1, transition: { duration: 0 } },
+        }}
+      />
+    </motion.svg>
   );
 }
