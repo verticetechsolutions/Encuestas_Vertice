@@ -43,7 +43,13 @@ const envSchema = z.object({
   // -- Optional con default o tolerable nulo ----------------------------------
   NEXT_PUBLIC_APP_URL: z.string().url().default('http://localhost:3000'),
   ADMIN_PANEL_TOKEN: z.string().min(20).optional(),
-  ADMIN_EMERGENCY_MODE: z.enum(['0', '1']).optional(),
+  // preprocess empty string → undefined: el patrón común en .env.local es
+  // dejar la var presente pero vacía (`ADMIN_EMERGENCY_MODE=`) para
+  // documentarla sin activarla. Sin el preprocess, el enum falla.
+  ADMIN_EMERGENCY_MODE: z.preprocess(
+    (v) => (v === '' ? undefined : v),
+    z.enum(['0', '1']).optional()
+  ),
   VERTICE_ADMIN_DOMAINS: z.string().optional(),
 
   // Observability — sin éstas el código loguea localmente pero no se exporta.
