@@ -44,9 +44,9 @@ const GRUPO_LABEL: Record<GrupoUI, string> = {
 
 const GRUPO_OUTCOME: Record<GrupoUI, string> = {
   identificacion: 'Quién es tu institución',
-  productos_y_mercado: 'Qué ofrecés y a quién',
+  productos_y_mercado: 'Qué ofreces y a quién',
   numeros_del_negocio: 'Tu balance financiero',
-  operacion: 'Cómo decidís y operás',
+  operacion: 'Cómo decides y operas',
   pricing_y_criterio: 'Tu modelo y criterio',
   contacto_y_especificos: 'Datos de seguimiento',
 };

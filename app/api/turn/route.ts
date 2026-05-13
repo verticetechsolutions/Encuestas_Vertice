@@ -270,8 +270,16 @@ export async function POST(req: Request) {
   //    stubs hasta step posterior. Las inputSchema vienen del Zod source-of-truth.
   const result = streamText({
     model: anthropic('claude-sonnet-4-6'),
-    system: SONNET_FASE1_SYSTEM_PROMPT,
-    messages: [{ role: 'user', content: mensaje_usuario }],
+    messages: [
+      {
+        role: 'system',
+        content: SONNET_FASE1_SYSTEM_PROMPT,
+        providerOptions: {
+          anthropic: { cacheControl: { type: 'ephemeral' } },
+        },
+      },
+      { role: 'user', content: mensaje_usuario },
+    ],
     tools: {
       registrar_extraccion: tool({
         description: 'Registra extracciones de cajas con supersede chain.',
