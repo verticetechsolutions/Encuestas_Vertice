@@ -69,6 +69,13 @@ const envSchema = z.object({
   // Test DB — opcional siempre (los integration tests se skipean sin ella).
   DATABASE_URL_TEST: z.string().optional(),
 
+  // Upstash Redis (rate-limit distribuido). Sin éstas el rate-limiter cae a
+  // fallback in-memory token-bucket — válido en dev/tests, INVÁLIDO en Vercel
+  // serverless multi-instance (cada Lambda mantiene su propio bucket y un
+  // atacante multiplica el cap real por N instances).
+  UPSTASH_REDIS_REST_URL: z.string().url().optional(),
+  UPSTASH_REDIS_REST_TOKEN: z.string().min(20).optional(),
+
   // NODE_ENV gestionado por Next.js. Validamos para hacer el branch de
   // "required_production" predecible.
   NODE_ENV: z.enum(['development', 'production', 'test']).optional(),
