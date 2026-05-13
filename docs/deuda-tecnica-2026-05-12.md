@@ -51,17 +51,21 @@
 
 ## 🟡 Media prioridad — cerrar en próximas 2-3 semanas
 
-### 4. Em-dashes residuales en few-shots de prompts
+### 4. Em-dashes residuales en few-shots de prompts ✅ CERRADO (`786885f`)
 
 - **Estado**: regla anti em-dash agregada al system prompt de Sonnet y Opus en `36026f7`. Validado E2E que el modelo ya no produce em-dashes en heros/auxiliares nuevos.
 - **Residuo**: 43 em-dashes en `lib/prompts/sonnet_fase1.ts` distribuidos en few-shots (respuestas simuladas del entrevistado), comentarios técnicos `//`, y descripciones de reglas. La mayoría son inputs del entrevistado (correcto, así habla la gente) o comentarios (no afectan al modelo). Algunos casos restantes en descripciones de reglas que el modelo lee.
 - **Riesgo**: bajo. La regla nueva es lo suficientemente clara. Validado en 8+ batches que el modelo respeta.
 - **Criterio de cierre**:
-  - [ ] Sweep visual de los 43 em-dashes en `lib/prompts/sonnet_fase1.ts`.
-  - [ ] Reemplazar por puntuación equivalente (coma, dos puntos, punto y aparte) en strings de regla y descripciones tool. Mantener em-dashes solo en `<respuesta_entrevistado>` (input simulado, OK).
-  - [ ] Aplicar mismo sweep a `lib/prompts/opus_*.ts`.
-  - [ ] Validar suite de prompts tests sigue verde.
-- **Esfuerzo**: 30-45 min.
+  - [x] Sweep visual de los 43 em-dashes en `lib/prompts/sonnet_fase1.ts`. *(`786885f`)*
+  - [x] Reemplazar por puntuación equivalente (coma, dos puntos, punto y aparte) en strings de regla y descripciones tool. Mantener em-dashes solo en `<respuesta_entrevistado>` (input simulado, OK). *(`786885f`)*
+  - [x] Aplicar mismo sweep a `lib/prompts/opus_*.ts`. *(`786885f`: opus_director, opus_generador_casos, opus_sintesis_final, opus_validador_casos)*
+  - [x] Validar suite de prompts tests sigue verde. *(443/443 verdes, typecheck limpio)*
+- **Esfuerzo**: 30-45 min → real: ~25 min.
+- **Notas del cierre**:
+  - ~80 reemplazos totales en 5 archivos. Comentarios `//` y reglas que CITAN los símbolos (L670 sonnet, L154 opus_director, L114 opus_generador, L266 opus_sintesis) preservados a propósito.
+  - `<respuesta_entrevistado>` L731 + L810 y `evidencia_textual` L829 de sonnet preservados (citas literales del input del entrevistado).
+  - Rangos numéricos `12.A.1–12.A.11` migrados a `12.A.1 a 12.A.11` (formato natural en español, consistente con el resto del prompt).
 
 ### 5. Cobertura tests en `app/admin/` y `app/actions/`
 
