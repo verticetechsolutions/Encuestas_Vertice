@@ -774,14 +774,12 @@ function MenuFlow({ onPick }: { onPick: (m: 'access' | 'request') => void }) {
 
       <div className="mt-8 flex flex-col gap-3">
         <MenuOption
-          step="01"
           title="Reanudar entrevista"
           description="Mi institución ya está registrada en Vértice"
           variant="light"
           onClick={() => onPick('access')}
         />
         <MenuOption
-          step="02"
           title="Solicitar alianza"
           description="Registrar mi institución en la red"
           variant="dark"
@@ -793,13 +791,11 @@ function MenuFlow({ onPick }: { onPick: (m: 'access' | 'request') => void }) {
 }
 
 function MenuOption({
-  step,
   title,
   description,
   variant,
   onClick,
 }: {
-  step: string;
   title: string;
   description: string;
   variant: 'light' | 'dark';
@@ -817,19 +813,19 @@ function MenuOption({
           : 'bg-survey-surface ring-1 ring-ink/[0.05] hover:ring-ink/[0.15] hover:bg-white'
       )}
     >
-      <div className="flex min-w-0 flex-col gap-2">
+      <div className="flex min-w-0 flex-col gap-1.5">
         <span
           className={cn(
-            'font-mono text-[10px] uppercase tracking-[0.22em]',
-            isDark ? 'text-gold' : 'text-ink/45'
+            'text-[17px] font-semibold leading-snug tracking-[-0.01em]',
+            isDark ? 'text-cream-pure' : 'text-ink'
           )}
         >
-          {step} · {title}
+          {title}
         </span>
         <span
           className={cn(
-            'text-[15px] leading-snug',
-            isDark ? 'text-cream-pure/72' : 'text-ink/72'
+            'text-[13.5px] leading-snug',
+            isDark ? 'text-cream-pure/55' : 'text-ink/55'
           )}
         >
           {description}
@@ -880,17 +876,19 @@ function AccessFlow() {
         <button
           type="button"
           onClick={handleGoogleSignIn}
-          className="group/g mt-8 flex w-full cursor-pointer items-center justify-between gap-5 rounded-[22px] bg-survey-surface p-5 text-left ring-1 ring-ink/[0.05] transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-white hover:ring-ink/[0.15]"
+          className="group/g mt-8 flex w-full cursor-pointer items-center justify-between gap-5 rounded-[22px] bg-survey-surface p-5 text-left ring-1 ring-ink/[0.05] transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-white hover:ring-ink/[0.15] md:p-6"
         >
-          <span className="flex min-w-0 items-center gap-3">
-            <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-ink/[0.06]">
+          <span className="flex min-w-0 items-center gap-4">
+            <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-ink/[0.06]">
               <GoogleG className="size-4" />
             </span>
-            <span className="flex flex-col gap-1">
-              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink/45">
-                Recomendado
+            <span className="flex flex-col gap-1.5">
+              <span className="text-[17px] font-semibold leading-snug tracking-[-0.01em] text-ink">
+                Continuar con Google
               </span>
-              <span className="text-[15px] text-ink/72">Continuar con Google</span>
+              <span className="text-[13.5px] leading-snug text-ink/55">
+                Cuenta institucional registrada
+              </span>
             </span>
           </span>
           <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-ink text-cream-pure shadow-[0_0_0_1px_rgba(10,15,28,0.04),0_20px_50px_-20px_rgba(10,15,28,0.35)] transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover/g:rotate-45">
@@ -907,14 +905,14 @@ function AccessFlow() {
         <button
           type="button"
           onClick={() => setStage('email')}
-          className="group/e mt-6 flex w-full cursor-pointer items-center justify-between gap-5 rounded-[22px] bg-ink p-5 text-left text-cream-pure ring-1 ring-ink/[0.04] shadow-[0_0_0_1px_rgba(10,15,28,0.04),0_20px_50px_-20px_rgba(10,15,28,0.35)] transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-ink-raised"
+          className="group/e mt-6 flex w-full cursor-pointer items-center justify-between gap-5 rounded-[22px] bg-ink p-5 text-left text-cream-pure ring-1 ring-ink/[0.04] shadow-[0_0_0_1px_rgba(10,15,28,0.04),0_20px_50px_-20px_rgba(10,15,28,0.35)] transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-ink-raised md:p-6"
         >
-          <span className="flex flex-col gap-1">
-            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-gold">
-              Alterna
-            </span>
-            <span className="text-[15px] text-cream-pure/72">
+          <span className="flex flex-col gap-1.5">
+            <span className="text-[17px] font-semibold leading-snug tracking-[-0.01em] text-cream-pure">
               Reenviar mi enlace por correo
+            </span>
+            <span className="text-[13.5px] leading-snug text-cream-pure/55">
+              Te llega un enlace nuevo en minutos
             </span>
           </span>
           <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-gold text-ink transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover/e:rotate-45">
