@@ -55,6 +55,11 @@ export const casoEstadoEnum = pgEnum('caso_estado', [
   'fallback_usado',
 ]);
 
+// Roles de usuario para Google SSO (migración 0006). 'entrevistado' = pertenece
+// a una institución aliada; 'admin' = miembro del equipo Vértice. La constraint
+// en la tabla usuarios garantiza coherencia entre role e institucion_id.
+export const usuarioRoleEnum = pgEnum('usuario_role', ['entrevistado', 'admin']);
+
 // =============================================================================
 // Tables
 // =============================================================================
@@ -274,6 +279,111 @@ export const cajas_declinadas = pgTable(
     ),
   })
 );
+
+// =============================================================================
+// Google SSO + per-user auth (migración 0006, Sprint 1 security audit 2026-05-12)
+// =============================================================================
+// Diseño: Auth.js v6 con JWT strategy (sin DB adapter). Cookie encripted lleva
+// usuario_id, institucion_id, role. Esta tabla `usuarios` es la fuente de
+// verdad de identidad; Auth.js solo gestiona el cookie/JWT.
+//
+// Por qué no usar el DB adapter completo de Auth.js (tablas accounts/sessions
+// /verification_tokens): JWT es suficiente para nuestro escala, evita 3 tablas
+// extra que no aportan al modelo de negocio. Si en el futuro necesitamos
+// revocación de sesiones server-side, podemos agregar el adapter.
+
+export const usuarios = pgTable(
+  'usuarios',
+  {
+    id: uuid('id').primaryKey().defaultRandom(),
+    // institucion_id NULL solo para role='admin' (equipo Vértice). Para
+    // role='entrevistado' es obligatorio y se setea al primer login Google
+    // matcheando el dominio del email contra institucion_dominios_permitidos.
+    institucion_id: uuid('institucion_id').references(() => instituciones.id),
+    email: text('email').notNull(),
+    // google_sub = identificador estable de Google (NUNCA cambia incluso si
+    // cambian el email). NULL para usuarios creados solo via magic-link sin
+    // Google login todavía; se llena en el primer Google login que matchee
+    // por email (merge automático).
+    google_sub: text('google_sub'),
+    nombre: text('nombre'),
+    picture_url: text('picture_url'),
+    role: usuarioRoleEnum('role').notNull().default('entrevistado'),
+    ultimo_login_at: timestamp('ultimo_login_at', { withTimezone: true }),
+    created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    // Email case-insensitive unique. LOWER() index para que `WHERE LOWER(email)=...`
+    // sea index-scan en lugar de seq-scan. Sin citext extension (no
+    // está habilitada en el Neon plan free).
+    email_lower_unique: uniqueIndex('usuarios_email_lower_unique').on(
+      sql`LOWER(${table.email})`
+    ),
+    google_sub_unique: uniqueIndex('usuarios_google_sub_unique').on(table.google_sub),
+  })
+);
+
+// Domain whitelist por institución. Si email del usuario que hace Google login
+// matchea un dominio aquí, se auto-crea `usuarios` con esa institucion_id +
+// role='entrevistado'. Si no hay match, el login se rechaza con redirect a
+// /acceso/expirado?razon=dominio_no_permitido.
+//
+// Para admin del equipo Vértice: el dominio @verticemexico.com tiene tratamiento
+// hardcoded en lib/auth/usuarios.ts (role='admin', sin institucion_id) — NO
+// vive en esta tabla porque admin no pertenece a una institución.
+export const institucion_dominios_permitidos = pgTable(
+  'institucion_dominios_permitidos',
+  {
+    institucion_id: uuid('institucion_id')
+      .references(() => instituciones.id, { onDelete: 'cascade' })
+      .notNull(),
+    // Dominio sin @ (ej: 'bancoxyz.com.mx'). Case-insensitive vía LOWER index.
+    dominio: text('dominio').notNull(),
+    agregado_por: uuid('agregado_por').references(() => usuarios.id),
+    agregado_at: timestamp('agregado_at', { withTimezone: true }).defaultNow().notNull(),
+  },
+  (table) => ({
+    // Un dominio solo puede pertenecer a UNA institución (caso edge raro pero
+    // posible si dos aliados comparten un dominio padre — bloqueado a nivel DB
+    // y el admin debe resolverlo).
+    dominio_unique: uniqueIndex('institucion_dominios_dominio_unique').on(
+      sql`LOWER(${table.dominio})`
+    ),
+    // Index para lookup rápido en el flujo de login: dado un dominio del email,
+    // ¿qué institución mappea?
+    dominio_lookup: uniqueIndex('institucion_dominios_pk_compuesta').on(
+      table.institucion_id,
+      sql`LOWER(${table.dominio})`
+    ),
+  })
+);
+
+// Audit log de acciones administrativas. Wrap helper en lib/auth/audit.ts inserta
+// una fila por cada server action admin con su payload + IP + UA. Append-only,
+// nunca DELETE (compliance trail).
+export const audit_admin_actions = pgTable('audit_admin_actions', {
+  // bigserial-equivalent en drizzle: uuid es overkill para audit (no se referencia
+  // como FK), pero mantiene consistencia con el resto del schema y evita un tipo
+  // nuevo. Si volumen explota, migrar a bigint con identity column.
+  id: uuid('id').primaryKey().defaultRandom(),
+  admin_user_id: uuid('admin_user_id').references(() => usuarios.id),
+  // action = nombre del server action wrappeado (ej. 'instituciones.crear',
+  // 'magic_links.emitir', 'instituciones.eliminar'). Convención: <recurso>.<verbo>.
+  action: text('action').notNull(),
+  // target_type + target_id permiten queries "¿qué pasó con la institución X?"
+  // sin parsear payload. NULL cuando la acción no tiene un target específico
+  // (ej. login admin).
+  target_type: text('target_type'),
+  target_id: text('target_id'),
+  // payload = snapshot del input al server action (zod-parsed). Útil para
+  // forensics: ¿qué valor exacto pasó al delete?
+  payload: jsonb('payload'),
+  // ip viene de x-forwarded-for / Vercel headers. NULL si no se pudo determinar
+  // (e.g. tests, internal jobs).
+  ip: text('ip'),
+  user_agent: text('user_agent'),
+  created_at: timestamp('created_at', { withTimezone: true }).defaultNow().notNull(),
+});
 
 export const perfil_decision_final = pgTable('perfil_decision_final', {
   id: uuid('id').primaryKey().defaultRandom(),

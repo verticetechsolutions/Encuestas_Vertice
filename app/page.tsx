@@ -826,9 +826,19 @@ function MenuFlow({ onPick }: { onPick: (m: 'access' | 'request') => void }) {
 
 // ---------- Access flow -----------------------------------------------------
 function AccessFlow() {
-  const [stage, setStage] = useState<'choose' | 'email' | 'sent_email' | 'google'>('choose');
+  const [stage, setStage] = useState<'choose' | 'email' | 'sent_email'>('choose');
   const [email, setEmail] = useState('');
   const [emailTouched, setEmailTouched] = useState(false);
+  // signIn dispara el flow OAuth completo: redirect a Google → callback →
+  // resolverUsuarioPorEmail. callbackUrl='/admin' por default; el server
+  // redirige según role (admin → /admin, entrevistado → /entrevista/...).
+  const handleGoogleSignIn = () => {
+    // next-auth/react expone signIn. Lo importamos inline para que el bundle
+    // del landing no lo cargue por default — solo cuando el usuario clickea.
+    void import('next-auth/react').then(({ signIn }) => {
+      signIn('google', { callbackUrl: '/admin' });
+    });
+  };
 
   if (stage === 'choose') {
     return (
@@ -846,8 +856,8 @@ function AccessFlow() {
 
         <button
           type="button"
-          onClick={() => setStage('google')}
-          className="mt-7 inline-flex h-12 w-full items-center justify-center gap-3 rounded-xl border border-ink/12 bg-white text-[14px] font-medium text-ink transition-colors hover:border-ink/30"
+          onClick={handleGoogleSignIn}
+          className="mt-7 inline-flex h-12 w-full cursor-pointer items-center justify-center gap-3 rounded-xl border border-ink/12 bg-white text-[14px] font-medium text-ink transition-colors hover:border-ink/30"
         >
           <GoogleG className="size-4" />
           Continuar con Google
@@ -870,38 +880,6 @@ function AccessFlow() {
           </span>
         </button>
       </>
-    );
-  }
-
-  // TODO post-MVP: Google SSO real (ver IMPLEMENTATION.md §19 "Google SSO
-  // real"). Este branch del flujo es un mockup "Próximamente" — el day-1 de
-  // pilotos usa magic link via email, pero la UI ya promete la opción.
-  // Reemplazar por flow real cuando el founder firme decisiones (provider,
-  // scope, mapping a `sesiones`, domain whitelist, convivencia con magic link).
-  if (stage === 'google') {
-    return (
-      <div className="flex flex-col items-center text-center">
-        <span className="inline-flex size-12 items-center justify-center rounded-full border border-ink/10 bg-white">
-          <GoogleG className="size-5" />
-        </span>
-        <Dialog.Title
-          className="mt-5 font-display text-2xl tracking-[-0.02em]"
-          style={{ fontWeight: 500 }}
-        >
-          Próximamente.
-        </Dialog.Title>
-        <Dialog.Description className="mt-2 max-w-[36ch] text-[13.5px] leading-relaxed text-ink/60">
-          La autenticación con Google estará disponible al activar el panel. Mientras tanto,
-          reenvíate el enlace que llegó a tu correo.
-        </Dialog.Description>
-        <button
-          type="button"
-          onClick={() => setStage('email')}
-          className="mt-7 font-mono text-[10.5px] uppercase tracking-[0.28em] text-ink underline-offset-[6px] hover:underline"
-        >
-          Usar mi correo →
-        </button>
-      </div>
     );
   }
 

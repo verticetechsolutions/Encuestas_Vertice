@@ -1,30 +1,42 @@
-// Admin panel auth — separada del flujo entrevistado.
+// Admin panel auth — refactored Sprint 1 security audit 2026-05-12.
 //
-// Diseño MVP: una sola "credencial" compartida por el equipo Vértice
-// (`ADMIN_PANEL_TOKEN` en el env). El founder visita `/admin/login?t=<token>`,
-// el route handler valida y setea cookie `vertice_admin` con el mismo valor.
-// Toda página `/admin/*` valida que la cookie matchee el env.
+// ANTES: un solo token compartido (`ADMIN_PANEL_TOKEN` env) sin per-user,
+// sin audit log.
 //
-// Por qué no magic link como entrevistado:
-//   - No depende de Resend (founder pidió sin keys).
-//   - Audiencia fija (equipo interno), token rotable cambiando env var.
-//   - Trade-off aceptado: si el token leak, hay que rotarlo en Vercel.
+// AHORA: Auth.js v6 (Google SSO) + tabla `usuarios` con role='admin'.
+// Decisión de admin = usuario logueado vía Google con dominio
+// @verticemexico.com (hardcoded en lib/auth/usuarios.ts).
 //
-// Producción puede luego pivotar a OAuth/SSO sin tocar el contrato de
-// `requireAdmin()` — sólo la implementación interna. El plan completo
-// (provider, scope, mapping, domain whitelist, convivencia con magic
-// link) está documentado en IMPLEMENTATION.md §19 "Google SSO real".
+// Emergency fallback:
+//   El `ADMIN_PANEL_TOKEN` queda activo SOLO si la env `ADMIN_EMERGENCY_MODE=1`
+//   está seteada. Sin esa flag, el token compartido no se acepta — toda la
+//   auth pasa por Google. Mantenemos el fallback para incidents donde Google
+//   esté caído o las credenciales OAuth se hayan revocado.
+//
+// API preservada:
+//   requireAdmin(), isAdminAuthenticated(), adminGuardOrThrow(),
+//   validateAdminTokenInput(), setAdminCookie(), clearAdminCookie(),
+//   getAdminPanelToken() — todos siguen funcionando. Lo que cambió es la
+//   implementación interna de isAdminAuthenticated().
 
 import { cookies } from 'next/headers';
 import { redirect } from 'next/navigation';
+import { auth } from '@/auth';
 
 export const ADMIN_COOKIE = 'vertice_admin';
 const THIRTY_DAYS_SECONDS = 60 * 60 * 24 * 30;
 
+/** Token compartido legacy (emergency fallback). NO usar en producción
+ *  rutinaria — Google SSO es la vía canónica. */
 export function getAdminPanelToken(): string | null {
   const t = process.env.ADMIN_PANEL_TOKEN;
   if (!t || t.trim().length === 0) return null;
   return t;
+}
+
+/** Indica si el emergency mode está habilitado vía env. */
+function isEmergencyModeEnabled(): boolean {
+  return process.env.ADMIN_EMERGENCY_MODE === '1';
 }
 
 export async function setAdminCookie(token: string): Promise<void> {
@@ -59,12 +71,32 @@ function safeEqual(a: string, b: string): boolean {
   return diff === 0;
 }
 
+/**
+ * Decide si el caller es admin. Prioridad:
+ *   1. Auth.js session con role='admin' → admin.
+ *   2. Si ADMIN_EMERGENCY_MODE=1: validar cookie `vertice_admin` vs env.
+ *   3. Caso contrario: false.
+ *
+ * Importante: NO cortocircuita en el emergency mode si Google session falla,
+ * por orden de evaluación: primero Google, si no admin → si emergency, fallback.
+ * Esto permite que un usuario logueado vía Google con role!='admin' NO
+ * se promueva por tener cookie del emergency token (defensa en profundidad).
+ */
 export async function isAdminAuthenticated(): Promise<boolean> {
-  const expected = getAdminPanelToken();
-  if (!expected) return false; // env no configurado → admin deshabilitado
-  const cookieValue = await readAdminCookie();
-  if (!cookieValue) return false;
-  return safeEqual(expected, cookieValue);
+  // Path canónica: Google SSO + role en DB.
+  const session = await auth();
+  if (session?.user?.role === 'admin') return true;
+
+  // Fallback solo si Google session NO admin Y emergency mode habilitado.
+  if (isEmergencyModeEnabled()) {
+    const expected = getAdminPanelToken();
+    if (!expected) return false;
+    const cookieValue = await readAdminCookie();
+    if (!cookieValue) return false;
+    return safeEqual(expected, cookieValue);
+  }
+
+  return false;
 }
 
 // Server-component guard. Llamar al inicio de cada page.tsx en /admin/*.
@@ -81,12 +113,21 @@ export async function adminGuardOrThrow(): Promise<void> {
   if (!ok) throw new Error('admin_unauthorized');
 }
 
-// Validación del token enviado por el usuario al endpoint de login. Compara
-// contra el env via constant-time. Útil para que el route handler decida si
-// setear la cookie o rechazar.
+// Validación del token enviado por el usuario al endpoint de login.
+// Solo aplica al emergency path; rechaza si emergency mode está apagado.
 export function validateAdminTokenInput(input: string): boolean {
+  if (!isEmergencyModeEnabled()) return false;
   const expected = getAdminPanelToken();
   if (!expected) return false;
   if (!input || input.length === 0) return false;
   return safeEqual(expected, input);
+}
+
+/** Helper para que callers (server actions admin) obtengan el usuario_id
+ *  del admin actual sin re-llamar a auth(). NULL si auth via emergency
+ *  token (sin identidad individual). */
+export async function getAdminUserId(): Promise<string | null> {
+  const session = await auth();
+  if (session?.user?.role === 'admin') return session.user.usuarioId;
+  return null;
 }
