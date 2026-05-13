@@ -5,6 +5,7 @@ import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
 import { magic_tokens } from '@/db/schema';
 import { isAdminAuthenticated } from '@/lib/auth/admin';
+import { withAuditLog } from '@/lib/auth/audit';
 import { emitirMagicLink } from './auth';
 import { logger } from '@/lib/observability/axiom';
 
@@ -39,18 +40,28 @@ export async function reenviarMagicLink(
   }
 
   try {
-    const link = await emitirMagicLink(institucion_id, {
-      dryRun: mode === 'dry_run',
-    });
-    revalidatePath(`/admin/instituciones/${institucion_id}`);
-    revalidatePath('/admin/magic-links');
-    return {
-      ok: true,
-      mode,
-      magic_url: link.url,
-      expires_at: link.expires_at.toISOString(),
-      sent_to: link.enviado ? link.email_contacto : undefined,
-    };
+    return await withAuditLog(
+      'magic_links.reemitir',
+      {
+        target_type: 'institucion',
+        target_id: institucion_id,
+        payload: { mode },
+      },
+      async () => {
+        const link = await emitirMagicLink(institucion_id, {
+          dryRun: mode === 'dry_run',
+        });
+        revalidatePath(`/admin/instituciones/${institucion_id}`);
+        revalidatePath('/admin/magic-links');
+        return {
+          ok: true as const,
+          mode,
+          magic_url: link.url,
+          expires_at: link.expires_at.toISOString(),
+          sent_to: link.enviado ? link.email_contacto : undefined,
+        };
+      }
+    );
   } catch (err) {
     // emitirMagicLink puede haber commiteado la transacción (revoke + insert)
     // antes de que falle el envío via Resend. Refrescamos las vistas para que
@@ -73,41 +84,50 @@ export async function revocarMagicLink(
     return { ok: false, error: 'No autorizado.' };
   }
 
-  // UPDATE atómico: solo si está vigente (no consumido, no revocado, no
-  // expirado). Si el token ya cambió de estado entre render y click,
-  // `returning()` queda vacío y devolvemos error de race. Capturamos `now`
-  // una sola vez para que set + where comparen contra el mismo instante.
-  const now = new Date();
-  const updated = await db
-    .update(magic_tokens)
-    .set({ revoked_at: now })
-    .where(
-      and(
-        eq(magic_tokens.id, token_id),
-        isNull(magic_tokens.consumed_at),
-        isNull(magic_tokens.revoked_at),
-        gt(magic_tokens.expires_at, now)
-      )
-    )
-    .returning({
-      institucion_id: magic_tokens.institucion_id,
-      token_hash: magic_tokens.token_hash,
-    });
+  return withAuditLog(
+    'magic_links.revocar',
+    {
+      target_type: 'magic_token',
+      target_id: token_id,
+    },
+    async () => {
+      // UPDATE atómico: solo si está vigente (no consumido, no revocado, no
+      // expirado). Si el token ya cambió de estado entre render y click,
+      // `returning()` queda vacío y devolvemos error de race. Capturamos `now`
+      // una sola vez para que set + where comparen contra el mismo instante.
+      const now = new Date();
+      const updated = await db
+        .update(magic_tokens)
+        .set({ revoked_at: now })
+        .where(
+          and(
+            eq(magic_tokens.id, token_id),
+            isNull(magic_tokens.consumed_at),
+            isNull(magic_tokens.revoked_at),
+            gt(magic_tokens.expires_at, now)
+          )
+        )
+        .returning({
+          institucion_id: magic_tokens.institucion_id,
+          token_hash: magic_tokens.token_hash,
+        });
 
-  if (updated.length === 0) {
-    return {
-      ok: false,
-      error: 'Token no revocable (consumido, expirado o ya revocado).',
-    };
-  }
+      if (updated.length === 0) {
+        return {
+          ok: false as const,
+          error: 'Token no revocable (consumido, expirado o ya revocado).',
+        };
+      }
 
-  logger.admin.magicLinkRevocado({
-    institucion_id: updated[0].institucion_id,
-    token_hash_prefix: updated[0].token_hash.slice(0, 8),
-    razon: 'manual_admin',
-  });
+      logger.admin.magicLinkRevocado({
+        institucion_id: updated[0].institucion_id,
+        token_hash_prefix: updated[0].token_hash.slice(0, 8),
+        razon: 'manual_admin',
+      });
 
-  revalidatePath(`/admin/instituciones/${updated[0].institucion_id}`);
-  revalidatePath('/admin/magic-links');
-  return { ok: true };
+      revalidatePath(`/admin/instituciones/${updated[0].institucion_id}`);
+      revalidatePath('/admin/magic-links');
+      return { ok: true as const };
+    }
+  );
 }
