@@ -24,6 +24,35 @@
 
 ---
 
+## 2026-05-13 — Segunda pasada de limpieza (workspace + tracked artifacts)
+
+**Branch:** `master`  ·  **Suite:** typecheck limpio
+**Sesión:** sweep amplio del workspace post-consolidación de docs. Eliminados artefactos tracked obsoletos y carpetas locales pesadas.
+
+### Lo que se hizo
+
+- **Branches locales borrados:** `feat/wire-opus-director` (PR #4 ya mergeado a master en `70189b5`) y `backup/admin-wave-1-local` (rediseño wave 1 ya en master).
+- **Screenshots tracked archivados:** `.ui-design/reviews/` (42 archivos, 7 MB) → `docs/archive/reviews/admin-wave-1-screenshots/`. `.ui-design/` agregado al `.gitignore`.
+- **Source material en raíz reorganizada:**
+  - Borrados sin uso: `Vertice_GuionCasos_REFERENCE.pdf`, `guion_extracted.txt`, `guion_mini_extracted.txt` (-648 KB).
+  - Movido `guion-casos-mini.pdf` → `docs/reference/guion-casos-mini.pdf` (referenciado en `db/seeds/safe_rails_casos.ts:1`, comentario actualizado).
+- **Scripts archivados:** 9 smokes históricos (`pipeline_e2e_mini`, `smoke_3cajas_e2e/turn1`, `smoke_auth`, `smoke_motor`, `smoke_tools`, `test_sintesis_solo`, `d3_sintesis_smoke`, `smoke_batch_capture`) → `scripts/_archive/`. `tsconfig.json` excluye la carpeta para que sus imports relativos rotos no fallen typecheck. `scripts/` queda con 7 activos.
+- **Rutas exploratorias:** `app/preview/consent/` eliminado (F1 ya promovido a real). `app/preview/ui/` y `app/demo/stt/` mantenidos como sandboxes dev-only.
+- **Carpetas locales gitignored borradas:** `.next/` (171 MB), `.tmp_design_audit/`, `.claude/screens/`, `.audit/`, `.playwright-mcp/`, `.superpowers/`, `.tmp-f1-consent-preview.png`.
+- **`.gitignore` actualizado:** agregado `.ui-design/` + patrón `/.tmp-*.png` para evitar que futuros artefactos temporales entren al repo.
+
+### Pendientes / blockers
+
+Sin nuevos. Los anteriores siguen vigentes (ver `STATUS.md` §3).
+
+### Cómo retomar
+
+- Próximo `npm run dev` regenera `.next/`.
+- Si necesitas referencia de algún smoke histórico, está en `scripts/_archive/` (no se ejecuta, solo lectura).
+- Si necesitas screenshots admin wave 1, están en `docs/archive/reviews/admin-wave-1-screenshots/`.
+
+---
+
 ## 2026-05-13 — Limpieza del workspace + docs canónicos
 
 **Branch:** `feat/promote-consent-f1-to-real`  ·  **HEAD aprox:** `6a7f4b0`

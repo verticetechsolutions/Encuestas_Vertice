@@ -1,4 +1,4 @@
-// Curated subset of 10 cases from guion-casos-mini.pdf (full PDF: 75 casos / 5 sectores).
+// Curated subset of 10 cases from docs/reference/guion-casos-mini.pdf (full PDF: 75 casos / 5 sectores).
 // Used as: (a) fallback when Opus synthetic-case generation fails, (b) few-shots for Opus.
 //
 // Selection rationale:
