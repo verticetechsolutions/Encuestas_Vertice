@@ -4,7 +4,7 @@
 
 **Última actualización:** 2026-05-13 (novena pasada: deuda #18 cerrada — `--font-display` registrado en `@theme inline`, General Sans aplica project-wide)
 **Branch canónica:** `master`
-**HEAD aproximado:** `c54991f` (fix(landing/dialog): tipografía de acciones más clara) · working tree con cambios sin commitear en `app/globals.css` + DEUDA + STATUS + CHECKPOINTS
+**HEAD aproximado:** `f2defb6` (fix(theme): registrar --font-display en @theme inline — cierra deuda #18) · working tree limpio · ramas vivas: ninguna activa
 **Suite:** 496/496 tests verdes · typecheck limpio
 
 ---

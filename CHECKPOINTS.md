@@ -26,7 +26,7 @@
 
 ## 2026-05-13 — Deuda #18 cerrada: `--font-display` registrado en `@theme inline` (General Sans project-wide)
 
-**Branch:** `master`  ·  **HEAD:** `c54991f` (working tree con cambios sin commitear en `app/globals.css` + STATUS + DEUDA)  ·  **Suite:** 496/496 verdes · typecheck limpio
+**Branch:** `master`  ·  **HEAD:** `f2defb6` (fix(theme): registrar --font-display en @theme inline — cierra deuda #18)  ·  **Suite:** 496/496 verdes · typecheck limpio
 **Sesión:** ejecución de deuda media #18 vía `/goal`. Fix global de 1 línea (Opción A documentada), sin tocar consumers.
 
 ### Lo que se hizo
@@ -60,7 +60,7 @@
 
 ## 2026-05-13 — Redesign modales de acceso del landing (DialogShell + 5 flows)
 
-**Branch:** `master`  ·  **HEAD:** `ba968ec` (working tree con cambios sin commitear en `app/page.tsx` + CHECKPOINTS + STATUS)  ·  **Suite:** 496/496 verdes · typecheck limpio
+**Branch:** `master`  ·  **HEAD:** `e0893e5` (feat(landing): redesign modales de acceso al design system) + `c54991f` (fix(landing/dialog): tipografía de acciones más clara y escaneable)  ·  **Suite:** 496/496 verdes · typecheck limpio
 **Sesión:** founder pidió rediseñar los modales `<Dialog>` del landing (menu / access / request / receipt) para alinearlos al patrón visual cementado en `/acceso/expirado` + `/entrevista/[id]/bienvenida`. Iteración rápida sobre las 5 vistas en Chrome.
 
 ### Lo que se hizo
