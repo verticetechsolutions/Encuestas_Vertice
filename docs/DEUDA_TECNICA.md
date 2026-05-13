@@ -10,7 +10,7 @@
 
 ## 🔴 Alta prioridad — cerrar antes del 2do aliado
 
-### 1. `solicitar_caso_sintetico` sigue stub — ✅ CERRADO (2026-05-13)
+### 1. `solicitar_caso_sintetico` sigue stub — ✅ CERRADO (`fd78e99`, 2026-05-13)
 
 - **Archivo**: `app/api/turn/route.ts:533-545` (invoca `procesarSolicitudCasoSintetico`); pipeline real en `lib/motor/casos_sinteticos.ts` (2026-05-13).
 - **Estado**: pipeline activo. `OPUS_GENERADOR_CASOS_PROMPT_READY` y `OPUS_VALIDADOR_CASOS_PROMPT_READY` flippeados a `true` con sign-off founder (2026-05-13). Generador corre con Opus 4.7 + `effort=high` + adaptive thinking. Validador corre con Sonnet 4.6 + `effort=low` (sin extended thinking) para cumplir latencia <2s declarada en el header del prompt.

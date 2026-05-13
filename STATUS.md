@@ -4,7 +4,7 @@
 
 **Última actualización:** 2026-05-13 (cuarta pasada: sign-off prompts Opus generador + validador casos, cierre deuda #1)
 **Branch canónica:** `master`
-**HEAD aproximado:** `bc805eb` (fix stt/transcription-panel: data-lenis-prevent con overflow real) · working tree con cambios sin commitear de sign-off prompts Opus + cableado runtime config · ramas vivas: ninguna activa
+**HEAD aproximado:** `fd78e99` (chore: consolidar trabajo 2026-05-13 — sign-off Opus + deuda + perf) · working tree limpio · ramas vivas: ninguna activa
 **Suite:** 449/449 tests verdes · typecheck limpio · `next build` OK
 
 ---

@@ -26,7 +26,7 @@
 
 ## 2026-05-13 — Sign-off prompts Opus generador + validador casos sintéticos (Fase 5 sub-paso iv)
 
-**Branch:** `master`  ·  **Suite:** 449/449 verdes · typecheck limpio
+**Branch:** `master`  ·  **HEAD:** `fd78e99` (commit consolidado del día con sign-off + barrida deuda + perf STT + Fase 8 + audit retention)  ·  **Suite:** 449/449 verdes · typecheck limpio
 **Sesión:** sign-off founder de los 2 prompts que quedaban gateados (`OPUS_GENERADOR_CASOS_PROMPT_READY` y `OPUS_VALIDADOR_CASOS_PROMPT_READY`). Founder pidió rewrite "100% detallado, específico y alineado a la meta de cada uno, con búsqueda web de best practices Anthropic 2025-2026". Cierra deuda alta #1 completa.
 
 ### Lo que se hizo
