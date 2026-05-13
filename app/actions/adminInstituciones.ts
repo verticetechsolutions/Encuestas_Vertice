@@ -6,6 +6,7 @@ import { revalidatePath } from 'next/cache';
 import { db } from '@/lib/db';
 import { instituciones, sesiones, magic_tokens } from '@/db/schema';
 import { isAdminAuthenticated } from '@/lib/auth/admin';
+import { withAuditLog } from '@/lib/auth/audit';
 import { crearInstitucion } from '@/app/actions/instituciones';
 import { emitirMagicLink } from '@/app/actions/auth';
 import {
@@ -76,26 +77,40 @@ export async function crearInstitucionConLink(
   }
 
   try {
-    const inst = await crearInstitucion(parsed.data);
-    const link = await emitirMagicLink(inst.institucion_id, { dryRun: true });
+    return await withAuditLog(
+      'instituciones.crear',
+      {
+        target_type: 'institucion',
+        payload: {
+          razon_social: parsed.data.razon_social,
+          tipo: parsed.data.tipo,
+          // email_contacto NO en payload — PII. El audit row tiene target_id
+          // (institucion_id post-create) que permite cross-ref si necesario.
+        },
+      },
+      async () => {
+        const inst = await crearInstitucion(parsed.data);
+        const link = await emitirMagicLink(inst.institucion_id, {
+          dryRun: true,
+        });
 
-    // Audit log: institución creada + magic link emitido (el log de
-    // emitirMagicLink ya cubre el lado del token; este lo une al evento
-    // de creación de la institución).
-    logger.admin.institucionCreada({
-      institucion_id: inst.institucion_id,
-      razon_social: parsed.data.razon_social,
-      tipo: parsed.data.tipo,
-      emitio_magic_link: true,
-    });
+        // Logger structured event sigue activo en paralelo al audit DB row.
+        logger.admin.institucionCreada({
+          institucion_id: inst.institucion_id,
+          razon_social: parsed.data.razon_social,
+          tipo: parsed.data.tipo,
+          emitio_magic_link: true,
+        });
 
-    return {
-      ok: true,
-      institucion_id: inst.institucion_id,
-      cajas_aplicables: inst.cajas_aplicables,
-      magic_url: link.url,
-      expires_at: link.expires_at.toISOString(),
-    };
+        return {
+          ok: true as const,
+          institucion_id: inst.institucion_id,
+          cajas_aplicables: inst.cajas_aplicables,
+          magic_url: link.url,
+          expires_at: link.expires_at.toISOString(),
+        };
+      }
+    );
   } catch (err) {
     // Postgres unique_violation (email_contacto duplicado) cae aquí — el code
     // 23505 sale en err.cause.code. No exponemos detalles SQL al cliente,
@@ -173,25 +188,35 @@ export async function editarInstitucion(
   }
 
   try {
-    const result = await db
-      .update(instituciones)
-      .set({ ...parsed.data, updated_at: new Date() })
-      .where(eq(instituciones.id, institucion_id))
-      .returning({ id: instituciones.id });
+    return await withAuditLog(
+      'instituciones.editar',
+      {
+        target_type: 'institucion',
+        target_id: institucion_id,
+        payload: { campos: Object.keys(parsed.data) },
+      },
+      async () => {
+        const result = await db
+          .update(instituciones)
+          .set({ ...parsed.data, updated_at: new Date() })
+          .where(eq(instituciones.id, institucion_id))
+          .returning({ id: instituciones.id });
 
-    if (result.length === 0) {
-      return { ok: false, error: 'Institución no encontrada.' };
-    }
+        if (result.length === 0) {
+          return { ok: false as const, error: 'Institución no encontrada.' };
+        }
 
-    logger.admin.institucionEditada({
-      institucion_id,
-      campos: Object.keys(parsed.data),
-    });
+        logger.admin.institucionEditada({
+          institucion_id,
+          campos: Object.keys(parsed.data),
+        });
 
-    revalidatePath('/admin/instituciones');
-    revalidatePath(`/admin/instituciones/${institucion_id}`);
+        revalidatePath('/admin/instituciones');
+        revalidatePath(`/admin/instituciones/${institucion_id}`);
 
-    return { ok: true, institucion_id };
+        return { ok: true as const, institucion_id };
+      }
+    );
   } catch (err) {
     const cause = (err as { cause?: { code?: string } }).cause;
     if (cause?.code === '23505') {
@@ -266,21 +291,30 @@ export async function eliminarInstitucion(
   }
 
   try {
-    const result = await db
-      .delete(instituciones)
-      .where(eq(instituciones.id, institucion_id))
-      .returning({ id: instituciones.id });
+    return await withAuditLog(
+      'instituciones.eliminar',
+      {
+        target_type: 'institucion',
+        target_id: institucion_id,
+      },
+      async () => {
+        const result = await db
+          .delete(instituciones)
+          .where(eq(instituciones.id, institucion_id))
+          .returning({ id: instituciones.id });
 
-    if (result.length === 0) {
-      return { ok: false, error: 'Institución no encontrada.' };
-    }
+        if (result.length === 0) {
+          return { ok: false as const, error: 'Institución no encontrada.' };
+        }
 
-    logger.admin.institucionEliminada({ institucion_id });
+        logger.admin.institucionEliminada({ institucion_id });
 
-    revalidatePath('/admin/instituciones');
-    revalidatePath('/admin');
+        revalidatePath('/admin/instituciones');
+        revalidatePath('/admin');
 
-    return { ok: true };
+        return { ok: true as const };
+      }
+    );
   } catch (err) {
     const cause = (err as { cause?: { code?: string } }).cause;
     if (cause?.code === '23503') {

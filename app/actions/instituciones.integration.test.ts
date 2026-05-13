@@ -25,6 +25,7 @@ vi.mock('@/lib/db', () => ({ db: hoisted.db }));
 const authMock = vi.hoisted(() => ({ authenticated: true }));
 vi.mock('@/lib/auth/admin', () => ({
   isAdminAuthenticated: async () => authMock.authenticated,
+  getAdminUserId: async () => null, // tests sin Google session activa
 }));
 
 vi.mock('next/cache', () => ({ revalidatePath: vi.fn() }));
