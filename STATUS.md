@@ -4,7 +4,7 @@
 
 **Última actualización:** 2026-05-13 (quinta pasada: cobertura tests admin + actions, cierre deuda #5)
 **Branch canónica:** `master`
-**HEAD aproximado:** `dc18603` (docs: registrar HEAD fd78e99 en STATUS + CHECKPOINTS + DEUDA) · working tree con 3 archivos test nuevos sin commitear · ramas vivas: ninguna activa
+**HEAD aproximado:** `87abc5b` (test(actions): cobertura de admin auth + logout + instituciones — deuda #5) · working tree limpio · ramas vivas: ninguna activa
 **Suite:** 474/474 tests verdes (+25 nuevos sobre 449) · typecheck limpio · `next build` OK
 
 ---

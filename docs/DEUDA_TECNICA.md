@@ -75,7 +75,7 @@
   - `<respuesta_entrevistado>` L731 + L810 y `evidencia_textual` L829 de sonnet preservados (citas literales del input del entrevistado).
   - Rangos numéricos `12.A.1–12.A.11` migrados a `12.A.1 a 12.A.11` (formato natural en español, consistente con el resto del prompt).
 
-### 5. Cobertura tests en `app/admin/` y `app/actions/` — ✅ CERRADO (2026-05-13)
+### 5. Cobertura tests en `app/admin/` y `app/actions/` — ✅ CERRADO (`87abc5b`, 2026-05-13)
 
 - **Estado**: auditoría real al cerrar el item descubrió que 5 de los 9 archivos `app/actions/*.ts` ya tenían `.integration.test.ts` adyacente (`instituciones`, `respuestas`, `sesiones`, `auth`, `adminMagicLinks`), y los 2 routes admin críticos (`api/export/[entity]`, `api/search`) también. Faltaban tests para los 3 actions restantes (`adminAuth.ts`, `sesionLogout.ts`, `adminInstituciones.ts` parte editar/eliminar). Cerrados en esta sesión.
 - **Cambios (2026-05-13)**:

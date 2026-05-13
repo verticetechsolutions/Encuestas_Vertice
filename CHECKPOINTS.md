@@ -26,7 +26,7 @@
 
 ## 2026-05-13 — Cobertura tests admin + actions (deuda #5 cerrada)
 
-**Branch:** `master`  ·  **Suite:** 474/474 verdes (+25 nuevos) · typecheck limpio
+**Branch:** `master`  ·  **HEAD:** `87abc5b` (test(actions): cobertura de admin auth + logout + instituciones — deuda #5)  ·  **Suite:** 474/474 verdes (+25 nuevos) · typecheck limpio
 **Sesión:** ejecución de deuda alta #5 vía `/goal`. Auditoría inicial reveló que el item estaba mal calibrado: la deuda decía "23 archivos sin test" pero la realidad es que 5/9 actions y 2/2 routes admin críticos ya estaban cubiertos. Solo faltaban tests para 3 actions (`adminAuth`, `sesionLogout`, `adminInstituciones` parte editar/eliminar). Total: ~2.5h reales vs estimado 4-6h.
 
 ### Lo que se hizo
