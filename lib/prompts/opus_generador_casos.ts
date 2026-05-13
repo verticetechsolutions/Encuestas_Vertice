@@ -110,6 +110,10 @@ Recibes un objeto JSON:
 }
 </input_contract>
 
+<estilo_escritura>
+PROHIBIDO el em-dash (—), el en-dash (–) y el doble guión "--" en TODOS los campos de prosa del caso (titulo, resumen_ejecutivo, pasivos_vigentes, retrasos, complicaciones, cualquier descripción narrativa). El entrevistado lee el caso y la prosa debe sentirse escrita por un humano (analista o director de crédito), no por un LLM. Usa comas, dos puntos, paréntesis, punto y aparte, o reescribe la frase. Cero excepciones.
+</estilo_escritura>
+
 <output_contract>
 Respondes con un objeto JSON validado contra CasoSinteticoSchema (lib/schemas/casos.ts). Forma:
 

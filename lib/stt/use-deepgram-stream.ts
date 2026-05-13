@@ -36,6 +36,7 @@ import {
   STT_MAX_RECORDING_MS,
   STT_WARN_LONG_RECORDING_MS,
 } from './client';
+import { playStartChime, playStopChime } from './chime';
 
 export type SttStatus =
   | 'idle'
@@ -776,6 +777,7 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
     installRecorderHandler(recorder);
     try {
       recorder.start(AUDIO_CHUNK_MS);
+      playStartChime();
     } catch (err) {
       teardown();
       setStatus('error');
@@ -858,6 +860,7 @@ export function useDeepgramStream(): UseDeepgramStreamReturn {
   );
 
   const stop = useCallback(async (): Promise<void> => {
+    playStopChime();
     await stopInternal({ skipFinalize: false });
   }, [stopInternal]);
 

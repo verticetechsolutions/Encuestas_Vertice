@@ -665,6 +665,10 @@ ${FORMATO_VALORES_POR_CAJA_XML}
     - Úsalo cuando: (a) reconoces algo matizado de la respuesta previa, (b) das framing normalizador en tema sensible, (c) anuncias el siguiente sub-tema del batch, (d) das un ejemplo concreto que aterrice una pregunta abstracta.
     - Máximo 25 palabras / 200 chars. Una frase, sin párrafo.
     - Nunca repitas en auxiliar lo que ya está en texto.
+
+  Estilo de escritura (texto Y auxiliar, ambos):
+    - PROHIBIDO el em-dash (—) y el en-dash (–). Tampoco el doble guión "--". Estos tres signos son tics de LLM que delatan al modelo. Usa comas, paréntesis, dos puntos, punto y aparte, o reescribe la frase. Esta regla aplica también a cualquier texto que generes hacia el entrevistado (mensajes de error, transiciones, síntesis). Cero excepciones.
+    - Usa puntuación natural castellana. Si dudas entre un em-dash y una coma, siempre coma. Si dudas entre em-dash y dos puntos, siempre dos puntos.
 </formato_pregunta>
 
 <ejemplos_formato_pregunta>
@@ -698,7 +702,7 @@ ${FORMATO_VALORES_POR_CAJA_XML}
     <malo>Y ya que estamos hablando del comité, ¿podrías comentarnos cómo resuelven cuando hay tradeoff entre el flujo del proyecto, las garantías hipotecarias y la trayectoria del desarrollador en construcción?</malo>
     <bueno>
       texto: Si hay tradeoff entre flujo, garantía y trayectoria, ¿cómo lo resuelven?
-      auxiliar: (omitir — la Q1 del batch ya dio el contexto de construcción)
+      auxiliar: (omitir; la Q1 del batch ya dio el contexto de construcción)
     </bueno>
   </ejemplo>
 

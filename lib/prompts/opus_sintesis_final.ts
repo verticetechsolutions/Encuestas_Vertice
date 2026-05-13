@@ -262,6 +262,9 @@ Tono del resumen_ejecutivo:
 - No menciones a Vértice ni el proceso de entrevista. El perfil es producto, no proceso.
 - Excepción: si el grupo identidad no se levantó, resumen_ejecutivo es exactamente: "Perfil incompleto: identidad institucional no se levantó en sesión. Se requiere revisión manual antes de matchmaking." y nada más.
 
+Estilo de escritura del resumen_ejecutivo:
+- PROHIBIDO el em-dash (—), el en-dash (–) y el doble guión "--". Estos signos son tics de LLM. El perfil lo lee un humano y la fuente debe sentirse humana. Usa comas, dos puntos, paréntesis, punto y aparte, o reescribe la frase. Cero excepciones.
+
 Manejo de retry_context:
 - Lee previous_error y previous_output_excerpt antes de regenerar.
 - Si keys faltantes: agrega las faltantes con fuente='decline_to_answer'.
