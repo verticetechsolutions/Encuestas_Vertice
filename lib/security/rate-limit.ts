@@ -1,23 +1,34 @@
-// In-memory rate limiter (token bucket). Pure function al núcleo + helpers
-// para extraer la key (IP, sesion_id, email). API estable para que post-deploy
-// se pueda swappear a Upstash/Redis cambiando solo la implementación de
-// `checkRateLimit` — los call sites quedan idénticos.
+// Rate limiter unificado: Upstash Redis (distribuido) cuando hay credenciales,
+// fallback in-memory token bucket cuando no.
 //
-// Token bucket: cada key tiene un bucket con `capacity` tokens. Cada request
-// consume 1 token. El bucket se refilla a `refillPerSecond`. Cuando el bucket
-// está vacío, devolvemos `allowed=false` con `retryAfterSeconds` calculado.
-// Refilling es lazy (calculamos en cada `checkRateLimit`, no con setInterval).
+// Sprint 2 security audit 2026-05-12: el modo in-memory tiene un problema
+// en Vercel serverless multi-instance — cada instance mantiene su propio
+// bucket y un atacante puede multiplicar el cap real por N instances + cold
+// starts. Upstash Redis comparte estado entre todas las instances vía REST.
 //
-// Memoria: Map cap a 10K keys con eviction LRU-aproximada (eliminar el más
-// antiguo por insertion order). Para Vercel serverless el state vive solo
-// durante la invocación-warm; en cold start el limiter arranca limpio. Ese
-// trade-off es aceptable para MVP (peor caso un atacante puede hacer N reqs
-// hasta que el cold start "olvide" — Upstash lo arregla).
+// Modo decisión:
+//   - Si UPSTASH_REDIS_REST_URL + UPSTASH_REDIS_REST_TOKEN están set en env,
+//     usar Upstash. Production-correct.
+//   - Sino, fallback in-memory token bucket. Para dev local y tests sin
+//     dependencia de Redis. Trade-off documentado: degrada a "por-instance"
+//     en Vercel multi-instance, suficiente para MVP.
 //
-// Single-process assumption: por instancia. Si Vercel escala a múltiples
-// instances simultáneas, cada una mantiene su propio bucket (efectivamente
-// el límite real es N×capacity por minuto). En MVP con 1 piloto a la vez
-// es no-issue. Documentar para post-deploy reset a Upstash.
+// API:
+//   - `checkRateLimit(key, config)` es **async** ahora (Upstash es over-REST).
+//     Los call sites estaban en handlers/server actions async, así que el
+//     cambio es agregar `await`.
+//   - `getClientIp`, `_resetRateLimitState`, `RATE_LIMITS` siguen igual.
+//
+// Algoritmo: token bucket en ambos modos (Upstash tiene `tokenBucket` builtin).
+// Las configs `{capacity, refillPerSecond}` mapean a Upstash via:
+//   capacity = maxTokens
+//   refillRate, interval = tokens_por_intervalo, intervalo_en_ms
+// Eligo intervalo=1s con refillRate=Math.ceil(refillPerSecond) — mantiene
+// la semántica original con resolución de 1s (perdemos sub-second precision
+// pero no afecta uso real porque todos nuestros caps son ≥ 1 token/min).
+
+import { Ratelimit } from '@upstash/ratelimit';
+import { Redis } from '@upstash/redis';
 
 const MAX_KEYS = 10_000;
 
@@ -43,7 +54,92 @@ export interface RateLimitResult {
   retryAfterSeconds: number;
 }
 
-export function checkRateLimit(
+// =============================================================================
+// Upstash mode
+// =============================================================================
+
+let upstashRedis: Redis | null = null;
+function getUpstashRedis(): Redis | null {
+  if (upstashRedis) return upstashRedis;
+  const url = process.env.UPSTASH_REDIS_REST_URL;
+  const token = process.env.UPSTASH_REDIS_REST_TOKEN;
+  if (!url || !token) return null;
+  upstashRedis = new Redis({ url, token });
+  return upstashRedis;
+}
+
+/** Cache de Ratelimit instances. Upstash docs recomienda reusar la misma
+ *  instance por (config, prefix). El key acá es un hash determinístico de
+ *  la config (capacity + refillPerSecond) — todos los call sites con la
+ *  misma config comparten Ratelimit instance, lo cual es óptimo. */
+const ratelimitCache = new Map<string, Ratelimit>();
+
+function getRatelimit(config: RateLimitConfig): Ratelimit | null {
+  const redis = getUpstashRedis();
+  if (!redis) return null;
+  // refill por segundo → tokens por intervalo. Usamos intervalo de 1s con
+  // refillRate = capacity / (capacity / refillPerSecond) = refillPerSecond.
+  // Resolución de 1s; nuestros caps mínimos son 5/15min = 0.0055/s, así que
+  // multiplicamos por 60 (intervalo de 1m) para evitar rate=0.
+  // En general: intervalo = max(1s, ceil(1 / refillPerSecond) s).
+  const intervalSec = Math.max(1, Math.ceil(1 / config.refillPerSecond));
+  const refillRate = Math.max(1, Math.round(config.refillPerSecond * intervalSec));
+  const cacheKey = `${config.capacity}:${refillRate}:${intervalSec}`;
+  const existing = ratelimitCache.get(cacheKey);
+  if (existing) return existing;
+  const rl = new Ratelimit({
+    redis,
+    limiter: Ratelimit.tokenBucket(
+      refillRate,
+      `${intervalSec} s`,
+      config.capacity
+    ),
+    analytics: false,
+    prefix: 'vertice/rl',
+  });
+  ratelimitCache.set(cacheKey, rl);
+  return rl;
+}
+
+// =============================================================================
+// Public API
+// =============================================================================
+
+export async function checkRateLimit(
+  key: string,
+  config: RateLimitConfig
+): Promise<RateLimitResult> {
+  const ratelimit = getRatelimit(config);
+  if (ratelimit) {
+    try {
+      const res = await ratelimit.limit(key);
+      const retryAfterSeconds = res.success
+        ? 0
+        : Math.max(1, Math.ceil((res.reset - Date.now()) / 1000));
+      return {
+        allowed: res.success,
+        remaining: Math.max(0, res.remaining),
+        retryAfterSeconds,
+      };
+    } catch (err) {
+      // Upstash inaccesible (red caída, token rotado). Degradar a in-memory
+      // antes que rechazar todas las requests (availability > strict limit).
+      // Loguear vía console; el route handler logueará vía Axiom si quiere.
+      console.warn(
+        '[rate-limit] Upstash fallido, fallback in-memory:',
+        err instanceof Error ? err.message : String(err)
+      );
+      // fallthrough al in-memory
+    }
+  }
+  return checkRateLimitInMemory(key, config);
+}
+
+// =============================================================================
+// In-memory fallback (dev + tests + Upstash outage)
+// =============================================================================
+
+function checkRateLimitInMemory(
   key: string,
   config: RateLimitConfig
 ): RateLimitResult {
@@ -53,8 +149,7 @@ export function checkRateLimit(
   if (!bucket) {
     if (buckets.size >= MAX_KEYS) {
       // Eviction LRU-aproximada: el primer key en insertion order es el más
-      // antiguo en haber sido creado o re-tocado por delete+set. Suficiente
-      // para evitar que un atacante con miles de IPs distintas haga OOM.
+      // antiguo en haber sido creado o re-tocado por delete+set.
       const oldestKey = buckets.keys().next().value;
       if (oldestKey !== undefined) buckets.delete(oldestKey);
     }
@@ -80,7 +175,6 @@ export function checkRateLimit(
     };
   }
 
-  // Cuántos segundos hasta que tengamos 1 token. tokensFaltantes = 1 - actuales.
   const tokensFaltantes = 1 - bucket.tokens;
   const retryAfterSeconds = Math.max(
     1,
@@ -90,22 +184,23 @@ export function checkRateLimit(
 }
 
 /**
- * Solo para tests — limpia el state global del limiter. NO usar en prod.
+ * Solo para tests — limpia el state in-memory + cache de Ratelimit instances.
+ * NO usar en prod.
  */
 export function _resetRateLimitState(): void {
   buckets.clear();
+  ratelimitCache.clear();
+  upstashRedis = null;
 }
 
 /**
  * Extrae la IP del cliente. Vercel y la mayoría de proxies setean
  * `x-forwarded-for`; algunos `x-real-ip`. Default a 'unknown' para nunca
- * fallar el limiter por falta de headers (peor caso: todos los unknowns
- * comparten el mismo bucket — degrada a "límite global", pero limita).
+ * fallar el limiter por falta de headers.
  */
 export function getClientIp(req: Request): string {
   const xff = req.headers.get('x-forwarded-for');
   if (xff) {
-    // Primer IP de la cadena = cliente real. Demás son proxies.
     const first = xff.split(',')[0];
     if (first) return first.trim();
   }
@@ -116,14 +211,14 @@ export function getClientIp(req: Request): string {
 
 /**
  * Configs por endpoint. Capacities y refill rates derivados de uso esperado:
- * - turn: una entrevista típica son ~30 turnos en 30-60 min. Cap 30/min/sesión
- *   tolera bursts de retries; cap 100/min/IP catch-all para abuse cross-sesión.
- * - acceso: 10/min/IP da 5-10 reintentos genuinos antes de bloquear; los magic
- *   tokens son base64url 24 bytes = 192 bits, brute force computacionalmente
- *   imposible incluso a 10/min, pero el cap evita amplificación.
+ * - turn: ~30 turnos en 30-60 min. Cap 30/min/sesión tolera bursts de retries;
+ *   cap 100/min/IP catch-all para abuse cross-sesión.
+ * - acceso: 10/min/IP da 5-10 reintentos genuinos. Magic tokens son base64url
+ *   24 bytes = 192 bits, brute force computacionalmente imposible incluso a
+ *   10/min, pero el cap evita amplificación.
  * - magicLink: 5/hora/IP frena spam masivo de emisión (protege Resend $$).
  * - adminLogin: 5/15min/IP. Bcrypt de un token corto se rompe en O(s); el
- *   throttle hace infeasible incluso con leakage parcial del ADMIN_PANEL_TOKEN.
+ *   throttle hace infeasible incluso con leakage parcial del token.
  * - stt: 20/min/sesión. Cada turno necesita 1 token efímero; 20 da margen
  *   para reconexiones.
  */

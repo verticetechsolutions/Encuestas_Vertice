@@ -34,6 +34,11 @@ const envSchema = z.object({
   GOOGLE_CLIENT_ID: z.string().min(1).optional(),
   GOOGLE_CLIENT_SECRET: z.string().min(1).optional(),
   AUTH_SECRET: z.string().min(32).optional(),
+  // AUTH_URL: URL canónica del deployment. Auth.js v6 la usa para computar el
+  // redirect_uri del OAuth callback. En dev se auto-detecta del request, así
+  // que es opcional aquí; en prod se fuerza vía validarEnvProd para evitar
+  // mismatch silencioso con el OAuth Client de Google.
+  AUTH_URL: z.string().url().optional(),
 
   // Magic-link emails (Resend). Sin esto, /api/auth/magic-link falla pero el
   // resto de la app puede funcionar (entrevistas existentes vía cookie).
@@ -104,6 +109,7 @@ export function validarEnvProd(): void {
     'GOOGLE_CLIENT_ID',
     'GOOGLE_CLIENT_SECRET',
     'AUTH_SECRET',
+    'AUTH_URL',
     'RESEND_API_KEY',
     'EMAIL_FROM',
   ];

@@ -37,7 +37,7 @@ export async function POST(req: Request): Promise<NextResponse> {
   // Rate limit per-sesion. 20/min cubre reconexiones razonables; bloquea
   // loops del cliente que pidan token continuamente. Catch-all per-IP no
   // hace falta acá porque ya se requiere cookie de sesión válida.
-  const rl = checkRateLimit(`stt:sesion:${cookie}`, RATE_LIMITS.sttPerSesion);
+  const rl = await checkRateLimit(`stt:sesion:${cookie}`, RATE_LIMITS.sttPerSesion);
   if (!rl.allowed) {
     const ip = getClientIp(req);
     logger.warn('stt.rate_limit', {

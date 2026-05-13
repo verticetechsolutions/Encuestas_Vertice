@@ -10,6 +10,11 @@ const MENSAJES: Record<string, string> = {
   institucion_no_encontrada: 'No encontramos la institución asociada a este enlace.',
   sin_sesion: 'No tienes una sesión activa. Pide un enlace nuevo para iniciar.',
   rate_limited: 'Demasiados intentos en poco tiempo. Espera un minuto y vuelve a abrir tu enlace.',
+  // Razones del flow Google SSO (Auth.js signIn callback en auth.ts).
+  sin_email: 'Google no nos compartió un correo asociado a tu cuenta. Intenta con otra cuenta o avísanos.',
+  email_no_verificado: 'Tu cuenta de Google no tiene el correo verificado. Confirma tu correo en Google y reintenta.',
+  dominio_no_permitido: 'Tu correo no está autorizado para acceder. Si crees que es un error, contacta a tu asesor de Vértice.',
+  error_interno: 'Hubo un error interno al iniciar tu sesión. Reintenta en un minuto; si persiste, avísanos.',
 };
 
 export default async function AccesoExpiradoPage({ searchParams }: Props) {

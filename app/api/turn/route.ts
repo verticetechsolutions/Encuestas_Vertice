@@ -146,7 +146,7 @@ export async function POST(req: Request) {
   //    margen para retries; bloqueo previene abuse cross-sesión sin requerir
   //    la sesion_id (todavía no parseada). Devuelve 429 con Retry-After.
   const ip = getClientIp(req);
-  const rlIp = checkRateLimit(`turn:ip:${ip}`, RATE_LIMITS.turnPerIp);
+  const rlIp = await checkRateLimit(`turn:ip:${ip}`, RATE_LIMITS.turnPerIp);
   if (!rlIp.allowed) {
     logger.warn('turn.rate_limit.ip', { ip, retry_after_s: rlIp.retryAfterSeconds });
     return NextResponse.json(
@@ -206,7 +206,7 @@ export async function POST(req: Request) {
   // 5. Rate limit per-sesion. Una sesión típica tiene ~30 turnos en 30-60
   //    min; 30/min cubre con bursts de retries pero detiene runaway loops
   //    del cliente.
-  const rlSesion = checkRateLimit(`turn:sesion:${sesion_id}`, RATE_LIMITS.turnPerSesion);
+  const rlSesion = await checkRateLimit(`turn:sesion:${sesion_id}`, RATE_LIMITS.turnPerSesion);
   if (!rlSesion.allowed) {
     logger.warn('turn.rate_limit.sesion', {
       sesion_id,

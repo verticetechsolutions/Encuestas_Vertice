@@ -8,6 +8,23 @@ import { ADMIN_COOKIE } from '@/lib/auth/admin';
 //
 // `/admin/login` está intencionalmente fuera del matcher para que el form de
 // login sea accesible sin cookie previa.
+
+// Cookie names que prueban presencia de sesión admin. Cualquier match cuenta
+// como "auth presente" para que el middleware deje pasar — la validación real
+// (rol = admin, token = env, etc.) la hace `requireAdmin()` en el layout.
+//
+//  - `vertice_auth` / `__Secure-vertice_auth` → cookie de Auth.js v6 (Google SSO).
+//    Prefijo `__Secure-` solo en prod (ver auth.ts cookies config).
+//  - `vertice_admin` → cookie del emergency-token flow (ADMIN_EMERGENCY_MODE=1).
+//
+// Sin este array, el middleware solo veía `vertice_admin` y rebotaba el SSO
+// happy-path en loop (issue del Sprint 1 security audit 2026-05-12).
+const ADMIN_AUTH_COOKIES = [
+  '__Secure-vertice_auth',
+  'vertice_auth',
+  ADMIN_COOKIE,
+];
+
 export function middleware(req: NextRequest) {
   const path = req.nextUrl.pathname;
 
@@ -29,8 +46,10 @@ export function middleware(req: NextRequest) {
     if (path === '/admin/login' || path.startsWith('/admin/api/')) {
       return NextResponse.next({ request: { headers: requestHeaders } });
     }
-    const adminCookie = req.cookies.get(ADMIN_COOKIE);
-    if (!adminCookie) {
+    const hasAuthCookie = ADMIN_AUTH_COOKIES.some((name) =>
+      req.cookies.get(name)
+    );
+    if (!hasAuthCookie) {
       const url = req.nextUrl.clone();
       url.pathname = '/admin/login';
       url.searchParams.set('next', path);

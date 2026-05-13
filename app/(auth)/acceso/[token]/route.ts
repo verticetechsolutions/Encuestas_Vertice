@@ -22,7 +22,7 @@ export async function GET(
   // automatizado de URLs sospechosas. 10/min/IP da 5-10 reintentos
   // genuinos antes de bloquear.
   const ip = getClientIp(req);
-  const rl = checkRateLimit(`acceso:ip:${ip}`, RATE_LIMITS.accesoPerIp);
+  const rl = await checkRateLimit(`acceso:ip:${ip}`, RATE_LIMITS.accesoPerIp);
   if (!rl.allowed) {
     logger.warn('acceso.rate_limit', { ip, retry_after_s: rl.retryAfterSeconds });
     // Redirect a expirado con razón especial — ya tenemos la página

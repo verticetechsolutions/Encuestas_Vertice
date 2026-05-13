@@ -38,7 +38,7 @@ export async function loginAdmin(formData: FormData): Promise<void> {
   const meta = getRequestMetadata(await headers());
 
   // Rate limit antes de cualquier validación. Aplica al IP no autenticado.
-  const rl = checkRateLimit(`admin-login:ip:${meta.ip}`, RATE_LIMITS.adminLoginPerIp);
+  const rl = await checkRateLimit(`admin-login:ip:${meta.ip}`, RATE_LIMITS.adminLoginPerIp);
   if (!rl.allowed) {
     logger.admin.loginFallido({ ...meta, razon: 'rate_limited' });
     redirect(`/admin/login?error=admin_rate_limited&next=${nextParam}`);
