@@ -640,24 +640,15 @@ export default function Landing() {
             <Dialog.Popup
               data-lenis-prevent
               className={cn(
-                'fixed left-1/2 top-1/2 z-50 w-[min(94vw,480px)] -translate-x-1/2 -translate-y-1/2',
-                'overflow-hidden rounded-[24px] border border-cream-pure/8 bg-cream-pure text-ink shadow-2xl shadow-black/50',
-                'data-[starting-style]:scale-95 data-[starting-style]:opacity-0',
-                'data-[ending-style]:scale-95 data-[ending-style]:opacity-0',
-                'transition-all duration-300'
+                'fixed left-1/2 top-1/2 z-50 w-[min(94vw,540px)] -translate-x-1/2 -translate-y-1/2',
+                'overflow-hidden rounded-[28px] bg-cream-pure text-ink',
+                'shadow-[0_30px_90px_-20px_rgba(0,0,0,0.5)] ring-1 ring-ink/[0.04]',
+                'data-[starting-style]:scale-[0.96] data-[starting-style]:opacity-0',
+                'data-[ending-style]:scale-[0.96] data-[ending-style]:opacity-0',
+                'transition-all duration-300 ease-[cubic-bezier(0.16,1,0.3,1)]'
               )}
             >
               <DialogShell
-                kicker={
-                  mode === 'menu'
-                    ? 'Bienvenido'
-                    : mode === 'access'
-                      ? 'Acceso · panel'
-                      : requestFolio
-                        ? `Alianza · ${requestFolio}`
-                        : 'Solicitar acceso'
-                }
-                kickerVariant={requestFolio && mode === 'request' ? 'sealed' : 'default'}
                 onClose={() => setOpen(false)}
                 onBack={
                   fromMenu && mode !== 'menu' && !requestFolio
@@ -716,63 +707,55 @@ function ManifestRow({ num, label, value }: { num: string; label: string; value:
 }
 
 function DialogShell({
-  kicker,
-  kickerVariant = 'default',
   onClose,
   onBack,
   children,
 }: {
-  kicker: string;
-  kickerVariant?: 'default' | 'sealed';
   onClose: () => void;
   onBack?: () => void;
   children: ReactNode;
 }) {
-  const sealed = kickerVariant === 'sealed';
   return (
-    <>
-      <div
-        className={cn(
-          'flex items-center justify-between border-b px-6 py-3.5 transition-colors',
-          sealed ? 'border-gold/35 bg-gold/[0.06]' : 'border-ink/8'
-        )}
-      >
-        <div
-          key={kicker}
-          className={cn(
-            'sx-kicker flex items-center gap-2 font-mono text-[10.5px] uppercase tracking-[0.3em]',
-            sealed ? 'text-gold-deep' : 'text-ink/55'
-          )}
-        >
+    <div className="relative isolate">
+      <span
+        aria-hidden
+        className="atmosphere-radial-gold-warm pointer-events-none absolute inset-0 -z-10"
+      />
+
+      {/* Top bar — solo logo + nav (sin borde, sin kicker). */}
+      <div className="flex items-center justify-between px-8 pb-3 pt-7 sm:px-10 sm:pt-8">
+        <div className="flex items-center gap-2">
           {onBack && (
             <button
               type="button"
               onClick={onBack}
-              className="-ml-1 inline-flex size-6 items-center justify-center rounded-full text-ink/50 transition-colors hover:bg-ink/5 hover:text-ink"
+              className="-ml-1 inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-ink/45 transition-all duration-200 hover:-translate-x-0.5 hover:bg-ink/5 hover:text-ink"
               aria-label="Volver"
             >
-              <ArrowLeft className="size-3.5" strokeWidth={2.25} />
+              <ArrowLeft className="size-4" strokeWidth={2} />
             </button>
           )}
-          <span
-            className={cn(
-              'size-1.5 rounded-full bg-gold',
-              sealed && 'sx-status-dot'
-            )}
+          <Image
+            src="/Logo_blue.svg"
+            alt="Vértice"
+            width={108}
+            height={36}
+            priority
+            className="h-7 w-auto"
           />
-          {kicker}
         </div>
         <button
           type="button"
           onClick={onClose}
-          className="inline-flex size-7 items-center justify-center rounded-full text-ink/50 transition-colors hover:bg-ink/5 hover:text-ink"
+          className="inline-flex size-8 cursor-pointer items-center justify-center rounded-full text-ink/45 transition-all duration-200 hover:bg-ink/5 hover:text-ink hover:rotate-90"
           aria-label="Cerrar"
         >
-          <X className="size-4" />
+          <X className="size-4" strokeWidth={2} />
         </button>
       </div>
-      <div className="px-7 py-7 sm:px-9 sm:py-8">{children}</div>
-    </>
+
+      <div className="px-8 pb-9 pt-4 sm:px-10 sm:pb-10 sm:pt-5">{children}</div>
+    </div>
   );
 }
 
@@ -780,47 +763,89 @@ function DialogShell({
 function MenuFlow({ onPick }: { onPick: (m: 'access' | 'request') => void }) {
   return (
     <>
-      <Dialog.Title
-        className="font-display text-2xl tracking-[-0.02em]"
-        style={{ fontWeight: 500 }}
-      >
-        Acceso a la plataforma.
+      <Dialog.Title className="font-heading text-[clamp(30px,4.8vw,40px)] font-semibold leading-[0.98] tracking-[-0.025em] text-ink">
+        Acceso a
+        <br />
+        <span className="text-gold-deep">la plataforma.</span>
       </Dialog.Title>
-      <Dialog.Description className="mt-2 text-[13.5px] leading-relaxed text-ink/60">
+      <Dialog.Description className="mt-5 max-w-[34ch] text-[14px] leading-[1.55] text-ink/65">
         Selecciona la opción que aplica a tu institución.
       </Dialog.Description>
 
-      <div className="mt-7 space-y-3">
-        <button
-          type="button"
+      <div className="mt-8 flex flex-col gap-3">
+        <MenuOption
+          step="01"
+          title="Reanudar entrevista"
+          description="Mi institución ya está registrada en Vértice"
+          variant="light"
           onClick={() => onPick('access')}
-          className="group/menu flex w-full items-center justify-between gap-4 rounded-xl border border-ink/12 bg-white px-5 py-4 text-left transition-colors hover:border-ink/30"
-        >
-          <div>
-            <div className="text-[14px] font-medium text-ink">Reanudar entrevista</div>
-            <div className="mt-0.5 text-[12.5px] text-ink/55">Mi institución ya está registrada</div>
-          </div>
-          <ArrowUpRight
-            className="size-4 text-ink/40 transition-all group-hover/menu:translate-x-0.5 group-hover/menu:text-gold"
-            strokeWidth={2.25}
-          />
-        </button>
-
-        <button
-          type="button"
+        />
+        <MenuOption
+          step="02"
+          title="Solicitar alianza"
+          description="Registrar mi institución en la red"
+          variant="dark"
           onClick={() => onPick('request')}
-          className="group/menu flex w-full items-center justify-between gap-4 rounded-xl bg-ink px-5 py-4 text-left transition-colors hover:bg-ink-raised"
-        >
-          <div>
-            <div className="text-[14px] font-medium text-cream-pure">Solicitar alianza</div>
-            <div className="mt-0.5 text-[12.5px] text-cream-pure/55">Registrar mi institución en la red</div>
-          </div>
-          <span className="inline-flex size-9 items-center justify-center rounded-lg bg-gold text-ink transition-transform group-hover/menu:rotate-45">
-            <ArrowUpRight className="size-4" strokeWidth={2.25} />
-          </span>
-        </button>
+        />
       </div>
     </>
+  );
+}
+
+function MenuOption({
+  step,
+  title,
+  description,
+  variant,
+  onClick,
+}: {
+  step: string;
+  title: string;
+  description: string;
+  variant: 'light' | 'dark';
+  onClick: () => void;
+}) {
+  const isDark = variant === 'dark';
+  return (
+    <button
+      type="button"
+      onClick={onClick}
+      className={cn(
+        'group/opt flex w-full cursor-pointer items-center justify-between gap-5 rounded-[22px] p-5 text-left transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] md:p-6',
+        isDark
+          ? 'bg-ink text-cream-pure ring-1 ring-ink/[0.04] shadow-[0_0_0_1px_rgba(10,15,28,0.04),0_20px_50px_-20px_rgba(10,15,28,0.35)] hover:bg-ink-raised'
+          : 'bg-survey-surface ring-1 ring-ink/[0.05] hover:ring-ink/[0.15] hover:bg-white'
+      )}
+    >
+      <div className="flex min-w-0 flex-col gap-2">
+        <span
+          className={cn(
+            'font-mono text-[10px] uppercase tracking-[0.22em]',
+            isDark ? 'text-gold' : 'text-ink/45'
+          )}
+        >
+          {step} · {title}
+        </span>
+        <span
+          className={cn(
+            'text-[15px] leading-snug',
+            isDark ? 'text-cream-pure/72' : 'text-ink/72'
+          )}
+        >
+          {description}
+        </span>
+      </div>
+      <span
+        className={cn(
+          'inline-flex size-11 shrink-0 items-center justify-center rounded-full transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover/opt:rotate-45',
+          isDark
+            ? 'bg-gold text-ink'
+            : 'bg-ink text-cream-pure shadow-[0_0_0_1px_rgba(10,15,28,0.04),0_20px_50px_-20px_rgba(10,15,28,0.35)]'
+        )}
+      >
+        <ArrowUpRight className="size-[18px]" strokeWidth={1.75} />
+      </span>
+    </button>
   );
 }
 
@@ -843,40 +868,57 @@ function AccessFlow() {
   if (stage === 'choose') {
     return (
       <>
-        <Dialog.Title
-          className="font-display text-2xl tracking-[-0.02em]"
-          style={{ fontWeight: 500 }}
-        >
-          Reanudar entrevista.
+        <Dialog.Title className="font-heading text-[clamp(30px,4.8vw,40px)] font-semibold leading-[0.98] tracking-[-0.025em] text-ink">
+          Reanudar
+          <br />
+          <span className="text-gold-deep">entrevista.</span>
         </Dialog.Title>
-        <Dialog.Description className="mt-2 text-[13.5px] leading-relaxed text-ink/60">
-          Continúa con la cuenta de Google registrada por tu institución. La misma del correo de
-          invitación.
+        <Dialog.Description className="mt-5 max-w-[38ch] text-[14px] leading-[1.55] text-ink/65">
+          Continúa con la cuenta de Google registrada por tu institución. La misma del correo de invitación.
         </Dialog.Description>
 
         <button
           type="button"
           onClick={handleGoogleSignIn}
-          className="mt-7 inline-flex h-12 w-full cursor-pointer items-center justify-center gap-3 rounded-xl border border-ink/12 bg-white text-[14px] font-medium text-ink transition-colors hover:border-ink/30"
+          className="group/g mt-8 flex w-full cursor-pointer items-center justify-between gap-5 rounded-[22px] bg-survey-surface p-5 text-left ring-1 ring-ink/[0.05] transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-white hover:ring-ink/[0.15]"
         >
-          <GoogleG className="size-4" />
-          Continuar con Google
+          <span className="flex min-w-0 items-center gap-3">
+            <span className="inline-flex size-10 shrink-0 items-center justify-center rounded-full bg-white ring-1 ring-ink/[0.06]">
+              <GoogleG className="size-4" />
+            </span>
+            <span className="flex flex-col gap-1">
+              <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-ink/45">
+                Recomendado
+              </span>
+              <span className="text-[15px] text-ink/72">Continuar con Google</span>
+            </span>
+          </span>
+          <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-ink text-cream-pure shadow-[0_0_0_1px_rgba(10,15,28,0.04),0_20px_50px_-20px_rgba(10,15,28,0.35)] transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover/g:rotate-45">
+            <ArrowUpRight className="size-[18px]" strokeWidth={1.75} />
+          </span>
         </button>
 
-        <div className="mt-6 flex items-center gap-3 text-[10.5px] uppercase tracking-[0.28em] text-ink/40">
-          <span className="h-px flex-1 bg-ink/10" />
+        <div className="mt-6 flex items-center gap-3 font-mono text-[10px] uppercase tracking-[0.22em] text-ink/35">
+          <span className="h-px flex-1 bg-ink/[0.08]" />
           <span>o</span>
-          <span className="h-px flex-1 bg-ink/10" />
+          <span className="h-px flex-1 bg-ink/[0.08]" />
         </div>
 
         <button
           type="button"
           onClick={() => setStage('email')}
-          className="group/submit mt-6 inline-flex h-12 w-full items-center justify-between gap-2 rounded-xl bg-ink pl-5 pr-2 text-[13.5px] font-medium text-cream-pure transition-colors hover:bg-ink-raised"
+          className="group/e mt-6 flex w-full cursor-pointer items-center justify-between gap-5 rounded-[22px] bg-ink p-5 text-left text-cream-pure ring-1 ring-ink/[0.04] shadow-[0_0_0_1px_rgba(10,15,28,0.04),0_20px_50px_-20px_rgba(10,15,28,0.35)] transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] hover:bg-ink-raised"
         >
-          Reenviar mi enlace por correo
-          <span className="inline-flex size-9 items-center justify-center rounded-lg bg-gold text-ink transition-transform group-hover/submit:translate-x-0.5">
-            <Mail className="size-4" strokeWidth={2.25} />
+          <span className="flex flex-col gap-1">
+            <span className="font-mono text-[10px] uppercase tracking-[0.22em] text-gold">
+              Alterna
+            </span>
+            <span className="text-[15px] text-cream-pure/72">
+              Reenviar mi enlace por correo
+            </span>
+          </span>
+          <span className="inline-flex size-11 shrink-0 items-center justify-center rounded-full bg-gold text-ink transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)] group-hover/e:rotate-45">
+            <ArrowUpRight className="size-[18px]" strokeWidth={1.75} />
           </span>
         </button>
       </>
@@ -898,17 +940,16 @@ function AccessFlow() {
     };
     return (
       <form onSubmit={handleSubmit} noValidate>
-        <Dialog.Title
-          className="font-display text-2xl tracking-[-0.02em]"
-          style={{ fontWeight: 500 }}
-        >
-          Reenviar enlace.
+        <Dialog.Title className="font-heading text-[clamp(30px,4.8vw,40px)] font-semibold leading-[0.98] tracking-[-0.025em] text-ink">
+          Reenviar
+          <br />
+          <span className="text-gold-deep">enlace.</span>
         </Dialog.Title>
-        <Dialog.Description className="mt-2 text-[13.5px] leading-relaxed text-ink/60">
+        <Dialog.Description className="mt-5 max-w-[38ch] text-[14px] leading-[1.55] text-ink/65">
           Ingresa el correo donde recibiste la invitación y te volvemos a enviar el enlace.
         </Dialog.Description>
 
-        <div className="mt-7">
+        <div className="mt-8">
           <FormField
             id="access-email"
             label="Correo de la institución"
@@ -931,18 +972,16 @@ function AccessFlow() {
 
   return (
     <div className="flex flex-col items-center text-center">
-      <span className="inline-flex size-12 items-center justify-center rounded-full bg-ink text-gold">
-        <Mail className="size-5" strokeWidth={2.25} />
+      <span className="relative inline-flex size-14 items-center justify-center rounded-full bg-ink text-gold ring-4 ring-gold/[0.08]">
+        <Mail className="size-5" strokeWidth={2} />
       </span>
-      <Dialog.Title
-        className="mt-5 font-display text-2xl tracking-[-0.02em]"
-        style={{ fontWeight: 500 }}
-      >
-        Revisa tu correo.
+      <Dialog.Title className="mt-7 font-heading text-[clamp(30px,4.8vw,40px)] font-semibold leading-[0.98] tracking-[-0.025em] text-ink">
+        Revisa
+        <br />
+        <span className="text-gold-deep">tu correo.</span>
       </Dialog.Title>
-      <Dialog.Description className="mt-2 max-w-[34ch] text-[13.5px] leading-relaxed text-ink/60">
-        Si <span className="font-medium text-ink">{email}</span> está autorizado, recibirás
-        un enlace en los próximos minutos.
+      <Dialog.Description className="mt-5 max-w-[34ch] text-[14px] leading-[1.55] text-ink/65">
+        Si <span className="font-medium text-ink">{email}</span> está autorizado, recibirás un enlace en los próximos minutos.
       </Dialog.Description>
     </div>
   );
@@ -981,18 +1020,16 @@ function RequestFlow({ onSent }: { onSent: (folio: string | null) => void }) {
 
   return (
     <form onSubmit={handleSubmit} noValidate>
-      <Dialog.Title
-        className="font-display text-2xl tracking-[-0.02em]"
-        style={{ fontWeight: 500 }}
-      >
-        Solicitar alianza.
+      <Dialog.Title className="font-heading text-[clamp(30px,4.8vw,40px)] font-semibold leading-[0.98] tracking-[-0.025em] text-ink">
+        Solicitar
+        <br />
+        <span className="text-gold-deep">alianza.</span>
       </Dialog.Title>
-      <Dialog.Description className="mt-2 text-[13.5px] leading-relaxed text-ink/60">
-        Tres datos básicos de tu institución. Te contactamos en menos de 24 horas hábiles para
-        agendar la entrevista.
+      <Dialog.Description className="mt-5 max-w-[38ch] text-[14px] leading-[1.55] text-ink/65">
+        Tres datos básicos de tu institución. Te contactamos en menos de 24 horas hábiles para agendar la entrevista.
       </Dialog.Description>
 
-      <div className="mt-7 space-y-5">
+      <div className="mt-8 space-y-5">
         <FormField
           id="req-razon"
           label="Razón social"
@@ -1045,59 +1082,41 @@ function ReceiptView({
   folio: string;
 }) {
   return (
-    <div className="relative -mx-1">
+    <div className="relative">
       {/* Check protagonista — sello que abre la constancia */}
-      <BrandSuccessGlyph size={68} />
+      <BrandSuccessGlyph size={64} />
 
-      {/* Title — bilínea editorial, primer línea sólida, segunda en peso liviano */}
       <Dialog.Title
-        className="sx-text mt-7 font-display text-[34px] leading-[0.96] tracking-[-0.025em] text-ink"
-        style={{ fontWeight: 500, animationDelay: '0.05s' }}
+        className="sx-text mt-7 font-heading text-[clamp(30px,4.8vw,40px)] font-semibold leading-[0.98] tracking-[-0.025em] text-ink"
+        style={{ animationDelay: '0.05s' }}
       >
         Solicitud
         <br />
-        <span className="font-light text-ink/55">registrada.</span>
+        <span className="text-gold-deep">registrada.</span>
       </Dialog.Title>
 
-      {/* Hairline dorada que se traza */}
-      <span
-        aria-hidden
-        className="sx-line mt-5 block h-px w-12 bg-gold"
-      />
-
-      {/* Folio — anchor visual de la constancia */}
+      {/* Folio — card editorial blanca, anchor visual de la constancia */}
       <div
-        className="sx-text mt-7"
+        className="sx-text mt-7 rounded-[22px] bg-survey-surface p-5 ring-1 ring-ink/[0.05] md:p-6"
         style={{ animationDelay: '0.32s' }}
       >
-        <span className="block font-mono text-[10px] uppercase tracking-[0.32em] text-gold">
+        <span className="block font-mono text-[10px] uppercase tracking-[0.22em] text-gold-deep">
           Folio
         </span>
         <span className="mt-2 block font-mono text-[34px] font-medium leading-none tracking-[0.16em] text-ink">
           {folio}
         </span>
+        <div className="mt-5 h-px w-full bg-ink/[0.08]" />
+        <p className="mt-4 text-[13px] leading-relaxed text-ink/60">
+          <span className="text-ink">{razon}</span>
+          <span className="mx-2 text-ink/25">·</span>
+          <span>{tipoLabel}</span>
+        </p>
       </div>
 
-      {/* Hairline divider editorial */}
-      <div
-        className="sx-text mt-8 h-px w-full bg-ink/8"
-        style={{ animationDelay: '0.55s' }}
-      />
-
-      {/* Single-line institution context — razón social · tipo */}
-      <p
-        className="sx-text mt-5 text-[13.5px] leading-relaxed text-ink/55"
-        style={{ animationDelay: '0.7s' }}
-      >
-        <span className="text-ink">{razon}</span>
-        <span className="mx-2 text-ink/30">·</span>
-        <span>{tipoLabel}</span>
-      </p>
-
-      {/* Próximo paso — copy condensado, sin label decorativo */}
       <Dialog.Description
-        className="sx-text mt-3 text-[13.5px] leading-relaxed text-ink/65"
-        style={{ animationDelay: '0.85s' }}
+        className="sx-text mt-6 text-[14px] leading-[1.55] text-ink/65"
+        style={{ animationDelay: '0.7s' }}
       >
         Te contactamos en menos de 24 horas hábiles para agendar la entrevista de doce minutos.
       </Dialog.Description>
@@ -1250,18 +1269,22 @@ function SubmitButton({
       type="submit"
       disabled={disabled}
       className={cn(
-        'group/submit mt-7 inline-flex h-14 w-full items-center justify-between gap-2 rounded-2xl bg-ink pl-6 pr-2 text-[14px] font-medium text-cream-pure',
-        'transition-all hover:bg-ink-raised active:scale-[0.99] disabled:opacity-40 disabled:cursor-not-allowed'
+        'group/submit mt-8 inline-flex h-14 w-full cursor-pointer items-center justify-between gap-3 rounded-full bg-ink pl-6 pr-2 text-[14px] font-medium text-cream-pure',
+        'shadow-[0_0_0_1px_rgba(10,15,28,0.04),0_20px_50px_-20px_rgba(10,15,28,0.35)]',
+        'transition-all duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]',
+        'hover:bg-ink-raised active:scale-[0.99]',
+        'disabled:cursor-not-allowed disabled:opacity-40'
       )}
     >
       {children}
       <span
         className={cn(
-          'inline-flex size-10 items-center justify-center rounded-xl bg-gold text-ink',
-          'transition-transform duration-200 group-hover/submit:rotate-45'
+          'inline-flex size-11 items-center justify-center rounded-full bg-cream-pure text-ink',
+          'transition-transform duration-200 ease-[cubic-bezier(0.16,1,0.3,1)]',
+          'group-hover/submit:rotate-45 group-disabled/submit:rotate-0'
         )}
       >
-        <ArrowUpRight className="size-4" strokeWidth={2.25} />
+        <ArrowUpRight className="size-[18px]" strokeWidth={1.75} />
       </span>
     </button>
   );

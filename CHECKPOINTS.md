@@ -24,6 +24,38 @@
 
 ---
 
+## 2026-05-13 — Redesign modales de acceso del landing (DialogShell + 5 flows)
+
+**Branch:** `master`  ·  **HEAD:** `ba968ec` (working tree con cambios sin commitear en `app/page.tsx` + CHECKPOINTS + STATUS)  ·  **Suite:** 496/496 verdes · typecheck limpio
+**Sesión:** founder pidió rediseñar los modales `<Dialog>` del landing (menu / access / request / receipt) para alinearlos al patrón visual cementado en `/acceso/expirado` + `/entrevista/[id]/bienvenida`. Iteración rápida sobre las 5 vistas en Chrome.
+
+### Lo que se hizo
+
+**`app/page.tsx` — refactor visual del Dialog:**
+- **`Dialog.Popup`**: ancho `min(94vw,540px)` (era 480px), `rounded-[28px]`, sombra `0_30px_90px_-20px_rgba(0,0,0,0.5)` + ring sutil, transition ease `cubic-bezier(0.16,1,0.3,1)`, removido `border` duro.
+- **`DialogShell`**: removido `kicker` y `kickerVariant` (sin status dot, sin texto "Bienvenido"/"Alianza · K9SCMA"). Header nuevo: solo logo Vértice (h-7) top-left + close X top-right, sin borde inferior, sin atmosphere harsh. Atmosphere overlay `atmosphere-radial-gold-warm`. Back arrow tiene hover `-translate-x-0.5` + bg ink/5. Close X tiene hover `rotate-90` + bg ink/5 (micro-anim sutil).
+- **`MenuFlow`**: H1 split-color `font-heading text-[clamp(30px,4.8vw,40px)]` ("Acceso a / la plataforma."). Cards "01 · Reanudar entrevista" (white) y "02 · Solicitar alianza" (ink+gold). Componente `MenuOption` reusable con variants `light|dark`, eyebrow mono "01 · TÍTULO", descripción ink/72, arrow pill rotando 45° en hover.
+- **`AccessFlow choose`**: H1 "Reanudar / entrevista." con Google como primera card (con GoogleG en círculo ring) + divisor "o" mono caps + segunda card ink "Reenviar mi enlace por correo".
+- **`AccessFlow email`**: H1 "Reenviar / enlace." + `FormField` (preservado) + `SubmitButton` actualizado.
+- **`AccessFlow sent_email`**: centrado. Mail icon en pill ink con ring gold `ring-4 ring-gold/[0.08]` + H1 "Revisa / tu correo." + caption con email destacado en `font-medium text-ink`.
+- **`RequestFlow form`**: H1 "Solicitar / alianza." + 3 `FormField`/`FormSelect` (preservados) + `SubmitButton` actualizado.
+- **`ReceiptView`**: BrandSuccessGlyph (sello) + H1 "Solicitud / registrada." + folio en card editorial blanca (`bg-survey-surface rounded-[22px] ring-1 ring-ink/[0.05]`) con eyebrow gold "FOLIO", mono `text-[34px] tracking-[0.16em]`, hairline interno, línea contextual razón social · tipo. Description final fuera del card. Removido el `sx-line` (hairline dorado de animación).
+- **`SubmitButton`**: actualizado al patrón ink + cream-pure pill (consistente con `/acceso/expirado` y landing). `rounded-full`, pill cream-pure h-11 con ArrowUpRight 18px que rota 45° en hover, sombra cta-glow ink, `active:scale-[0.99]`.
+
+**Font check:** `getComputedStyle()` en el H1 del modal Dialog confirma General Sans 600 / 40px aplicado vía `font-heading`. Cero ocurrencias nuevas de `font-display` introducidas (deuda #18 sigue abierta para los 11 sitios legacy).
+
+### Pendientes / blockers
+
+**Sin nuevos.** Cambios sin commitear esperando sign-off + commit + push del founder.
+
+### Cómo retomar
+
+- El `Dialog.Backdrop` se mantuvo en `bg-ink/82 backdrop-blur-sm` (no se tocó) para no afectar el contraste con el resto de la página.
+- Si surge necesidad de añadir un 4to flow (ej. "Olvidé mi correo institucional"), seguir el patrón: H1 split-color + `MenuOption` o `FormField` o card editorial blanca con eyebrow mono.
+- `MenuOption` quedó como subcomponente exportado dentro de `app/page.tsx`. Si se reusa en otro sitio, considerar moverlo a `components/landing/`.
+
+---
+
 ## 2026-05-13 — Deuda #6 cerrada: `ValorPorCaja` mapping type + `parseValorPorCaja` (Plan B)
 
 **Branch:** `master`  ·  **HEAD:** `ba968ec` (test(schemas): ValorPorCaja mapping type + parseValorPorCaja — deuda #6 Plan B)  ·  **Suite:** 496/496 verdes (+22 nuevos) · typecheck limpio

@@ -2,10 +2,10 @@
 
 > **Source of truth del proyecto.** Cualquier agente o sesión que toque este repo lee este documento primero y lo actualiza al cerrar tarea relevante. Si hay duda entre este doc y otros, **gana este doc** (excepto `IMPLEMENTATION.md` para detalles de contrato técnico de las fases).
 
-**Última actualización:** 2026-05-13 (séptima pasada: deuda #6 cerrada con Plan B — ValorPorCaja mapping type + parseValorPorCaja helper)
+**Última actualización:** 2026-05-13 (octava pasada: redesign modales de acceso del landing — DialogShell + MenuFlow + AccessFlow + RequestFlow + ReceiptView)
 **Branch canónica:** `master`
-**HEAD aproximado:** `ba968ec` (test(schemas): ValorPorCaja mapping type + parseValorPorCaja — deuda #6 Plan B) · working tree con cambios sin commitear en `app/page.tsx` (refactor Dialog WIP del founder) + STATUS + DEUDA
-**Suite:** 496/496 tests verdes (+22 nuevos) · typecheck limpio
+**HEAD aproximado:** `ba968ec` (test(schemas): ValorPorCaja mapping type + parseValorPorCaja — deuda #6 Plan B) · working tree con cambios sin commitear en `app/page.tsx` + CHECKPOINTS + STATUS
+**Suite:** 496/496 tests verdes · typecheck limpio
 
 ---
 
