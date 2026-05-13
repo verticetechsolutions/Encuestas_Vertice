@@ -5,7 +5,6 @@ import Link from 'next/link';
 import { ArrowUpLeft } from 'lucide-react';
 import gsap from 'gsap';
 import { ScrollTrigger } from 'gsap/ScrollTrigger';
-import { LenisProvider } from '@/components/landing/LenisProvider';
 import { FooterLink } from '@/components/landing/FooterLink';
 
 if (typeof window !== 'undefined') {
@@ -240,7 +239,6 @@ export default function Terminos() {
   }, []);
 
   return (
-    <LenisProvider>
     <div
       className="landing-root relative flex min-h-screen w-full flex-1 flex-col overflow-x-clip bg-[#0A0F1C] text-[#F4F1EA]"
       style={{ fontFamily: "'Satoshi', ui-sans-serif, system-ui, sans-serif" }}
@@ -416,6 +414,5 @@ export default function Terminos() {
         </div>
       </footer>
     </div>
-    </LenisProvider>
   );
 }

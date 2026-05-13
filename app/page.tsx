@@ -17,7 +17,7 @@ import { ScrollTrigger } from 'gsap/ScrollTrigger';
 import { VertexMark } from '@/components/landing/VertexMark';
 import { CookiesCard } from '@/components/landing/CookiesCard';
 import { BrandSuccessGlyph } from '@/components/landing/BrandSuccessGlyph';
-import { LenisProvider } from '@/components/landing/LenisProvider';
+import { useLockLenisScroll } from '@/components/providers/smooth-scroll';
 import { FooterLink } from '@/components/landing/FooterLink';
 import { HeaderCTA } from '@/components/landing/HeaderCTA';
 import { HeroLine } from '@/components/landing/HeroLine';
@@ -389,8 +389,14 @@ export default function Landing() {
   const vertexTiltRef = useTilt<HTMLDivElement>(11);
   const [cookiesOpen, setCookiesOpen] = useState(false);
 
+  // Mientras el Dialog (acceso/solicitud) o la CookiesCard estén
+  // abiertos, congelar Lenis. Los popups ya tienen data-lenis-prevent,
+  // pero sin esto la inercia residual de un scroll en curso seguiría
+  // moviendo la página de fondo bajo el modal.
+  useLockLenisScroll(open || cookiesOpen);
+
   return (
-    <LenisProvider>
+    <>
       <div
         className="landing-root relative flex min-h-screen w-full flex-1 flex-col overflow-x-clip bg-ink text-cream-pure"
         style={{ fontFamily: "'Satoshi', ui-sans-serif, system-ui, sans-serif" }}
@@ -674,7 +680,7 @@ export default function Landing() {
         <SectionIndicator />
         <CookiesCard open={cookiesOpen} onClose={() => setCookiesOpen(false)} />
       </div>
-    </LenisProvider>
+    </>
   );
 }
 
