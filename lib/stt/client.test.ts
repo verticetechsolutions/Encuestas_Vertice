@@ -18,6 +18,10 @@ import {
 } from './client';
 
 describe('STT_KEYTERMS', () => {
+  it('contiene marca Vértice (V→B confusion en Latam Spanish)', () => {
+    expect(STT_KEYTERMS).toContain('Vértice');
+  });
+
   it('contiene reguladores federales MX', () => {
     for (const t of ['CNBV', 'CONDUSEF', 'CNSF', 'IPAB', 'UIF', 'SHCP', 'BANXICO']) {
       expect(STT_KEYTERMS).toContain(t);
@@ -32,6 +36,32 @@ describe('STT_KEYTERMS', () => {
 
   it('contiene métricas financieras críticas', () => {
     for (const t of ['DSCR', 'CETES', 'TIIE']) {
+      expect(STT_KEYTERMS).toContain(t);
+    }
+  });
+
+  it('contiene compliance MX (PLD/KYC/AML)', () => {
+    for (const t of ['PLD', 'KYC', 'AML']) {
+      expect(STT_KEYTERMS).toContain(t);
+    }
+  });
+
+  it('contiene productos de crédito por garantía', () => {
+    for (const t of [
+      'quirografario',
+      'prendario',
+      'refaccionario',
+      'hipotecario',
+      'avío',
+      'habilitación',
+    ]) {
+      expect(STT_KEYTERMS).toContain(t);
+    }
+  });
+
+  it('contiene operaciones financieras frecuentes en dictado', () => {
+    // Smoke 2026-05-12 vio "factoraje" → "facturaje". Regression guard.
+    for (const t of ['factoraje', 'leasing', 'arrendamiento', 'confirming', 'descuento']) {
       expect(STT_KEYTERMS).toContain(t);
     }
   });

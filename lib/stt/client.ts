@@ -25,17 +25,27 @@ import { DeepgramClient } from '@deepgram/sdk';
 // Deepgram's HTTP/WS API takes booleans as `"true"`/`"false"` query strings,
 // and the v5 SDK types reflect that — booleans here would fail typecheck.
 // ---------------------------------------------------------------------------
-// Keyterms regulatorios MX para Nova-3. Mejora WER en transposiciones comunes
-// (e.g. CNBV → CNVB) que observamos en smoke 2026-05-12. Lista cerrada
-// — agregar nuevos términos requiere PR. Nova-3 acepta keyterms como hint
-// (no hard-bias) que sesga el modelo a estos tokens en context regulatorio.
+// Keyterms regulatorios MX + léxico crediticio para Nova-3. Mejora WER en
+// transposiciones comunes (e.g. CNBV → CNVB, "Vértice" → "Bértice",
+// "factoraje" → "facturaje") que observamos en smokes 2026-05-12. Lista
+// cerrada — agregar nuevos términos requiere PR. Nova-3 acepta keyterms como
+// hint (no hard-bias) que sesga el modelo a estos tokens en context regulatorio.
 //
 // Cobertura intencional:
+//   - Marca: Vértice (V→B confusion en Latam Spanish).
 //   - Reguladores federales: CNBV, CONDUSEF, CNSF, IPAB, UIF, SHCP, BANXICO.
 //   - Tipos institucionales: SOFOM (ER/ENR), SOFIPO, SOCAP, IFC, IFPE.
 //   - Métricas financieras: DSCR, CETES, TIIE, UDIS.
 //   - Procesos clave: SAT, RESICO, RFC, INDAVAL.
+//   - Compliance MX: PLD (prevención lavado dinero), KYC, AML.
+//   - Productos de crédito por garantía: quirografario, prendario,
+//     refaccionario, hipotecario, avío, habilitación.
+//   - Operaciones financieras: factoraje, leasing, arrendamiento, confirming,
+//     descuento.
 export const STT_KEYTERMS = Object.freeze([
+  // Marca
+  'Vértice',
+  // Reguladores federales MX
   'CNBV',
   'CONDUSEF',
   'CNSF',
@@ -43,19 +53,39 @@ export const STT_KEYTERMS = Object.freeze([
   'UIF',
   'SHCP',
   'BANXICO',
+  // Tipos institucionales MX
   'SOFOM',
   'SOFIPO',
   'SOCAP',
   'IFC',
   'IFPE',
+  // Métricas financieras
   'DSCR',
   'CETES',
   'TIIE',
   'UDIS',
+  // Procesos clave
   'SAT',
   'RESICO',
   'RFC',
   'INDAVAL',
+  // Compliance MX
+  'PLD',
+  'KYC',
+  'AML',
+  // Productos de crédito por garantía
+  'quirografario',
+  'prendario',
+  'refaccionario',
+  'hipotecario',
+  'avío',
+  'habilitación',
+  // Operaciones financieras
+  'factoraje',
+  'leasing',
+  'arrendamiento',
+  'confirming',
+  'descuento',
 ] as const);
 export type SttKeyterm = (typeof STT_KEYTERMS)[number];
 
