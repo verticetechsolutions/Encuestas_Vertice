@@ -2,10 +2,10 @@
 
 > **Source of truth del proyecto.** Cualquier agente o sesión que toque este repo lee este documento primero y lo actualiza al cerrar tarea relevante. Si hay duda entre este doc y otros, **gana este doc** (excepto `IMPLEMENTATION.md` para detalles de contrato técnico de las fases).
 
-**Última actualización:** 2026-05-13 (quinta pasada: cobertura tests admin + actions, cierre deuda #5)
+**Última actualización:** 2026-05-13 (sexta pasada: redesign UI `/acceso/expirado` + descubierta deuda #18 `font-display` proyecto-wide)
 **Branch canónica:** `master`
-**HEAD aproximado:** `87abc5b` (test(actions): cobertura de admin auth + logout + instituciones — deuda #5) · working tree limpio · ramas vivas: ninguna activa
-**Suite:** 474/474 tests verdes (+25 nuevos sobre 449) · typecheck limpio · `next build` OK
+**HEAD aproximado:** `2b0bb99` (docs: registrar HEAD 87abc5b en STATUS + CHECKPOINTS + DEUDA) · working tree con cambios sin commitear: `app/(auth)/acceso/expirado/page.tsx` + STATUS + DEUDA + CHECKPOINTS
+**Suite:** 474/474 tests verdes · typecheck limpio
 
 ---
 
@@ -93,6 +93,7 @@ Ver registro detallado y vivo en [`docs/DEUDA_TECNICA.md`](docs/DEUDA_TECNICA.md
 | 15 | `@ts-nocheck` pragmas en 2 tests STT (`use-deepgram-stream.test.ts`, `stt/token/route.test.ts`) | 🟢 Baja | 30 min |
 | 16 | TODO v2: `array<string>` sin enum cerrado runtime (`sonnet_fase1.ts:126`) | 🟢 Baja (v2) | 2-3h |
 | 17 | TODO v2: multi-turn memory para context window (`lib/state/entrevista.ts:161`) | 🟢 Baja (v2) | 3-4h |
+| 18 | `font-display` class silently rendering Satoshi (project-wide, 11 consumers) | 🟡 Media | ~1h |
 
 **Regla:** 🔴 antes que 🟡 antes que 🟢. La 🔴 alta no bloquea el primer aliado pero sí el segundo.
 

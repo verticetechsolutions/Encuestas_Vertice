@@ -24,6 +24,37 @@
 
 ---
 
+## 2026-05-13 — Redesign UI `/acceso/expirado` + descubierta deuda #18 (`font-display` rendering Satoshi)
+
+**Branch:** `master`  ·  **HEAD:** `2b0bb99` (working tree con cambios sin commitear)  ·  **Suite:** 474/474 verdes · typecheck limpio
+**Sesión:** founder reportó que `/acceso/expirado?razon=dominio_no_permitido` se veía "muy básica" sin alinear al design system. Iteración visual rápida en Claude Chrome con 4 rounds de feedback hasta cerrar visualmente.
+
+### Lo que se hizo
+
+**Redesign de `app/(auth)/acceso/expirado/page.tsx`:**
+- Reescritura completa: de markup ad-hoc con `style={{...}}` inline a layout del design system (surface `bg-survey-bg` + card `bg-cream-pure rounded-[28px]` + `atmosphere-radial-gold-warm`, mismo patrón que `/entrevista/[id]/bienvenida`).
+- Tipografía: H1 `font-heading text-[clamp(44px,7vw,72px)] font-semibold leading-[0.98] tracking-[-0.03em]` con split-color (segunda línea `text-gold-deep`). Logo bumped a `h-10 md:h-12` (de h-7/h-9).
+- 12 razones de error mapeadas a mensajes cortos de 1 frase (de ~25 palabras a 6-9 cada uno). Mantiene compatibilidad con todos los `?razon=*` que emiten `app/(auth)/acceso/[token]/route.ts` y `auth.ts` SSO callback.
+- Acción única: card blanca `bg-survey-surface rounded-[22px] ring-1 ring-foreground/[0.04]` con label mono "Escríbele a", email visible (`contacto@verticemexico.com`), y pill ink con ArrowUpRight que rota 45° en hover. Toda la card es un `<a href={mailto}>` con subject + body pre-llenados.
+- Removido del diseño anterior por petición del founder: eyebrow contextual, ícono shield top-right, footer "Vértice · Red de financieras", helper pill "¿Qué hago ahora?", botón secundario "Copiar correo", hairline separator entre body y CTA, hairline gold sobre H1, italic accent.
+
+**Descubierta deuda #18 — `font-display` silently rendering Satoshi (project-wide):**
+- Verificación con `getComputedStyle()` en Chrome reveló que el H1 con `className="font-display"` rendea Satoshi, no General Sans. `font-display` NO es una clase Tailwind válida en este proyecto: `--font-display` vive en `tokens.css:33` (`:root`) pero `@theme inline` en `globals.css` sólo expone `--font-heading`, `--font-sans` y `--font-mono`. Tailwind v4 sólo genera utilities `font-*` desde tokens registrados en `@theme`.
+- Afecta 11 sitios consumers en el codebase (landing `app/page.tsx`, `app/terminos/page.tsx`, `app/entrevista/[sesion_id]/bienvenida/page.tsx`). Las utility classes `.text-hero`, `.text-display`, `.text-h2`, `.text-h3` (que sí funcionan) usan `font-family: var(--font-display)` directo, así que el landing hero *real* (que usa `.text-hero`) renderea General Sans. Pero los sites que combinan tamaño custom con `font-display` (manifest sections, terminos, bienvenida italic) caen a Satoshi.
+- Fix sitio-por-sitio aplicado sólo a `/acceso/expirado` (`font-display` → `font-heading`). El resto queda como deuda #18 en `docs/DEUDA_TECNICA.md` con recomendación de fix global: registrar `--font-display` en `@theme inline`.
+
+### Pendientes / blockers
+
+- **[USER]** Decidir si quiere el fix global de deuda #18 ahora o post-piloto. Si ahora, sweep visual de los 11 sitios afectados.
+- Nada más bloqueante. Cambios sin commitear esperando sign-off + commit + push del founder.
+
+### Cómo retomar
+
+- Si se quiere cerrar deuda #18 inmediatamente: agregar `--font-display: 'General Sans', 'Satoshi', ui-sans-serif, system-ui, sans-serif;` al bloque `@theme inline` en `app/globals.css` (línea ~23). Smoke visual landing + terminos + bienvenida.
+- El page `/acceso/expirado` queda alineado al DS. Si surgen otras razones de error en `app/(auth)/acceso/[token]/route.ts` o `auth.ts`, agregar entrada al map `RAZONES` en `page.tsx:17-72`.
+
+---
+
 ## 2026-05-13 — Cobertura tests admin + actions (deuda #5 cerrada)
 
 **Branch:** `master`  ·  **HEAD:** `87abc5b` (test(actions): cobertura de admin auth + logout + instituciones — deuda #5)  ·  **Suite:** 474/474 verdes (+25 nuevos) · typecheck limpio
