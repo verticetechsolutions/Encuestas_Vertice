@@ -24,6 +24,40 @@
 
 ---
 
+## 2026-05-13 — Deuda #18 cerrada: `--font-display` registrado en `@theme inline` (General Sans project-wide)
+
+**Branch:** `master`  ·  **HEAD:** `c54991f` (working tree con cambios sin commitear en `app/globals.css` + STATUS + DEUDA)  ·  **Suite:** 496/496 verdes · typecheck limpio
+**Sesión:** ejecución de deuda media #18 vía `/goal`. Fix global de 1 línea (Opción A documentada), sin tocar consumers.
+
+### Lo que se hizo
+
+- **`app/globals.css:24`**: agregada `--font-display: 'General Sans', 'Satoshi', ui-sans-serif, system-ui, sans-serif;` al bloque `@theme inline`, espejo del `--font-heading` ya registrado. Comentario referencia deuda #18 + cita DESIGN_SYSTEM.md §III.
+- **Sin tocar consumers**: las 5 ocurrencias reales (no 11) de `className="font-display"` en 3 archivos heredan General Sans automáticamente:
+  - `app/page.tsx:460` (hero H1 "Solicitantes / pre-calificados / con IA.")
+  - `app/page.tsx:567` (manifest H2 "Dos momentos. / Una alianza.")
+  - `app/terminos/page.tsx:292` (hero H1 "Términos de uso & privacidad.")
+  - `app/terminos/page.tsx:376` (manifest H2 mirror)
+  - `app/entrevista/[sesion_id]/bienvenida/page.tsx:84` (italic accent `conversacional`)
+- Las 2 ocurrencias en `lib/motor/sintesis_pdf/fonts.ts:64,71` son property CSS `font-display: block;` de `@font-face` (NO la className) — preservadas.
+
+**Verificación**:
+- `getComputedStyle()` sobre `<div className="font-display">` injectado dinámicamente: `"General Sans", Satoshi, ui-sans-serif, system-ui, ...` ✓ (antes era Satoshi por fallback)
+- Landing `/`: H1 hero + H2 manifest computan General Sans ✓
+- `/terminos`: H1 computado y validado visualmente — el lowercase 'a' característico de General Sans visible en "Términos de / uso & privacidad." ✓
+- typecheck limpio.
+
+### Pendientes / blockers
+
+**Sin nuevos.** Deuda #18 cerrada. Los lockups del landing y terminos se ven correctos con General Sans — no necesitan tune adicional de tracking/leading.
+
+### Cómo retomar
+
+- Si en el futuro se agrega un sitio nuevo con `className="font-display"`, ya renderea General Sans correctamente — no requiere acción adicional.
+- El doc `docs/design/DESIGN_SYSTEM.md §III` (Type scale) ya documenta `font-display` como el spec del Hero H1; ahora la spec se cumple.
+- Si surge necesidad de un nuevo token tipográfico (ej. `font-serif` para casos editoriales tipo Tiempos), agregarlo al bloque `@theme inline` de `globals.css` siguiendo el mismo patrón.
+
+---
+
 ## 2026-05-13 — Redesign modales de acceso del landing (DialogShell + 5 flows)
 
 **Branch:** `master`  ·  **HEAD:** `ba968ec` (working tree con cambios sin commitear en `app/page.tsx` + CHECKPOINTS + STATUS)  ·  **Suite:** 496/496 verdes · typecheck limpio

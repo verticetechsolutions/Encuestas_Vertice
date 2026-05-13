@@ -233,23 +233,25 @@
   - [ ] Backfill normalizado de datos existentes vía script idempotente.
 - **Esfuerzo**: 2-3h.
 
-### 18. `font-display` class silently rendering Satoshi (project-wide)
+### 18. `font-display` class silently rendering Satoshi (project-wide) ✅ CERRADO (2026-05-13)
 
-- **Descubierto**: 2026-05-13 al rediseñar `app/(auth)/acceso/expirado/page.tsx`. `getComputedStyle()` sobre el H1 reveló que la clase Tailwind `font-display` NO existe — los elementos caen al body default (Satoshi).
-- **Causa raíz**: `--font-display` se declara en `app/design-system/tokens.css:33` (dentro de `:root`), pero el bloque `@theme inline` en `app/globals.css:15-101` sólo expone `--font-heading`, `--font-sans` y `--font-mono`. Tailwind v4 sólo genera utilidades `font-*` a partir de tokens en `@theme`. La clase `font-display` se resuelve a "ninguna" silenciosamente y el navegador hereda el body.
-- **Impacto**: Toda la UI que asume General Sans en H1/H2 está renderizando Satoshi:
-  - `app/page.tsx` (8 sitios — hero + manifest sections)
-  - `app/terminos/page.tsx` (2 sitios)
-  - `app/entrevista/[sesion_id]/bienvenida/page.tsx:84` (italic accent "conversacional")
-  - `docs/design/DESIGN_SYSTEM.md §III` documenta `font-display` como spec del Hero H1; la spec NO se cumple.
-  - Las utilities `.text-hero`, `.text-display`, `.text-h2`, `.text-h3` en `app/design-system/type.css` SÍ funcionan (usan `font-family: var(--font-display)` directo).
-  - La clase `font-heading` SÍ funciona (verificado: `"General Sans", Satoshi, ...`).
-- **Fix por sitio (2026-05-13)**: `app/(auth)/acceso/expirado/page.tsx` migró `font-display` → `font-heading`. El resto del codebase queda como deuda.
+- **Descubierto**: 2026-05-13 al rediseñar `app/(auth)/acceso/expirado/page.tsx`. `getComputedStyle()` sobre el H1 reveló que la clase Tailwind `font-display` NO existía — los elementos caían al body default (Satoshi).
+- **Causa raíz**: `--font-display` se declaraba en `app/design-system/tokens.css:33` (dentro de `:root`), pero el bloque `@theme inline` en `app/globals.css:15-101` sólo exponía `--font-heading`, `--font-sans` y `--font-mono`. Tailwind v4 sólo genera utilidades `font-*` a partir de tokens en `@theme`. La clase `font-display` se resolvía a "ninguna" silenciosamente y el navegador heredaba el body.
+- **Fix aplicado (2026-05-13, Opción A — fix global)**:
+  - **`app/globals.css:24`**: agregada 1 línea `--font-display: 'General Sans', 'Satoshi', ui-sans-serif, system-ui, sans-serif;` al bloque `@theme inline`, debajo de `--font-heading`. Tailwind v4 ahora genera la clase `font-display` correctamente.
+  - **Sin tocar consumers**: las 5 ocurrencias reales en 3 archivos (`app/page.tsx:460,567` hero+manifest, `app/terminos/page.tsx:292,376` hero+manifest mirror, `app/entrevista/[sesion_id]/bienvenida/page.tsx:84` italic accent "conversacional") heredan General Sans automáticamente.
+  - **Las 2 ocurrencias en `lib/motor/sintesis_pdf/fonts.ts:64,71` son property CSS `font-display: block;` de @font-face, no className — preservadas.**
+- **Verificación visual + computacional (Chrome, 2026-05-13)**:
+  - `getComputedStyle()` sobre `<div className="font-display">` → `"General Sans", Satoshi, ...` ✓
+  - Landing hero H1 → General Sans ✓
+  - Landing manifest H2 → General Sans ✓
+  - `/terminos` H1 "Términos de uso & privacidad." → General Sans ✓ (validado visualmente — lowercase 'a' característica de GS)
 - **Criterio de cierre**:
-  - [ ] Decisión: registrar `--font-display` en `@theme inline` de `globals.css` (1 línea, fix global), O bien hacer sed `font-display` → `font-heading` en todos los archivos consumers. La primera es preferible porque mantiene el naming semántico del DS doc.
-  - [ ] Verificar visualmente que el cambio no impacta lockup (General Sans tiene métricas levemente distintas a Satoshi — tracking y line-height del landing hero podrían necesitar tune).
-  - [ ] Sweep visual de las 11 ocurrencias afectadas.
-- **Esfuerzo**: 30 min (fix global en `@theme inline`) + 30 min review visual = ~1h.
+  - [x] Registrar `--font-display` en `@theme inline` de `globals.css` (1 línea).
+  - [x] Verificar visualmente que el cambio no impacta lockup (General Sans renderea limpio, lockups del landing y terminos se ven correctos).
+  - [x] Sweep visual de ocurrencias afectadas (5 reales en 3 archivos, no 11 como decía la nota original — landing comparte instances).
+  - [x] typecheck limpio.
+- **Esfuerzo**: estimado 1h → real 20 min (Opción A fue 1 línea + verificación visual rápida).
 
 ### 17. TODO v2 — multi-turn memory para context window
 

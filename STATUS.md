@@ -2,9 +2,9 @@
 
 > **Source of truth del proyecto.** Cualquier agente o sesión que toque este repo lee este documento primero y lo actualiza al cerrar tarea relevante. Si hay duda entre este doc y otros, **gana este doc** (excepto `IMPLEMENTATION.md` para detalles de contrato técnico de las fases).
 
-**Última actualización:** 2026-05-13 (octava pasada: redesign modales de acceso del landing — DialogShell + MenuFlow + AccessFlow + RequestFlow + ReceiptView)
+**Última actualización:** 2026-05-13 (novena pasada: deuda #18 cerrada — `--font-display` registrado en `@theme inline`, General Sans aplica project-wide)
 **Branch canónica:** `master`
-**HEAD aproximado:** `ba968ec` (test(schemas): ValorPorCaja mapping type + parseValorPorCaja — deuda #6 Plan B) · working tree con cambios sin commitear en `app/page.tsx` + CHECKPOINTS + STATUS
+**HEAD aproximado:** `c54991f` (fix(landing/dialog): tipografía de acciones más clara) · working tree con cambios sin commitear en `app/globals.css` + DEUDA + STATUS + CHECKPOINTS
 **Suite:** 496/496 tests verdes · typecheck limpio
 
 ---
@@ -93,7 +93,7 @@ Ver registro detallado y vivo en [`docs/DEUDA_TECNICA.md`](docs/DEUDA_TECNICA.md
 | 15 | `@ts-nocheck` pragmas en 2 tests STT (`use-deepgram-stream.test.ts`, `stt/token/route.test.ts`) | 🟢 Baja | 30 min |
 | 16 | TODO v2: `array<string>` sin enum cerrado runtime (`sonnet_fase1.ts:126`) | 🟢 Baja (v2) | 2-3h |
 | 17 | TODO v2: multi-turn memory para context window (`lib/state/entrevista.ts:161`) | 🟢 Baja (v2) | 3-4h |
-| 18 | `font-display` class silently rendering Satoshi (project-wide, 11 consumers) | 🟡 Media | ~1h |
+| 18 | `font-display` class silently rendering Satoshi (project-wide) | ✅ Cerrado (2026-05-13, fix global en `@theme inline` de globals.css) | — |
 
 **Regla:** 🔴 antes que 🟡 antes que 🟢. La 🔴 alta no bloquea el primer aliado pero sí el segundo.
 

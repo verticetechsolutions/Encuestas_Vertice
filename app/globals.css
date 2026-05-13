@@ -21,6 +21,12 @@
      se mantiene vía uppercase + tracking-[0.32em] en los labels. */
   --font-mono: 'Satoshi', ui-sans-serif, system-ui, sans-serif;
   --font-heading: 'General Sans', 'Satoshi', ui-sans-serif, system-ui, sans-serif;
+  /* Alias de --font-heading. `font-display` se documenta en DESIGN_SYSTEM.md §III
+     como token canónico para H1/H2 hero pero antes vivía sólo en tokens.css
+     (:root), fuera de @theme. Tailwind v4 sólo genera utilidades `font-*` a
+     partir de tokens en @theme, así que `className="font-display"` caía
+     silenciosamente a Satoshi (deuda #18, cerrada por esta línea). */
+  --font-display: 'General Sans', 'Satoshi', ui-sans-serif, system-ui, sans-serif;
   --color-sidebar-ring: var(--sidebar-ring);
   --color-sidebar-border: var(--sidebar-border);
   --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
