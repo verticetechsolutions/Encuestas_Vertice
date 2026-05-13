@@ -65,6 +65,17 @@ import {
   RATE_LIMITS,
 } from '@/lib/security/rate-limit';
 import { checkSameOrigin } from '@/lib/security/csrf';
+import { readSessionCookie } from '@/lib/auth/cookie';
+
+// Timeout duro para el stream Sonnet. Defense-in-depth contra: (a) cliente
+// que abre el stream y nunca lo lee → Anthropic queda enviando tokens hasta
+// que Vercel mata la function (300s en plan paid, costo Anthropic real);
+// (b) loop runaway dentro del modelo (stepCountIs=8 ya cubre conteo, pero
+// no duración). 60s cubre el peor caso realista (cold-start Vercel + cold
+// stream Anthropic + 8 steps con tools) sin abrir ventana a abuse. Cuando
+// llegue el timeout, AI SDK aborta el upstream y el cliente recibe el error
+// formateado vía formatStreamError.
+const STREAM_TIMEOUT_MS = 60_000;
 
 // =============================================================================
 // Request schema
@@ -173,6 +184,25 @@ export async function POST(req: Request) {
   }
   const { sesion_id, mensaje_usuario } = parsed;
 
+  // 4.5. IDOR gate: la cookie de sesión DEBE matchear el sesion_id del body.
+  //      Sin esto, un atacante con un sesion_id ajeno (UUID 128-bit, no
+  //      guessable pero filtrable vía logs/share-URL accidental) y SU propia
+  //      cookie podría hacer POST y agregar turnos a la sesión de otra
+  //      institución. SameOrigin + cookie httpOnly bloquean browsers, pero
+  //      curl/Postman pasan ese filtro. Costo del check: 2 reads de cookie.
+  const cookieSesionId = await readSessionCookie();
+  if (!cookieSesionId || cookieSesionId !== sesion_id) {
+    logger.warn('turn.idor_rechazado', {
+      sesion_id_body: sesion_id,
+      cookie_presente: Boolean(cookieSesionId),
+      cookie_matchea: cookieSesionId === sesion_id,
+    });
+    return NextResponse.json(
+      { error: 'sesion_no_autorizada' },
+      { status: 401 }
+    );
+  }
+
   // 5. Rate limit per-sesion. Una sesión típica tiene ~30 turnos en 30-60
   //    min; 30/min cubre con bursts de retries pero detiene runaway loops
   //    del cliente.
@@ -270,6 +300,7 @@ export async function POST(req: Request) {
   //    stubs hasta step posterior. Las inputSchema vienen del Zod source-of-truth.
   const result = streamText({
     model: anthropic('claude-sonnet-4-6'),
+    abortSignal: AbortSignal.timeout(STREAM_TIMEOUT_MS),
     messages: [
       {
         role: 'system',

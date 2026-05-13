@@ -118,6 +118,18 @@ vi.mock('@/lib/motor/review-gate', () => ({
   canCloseSeccion: vi.fn(async () => ({ ok: true })),
 }));
 
+// Cookie de sesión: default matchea SESION_VALIDA_UUID para que los tests
+// existentes (que no fueron escritos pensando en el IDOR gate) pasen sin
+// cambios. Tests de IDOR específicos pueden override vía
+// mockReadSessionCookie.mockResolvedValueOnce.
+const mockReadSessionCookie = vi.hoisted(() => vi.fn());
+vi.mock('@/lib/auth/cookie', () => ({
+  readSessionCookie: mockReadSessionCookie,
+  SESSION_COOKIE: 'vertice_session',
+  setSessionCookie: vi.fn(),
+  clearSessionCookie: vi.fn(),
+}));
+
 vi.mock('@/lib/observability/axiom', () => ({
   logger: {
     info: vi.fn(),
@@ -181,6 +193,9 @@ beforeEach(async () => {
   // Default: db.select().from()...limit() resuelve a [] (sesión no existe).
   // Los tests que necesiten una sesión la inyectan vía mockDbSelect.mockReturnValueOnce.
   mockDbSelect.mockReturnValue([]);
+  // Cookie default matchea SESION_VALIDA_UUID — los tests existentes asumen
+  // happy path en el IDOR gate. Override per-test cuando se prueba el gate.
+  mockReadSessionCookie.mockResolvedValue(SESION_VALIDA_UUID);
   // Reset rate limiter state — sino tests del mismo archivo se interfieren
   // (especialmente los que hacen muchos requests para validar el cap).
   const { _resetRateLimitState } = await import('@/lib/security/rate-limit');
@@ -228,6 +243,28 @@ describe('POST /api/turn — gates', () => {
       makeRequest({ sesion_id: SESION_VALIDA_UUID, mensaje_usuario: '' })
     );
     expect(res.status).toBe(400);
+  });
+
+  it('3d. IDOR gate (sin cookie) → 401 sesion_no_autorizada', async () => {
+    mockReadSessionCookie.mockResolvedValueOnce(undefined);
+    const res = await POST(
+      makeRequest({ sesion_id: SESION_VALIDA_UUID, mensaje_usuario: 'hola' })
+    );
+    expect(res.status).toBe(401);
+    const json = (await res.json()) as { error: string };
+    expect(json.error).toBe('sesion_no_autorizada');
+  });
+
+  it('3e. IDOR gate (cookie != body.sesion_id) → 401 sesion_no_autorizada', async () => {
+    mockReadSessionCookie.mockResolvedValueOnce(
+      '99999999-9999-4999-8999-999999999999'
+    );
+    const res = await POST(
+      makeRequest({ sesion_id: SESION_VALIDA_UUID, mensaje_usuario: 'hola' })
+    );
+    expect(res.status).toBe(401);
+    const json = (await res.json()) as { error: string };
+    expect(json.error).toBe('sesion_no_autorizada');
   });
 
   it('4. Sesión no existe → 404 sesion_not_found', async () => {
