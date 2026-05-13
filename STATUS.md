@@ -2,10 +2,10 @@
 
 > **Source of truth del proyecto.** Cualquier agente o sesión que toque este repo lee este documento primero y lo actualiza al cerrar tarea relevante. Si hay duda entre este doc y otros, **gana este doc** (excepto `IMPLEMENTATION.md` para detalles de contrato técnico de las fases).
 
-**Última actualización:** 2026-05-13 (sexta pasada: redesign UI `/acceso/expirado` + descubierta deuda #18 `font-display` proyecto-wide)
+**Última actualización:** 2026-05-13 (séptima pasada: deuda #6 cerrada con Plan B — ValorPorCaja mapping type + parseValorPorCaja helper)
 **Branch canónica:** `master`
-**HEAD aproximado:** `2b0bb99` (docs: registrar HEAD 87abc5b en STATUS + CHECKPOINTS + DEUDA) · working tree con cambios sin commitear: `app/(auth)/acceso/expirado/page.tsx` + STATUS + DEUDA + CHECKPOINTS
-**Suite:** 474/474 tests verdes · typecheck limpio
+**HEAD aproximado:** `ba968ec` (test(schemas): ValorPorCaja mapping type + parseValorPorCaja — deuda #6 Plan B) · working tree con cambios sin commitear en `app/page.tsx` (refactor Dialog WIP del founder) + STATUS + DEUDA
+**Suite:** 496/496 tests verdes (+22 nuevos) · typecheck limpio
 
 ---
 
@@ -81,7 +81,7 @@ Ver registro detallado y vivo en [`docs/DEUDA_TECNICA.md`](docs/DEUDA_TECNICA.md
 | 3 | STT keyterms incompletos | ✅ Cerrado (`53485b9`, 33 términos) | — |
 | 4 | Em-dashes residuales en few-shots | ✅ Cerrado (`786885f`) | — |
 | 5 | Cobertura tests en `app/admin/` y `app/actions/` | ✅ Cerrado (2026-05-13, +25 tests sobre adminAuth/sesionLogout/adminInstituciones) | — |
-| 6 | `z.unknown()` en schemas críticos | 🟡 Media (plan revisado: B=2h, A=6-8h) | 2-8h |
+| 6 | `z.unknown()` en schemas críticos | ✅ Cerrado (`ba968ec`, 2026-05-13, Plan B aplicado: ValorPorCaja mapping + parseValorPorCaja helper) | — |
 | 7 | Audit log sin retention policy | ✅ Cerrado (2026-05-13) | — |
 | 8 | `fuente: 'usuario_tipea'` hardcoded en `/api/turn` | ✅ Cerrado (2026-05-13) | — |
 | 9 | Chime audio mute toggle | ✅ Cerrado (2026-05-13) | — |

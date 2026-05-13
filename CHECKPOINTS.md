@@ -24,6 +24,61 @@
 
 ---
 
+## 2026-05-13 — Deuda #6 cerrada: `ValorPorCaja` mapping type + `parseValorPorCaja` (Plan B)
+
+**Branch:** `master`  ·  **HEAD:** `ba968ec` (test(schemas): ValorPorCaja mapping type + parseValorPorCaja — deuda #6 Plan B)  ·  **Suite:** 496/496 verdes (+22 nuevos) · typecheck limpio
+**Sesión:** ejecución de deuda media #6 vía `/goal`. Plan B aplicado (type-narrow opt-in con mapping type), sin breaking changes. Plan A queda para v2 si surge necesidad real.
+
+### Lo que se hizo
+
+**Diseño Plan B** (sin tocar el envelope, sin refactor masivo):
+- El envelope `ExtraccionSchema.valor: z.unknown()` queda como está — el sitio común (route handlers, snapshots, loops genéricos) no conoce el caja_codigo en compile-time, así que el envelope no se puede narrowear estáticamente sin enumerar los 81 codigos.
+- Para sites que SÍ conocen el codigo estáticamente, agregué dos APIs nuevas opt-in:
+  - `parseValorPorCaja<C>(codigo: C, valor: unknown): ValorPorCaja<C>` — el call site pasa el codigo literal, recibe el shape narrow.
+  - `parseExtraccion<C>(raw, hint?)` — hint opcional; sin hint, signature default `string` y backward-compatible.
+
+**Cambios concretos** (`lib/schemas/extracciones.ts`):
+- `interface SpecialValorMap`: mapea los 14 codigos composite a sus shapes (`to_*` → `Tolerancia`, `se_*` → `SituacionEspecial`, `co_email_telefono` → `EmailTelefono`, `op_eeff_auditados` → `EeffAuditados`, `pc_tasas_por_producto` → `TasasPorProducto`, `pc_plazos_por_producto` → `PlazosPorProducto`).
+- `export type ValorPorCaja<C extends string>`: conditional type. `C extends keyof SpecialValorMap ? SpecialValorMap[C] : unknown`. Cajas generic-por-tipo y desconocidas caen al fallback `unknown` (mismo comportamiento que el envelope actual).
+- `export function parseValorPorCaja<C>(codigo, valor)`: helper público. Runtime: `valorSchemaFor(codigo).parse(valor)`. Lanza `ZodError` si inválido.
+- `parseExtraccion<C>(raw, hint?)`: hint opcional con validación runtime (`envelope.caja_codigo === hint`, sino throw `ExtraccionHintMismatchError`). Evita type lie cuando hint no coincide con codigo real.
+- `export class ExtraccionHintMismatchError`: error custom con campos `expected` y `actual`.
+
+**Tests** (`lib/schemas/extracciones.test.ts`, nuevo, 22 tests):
+- 7 runtime válidos por caja especial (Tolerancia, SituacionEspecial, EmailTelefono, EeffAuditados, TasasPorProducto, PlazosPorProducto).
+- 5 runtime inválidos lanzan ZodError (refines y validaciones internas).
+- 1 caja generic (`ru_monto_min` int) + 1 caja desconocida (fallback unknown).
+- 2 backward-compatibility sin hint (Extraccion & { valor: unknown }).
+- 3 hint correcto vs mismatch (ExtraccionHintMismatchError con expected/actual expuestos).
+- 3 type-level via `expectTypeOf` cubriendo SpecialValorMap + fallback unknown + wide string.
+
+**Hallazgos durante implementación**:
+- UUIDs hardcoded como `'11111111-...'` ya no pasan Zod v4 `z.string().uuid()` (requiere version + variant bits específicos). Migrados a `crypto.randomUUID()` para validez universal.
+- Regex `co_email_telefono.telefono` es `^\+?52?\s?\d{10}$` que parsea `52?` como "5 seguido de 2 opcional", NO "52 opcional". Test inicial `'5555551234'` falló porque solo cuenta como `5` + 8 dígitos. Format válido: `'+525555551234'` o `'525555551234'`.
+
+### Pendientes / blockers
+
+**Sin nuevos.** Deuda #6 cerrada con Plan B aplicado. 3 decisiones documentadas en DEUDA_TECNICA item #6 footer:
+- **Plan A** (DiscriminatedUnion sobre 81 codigos) queda para v2 si surge necesidad real de type-safety en loops genéricos.
+- **`ValorTablaGenericaSchema` y `ValorObjetoGenericoSchema`** (cajas `tabla`/`objeto` sin schema específico) siguen con `z.record(string, z.unknown())`. Fuera del scope: son colecciones heterogéneas por diseño.
+- **Migración de call sites a `parseValorPorCaja`**: opt-in. Cuando se agregue un site nuevo que conozca el codigo, usar el helper. Loops genéricos (`persistence.persistirExtraccionesBatch`) siguen con `valorSchemaFor(e.caja_codigo)` porque el codigo es runtime-only.
+
+### Cómo retomar
+
+- Para usar el narrow type en un site nuevo:
+  ```typescript
+  import { parseValorPorCaja, type EmailTelefono } from '@/lib/schemas/extracciones';
+  const contacto: EmailTelefono = parseValorPorCaja('co_email_telefono', raw);
+  ```
+- Para validar un envelope completo conociendo el codigo:
+  ```typescript
+  const e = parseExtraccion(raw, 'to_historial_credito' as const);
+  // e.valor: Tolerancia
+  ```
+- Si surge la necesidad de Plan A: el refactor requiere enumerar 81 codigos como literal union, convertir `ExtraccionSchema` a `z.discriminatedUnion('caja_codigo', [...])`, y tocar ~15 call sites. Esfuerzo 6-8h con tests. La lista actual de cajas vive en `lib/schemas/cajas.ts` (`CAJAS_CANON` + `CAJAS_EXTENSION_POR_TIPO`).
+
+---
+
 ## 2026-05-13 — Redesign UI `/acceso/expirado` + descubierta deuda #18 (`font-display` rendering Satoshi)
 
 **Branch:** `master`  ·  **HEAD:** `2b0bb99` (working tree con cambios sin commitear)  ·  **Suite:** 474/474 verdes · typecheck limpio

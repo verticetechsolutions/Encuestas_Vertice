@@ -92,20 +92,31 @@
   - Decisión sobre RSC pages (`app/admin/*/page.tsx`): no se agregaron tests porque son Server Components que renderizan datos vía RSC. Smoke manual del founder en `/admin/instituciones`, `/admin/sesiones`, `/admin/magic-links` cubre el critical path. Si surge regresión en una page específica, agregar Playwright test focal post-piloto.
   - Decisión sobre `nueva-form.tsx` (client component): no se agregó test porque requiere `@testing-library/react` que no está instalada (deuda #12 lo señala como bloqueante). Cuando se cierre #12, agregar test del form.
 
-### 6. `z.unknown()` en schemas críticos
+### 6. `z.unknown()` en schemas críticos — ✅ CERRADO (`ba968ec`, 2026-05-13)
 
-- **Archivos**:
-  - `lib/schemas/extracciones.ts:181` — `ExtraccionSchema.valor: z.unknown()`. Resuelto en runtime via `valorSchemaFor(caja_codigo)`.
-  - `lib/schemas/extracciones.ts:100-101` — `ValorTablaGenericaSchema` y `ValorObjetoGenericoSchema` con `z.record(string, z.unknown())` para cajas tipo `tabla`/`objeto` sin schema específico.
-  - `lib/schemas/review_seccion.ts`, `lib/schemas/perfil_decision_final.ts`, `lib/motor/tools.ts` — re-usan el shape `valor: z.unknown()`.
-- **Mitigación actual**: runtime check via `valorSchemaFor(caja_codigo)` que sí tipa el valor según la caja específica. `parseExtraccion(raw)` hace envelope + valor en un paso (`lib/schemas/extracciones.ts:195`). Sin esto, datos malformados llegarían a DB.
-- **Impacto**: tipado weak en TS — `extraccion.valor` es `unknown` al leer post-parse, fuerza casts en call sites. Refactors del pipeline pueden romper sin que tsc avise hasta runtime.
-- **Estado del análisis (2026-05-13)**: revisado el alcance real. El refactor a `z.discriminatedUnion('caja_codigo', [...])` requiere ~52 variants explícitos (5 id + 44 núcleo + 32 extension). El envelope `ExtraccionSchema` actual NO es discriminated; convertirlo obliga a (a) listar todos los códigos como literals, (b) sincronizar con `CAJAS_CANON` + `CAJAS_EXTENSION_POR_TIPO`, (c) tocar todos los call sites que usan `ExtraccionSchema` (motor, persistence, snapshot, perfil_decision_final, review_seccion, tools, ~15 archivos). Esfuerzo real: 6-8h con tests, no las 2-3h estimadas originalmente.
-- **Criterio de cierre (revisado)**:
-  - **Opción A — refactor completo (6-8h)**: ZodDiscriminatedUnion explícito sobre los 52 códigos, eliminar `valorSchemaFor` runtime check, narrow types en todos los call sites.
-  - **Opción B — mejora type-narrow (2h)**: mantener `valor: z.unknown()` en el envelope pero agregar generic type `parseExtraccion<C extends CajaCodigo>(raw, c?: C): Extraccion & { valor: ValorPorCaja<C> }` que tipa el resultado vía mapping type. Esto da type-safety en sites donde se conoce el caja_codigo (la mayoría) sin refactor masivo. Los sites que iteran sobre extracciones heterogéneas siguen viendo `unknown`.
-  - **Decisión recomendada**: Opción B como paso intermedio; Opción A queda para v2 si el tipo `ValorPorCaja<C>` no cubre suficiente.
-- **Esfuerzo realista**: 2h Opción B, 6-8h Opción A. **No bloquea piloto** (runtime check ya garantiza data correctness).
+- **Archivos originales**:
+  - `lib/schemas/extracciones.ts:181` — `ExtraccionSchema.valor: z.unknown()`. (Permanece, ahora con ruta type-narrow opt-in.)
+  - `lib/schemas/extracciones.ts:100-101` — `ValorTablaGenericaSchema` y `ValorObjetoGenericoSchema` con `z.record(string, z.unknown())`. (Permanece, queda fuera del scope de Plan B porque son cajas genéricas no listables.)
+  - `lib/schemas/review_seccion.ts`, `lib/schemas/perfil_decision_final.ts`, `lib/motor/tools.ts` — re-usan el shape `valor: z.unknown()`. (Permanecen, los nuevos helpers `parseValorPorCaja<C>` se pueden consumir desde estos sites cuando conozcan el código estáticamente.)
+- **Decisión aplicada**: **Plan B** — type-narrow opt-in vía mapping type, sin refactor masivo del envelope.
+- **Cambios concretos (2026-05-13)**:
+  - **`lib/schemas/extracciones.ts`**: agregada interface `SpecialValorMap` con los 14 codigos composite mapeados a sus shapes (`Tolerancia`, `SituacionEspecial`, `EmailTelefono`, `EeffAuditados`, `TasasPorProducto`, `PlazosPorProducto`).
+  - **`export type ValorPorCaja<C extends string>`**: conditional type que devuelve `SpecialValorMap[C]` si `C` está en el mapa, sino `unknown`. Cajas generic-por-tipo y desconocidas caen al fallback (mismo comportamiento que antes).
+  - **`export function parseValorPorCaja<C>(codigo, valor): ValorPorCaja<C>`**: helper que el call site invoca cuando ya tiene el codigo como literal. Runtime: `valorSchemaFor(codigo).parse(valor)`. Lanza `ZodError` si invalido.
+  - **`parseExtraccion<C>(raw, hint?)`**: hint opcional. Sin hint, signature default `string` y resultado `Extraccion & { valor: unknown }` (100% backward compatible). Con hint literal, valida runtime que `envelope.caja_codigo === hint` (sino throw `ExtraccionHintMismatchError` para evitar el "type lie"), y narrow el valor.
+  - **`export class ExtraccionHintMismatchError`**: error específico para mismatch hint-vs-envelope. Expone `expected` y `actual` para diagnóstico.
+- **Sin breaking changes**: los call sites existentes (`persistence.ts`, `review_seccion.ts`, `perfil_decision_final.ts`, `motor/tools.ts`, `app/api/turn/route.ts`, prompts) siguen funcionando porque la firma default de `parseExtraccion` no cambió y `ExtraccionSchema.valor` sigue siendo `z.unknown()`.
+- **Criterio de cierre**:
+  - [x] Mapping type `ValorPorCaja<C>` cubre las 14 cajas con shape composite. *(`ba968ec`)*
+  - [x] Helper `parseValorPorCaja<C>` exportado con runtime check + narrow type. *(`ba968ec`)*
+  - [x] `parseExtraccion` extendido con hint opcional + `ExtraccionHintMismatchError`. *(`ba968ec`)*
+  - [x] Tests `lib/schemas/extracciones.test.ts` cubren runtime válido/inválido + type-level via `expectTypeOf` (22 tests verdes). *(`ba968ec`)*
+  - [x] 474/474 → 496/496 vitest verdes. typecheck limpio. *(`ba968ec`)*
+- **Esfuerzo**: estimado 2h Plan B → real ~1.5h.
+- **Notas del cierre / scope no cubierto**:
+  - **Plan A** (DiscriminatedUnion sobre los 81 codigos) queda para v2 si surge necesidad real de type-safety en loops genéricos. La mayoría de los call sites conocen el codigo en el momento del parse y se benefician con Plan B sin pagar el costo de refactor.
+  - **`ValorTablaGenericaSchema` y `ValorObjetoGenericoSchema`** (cajas tipo `tabla`/`objeto` sin schema específico) siguen usando `z.record(string, z.unknown())`. Fuera del scope porque son colecciones heterogéneas por diseño.
+  - **Migración call sites a `parseValorPorCaja`**: opt-in. Cuando se agregue un site nuevo que conozca el codigo estáticamente, usar el helper para obtener el narrow type directo. Loops genéricos (e.g. `persistence.persistirExtraccionesBatch`) siguen con `valorSchemaFor(e.caja_codigo)` porque el codigo es runtime-only.
 
 ### 7. Audit log sin retention policy ✅ CERRADO (2026-05-13)
 
