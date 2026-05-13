@@ -30,6 +30,7 @@ vi.mock('@/lib/db', () => ({ db: hoisted.db }));
 const authMock = vi.hoisted(() => ({ authenticated: true }));
 vi.mock('@/lib/auth/admin', () => ({
   isAdminAuthenticated: async () => authMock.authenticated,
+  getAdminUserId: async () => null, // tests run sin Google session activa
   ADMIN_COOKIE: 'vertice_admin',
 }));
 
