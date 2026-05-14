@@ -26,7 +26,7 @@
 
 ## 2026-05-14 — Fase 8 cerrada: Blob storage + Resend notif + admin PDF link + smoke E2E
 
-**Branch:** `master`  ·  **HEAD:** sin commit (working tree)  ·  **Suite:** 509/509 verdes (+13 nuevos email) · typecheck limpio
+**Branch:** `master`  ·  **HEAD:** `0f5f473` (feat(fase8): cerrar storage Blob + Resend notif + admin PDF link)  ·  **Suite:** 509/509 verdes (+13 nuevos email) · typecheck limpio
 **Sesión:** ejecución de `/goal` "Termina la fase 8, y prueba E2E en chrome con claude code extension, asegurate de que funciona y es robusto". Cierre completo de Fase 8 con storage Blob, notificación email a admins, link descarga PDF en admin viewer, smoke E2E 7/7.
 
 ### Lo que se hizo

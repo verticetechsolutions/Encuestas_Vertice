@@ -4,7 +4,7 @@
 
 **Última actualización:** 2026-05-14 (Fase 8 cerrada — `@vercel/blob` instalado + Resend notif email + admin viewer PDF link + smoke E2E 7/7 verde)
 **Branch canónica:** `master`
-**HEAD aproximado:** sin commit todavía (working tree con cambios) · ramas vivas: ninguna activa
+**HEAD aproximado:** `0f5f473` (feat(fase8): cerrar storage Blob + Resend notif + admin PDF link) · working tree limpio · ramas vivas: ninguna activa
 **Suite:** 509/509 tests verdes (+13 nuevos email) · typecheck limpio · migración 0007 aplicada a `vertice-mvp/main`
 
 ---
