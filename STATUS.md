@@ -2,10 +2,10 @@
 
 > **Source of truth del proyecto.** Cualquier agente o sesión que toque este repo lee este documento primero y lo actualiza al cerrar tarea relevante. Si hay duda entre este doc y otros, **gana este doc** (excepto `IMPLEMENTATION.md` para detalles de contrato técnico de las fases).
 
-**Última actualización:** 2026-05-13 (novena pasada: deuda #18 cerrada — `--font-display` registrado en `@theme inline`, General Sans aplica project-wide)
+**Última actualización:** 2026-05-14 (Fase 8 cerrada — `@vercel/blob` instalado + Resend notif email + admin viewer PDF link + smoke E2E 7/7 verde)
 **Branch canónica:** `master`
-**HEAD aproximado:** `f2defb6` (fix(theme): registrar --font-display en @theme inline — cierra deuda #18) · working tree limpio · ramas vivas: ninguna activa
-**Suite:** 496/496 tests verdes · typecheck limpio
+**HEAD aproximado:** sin commit todavía (working tree con cambios) · ramas vivas: ninguna activa
+**Suite:** 509/509 tests verdes (+13 nuevos email) · typecheck limpio · migración 0007 aplicada a `vertice-mvp/main`
 
 ---
 
@@ -18,7 +18,7 @@
 1. Re-smoke entrevista entera con voz (≥10 turnos) midiendo latencia p50/p95 + costo USD.
 2. Provisionar Upstash Redis + pegar credenciales en `.env.local` (rate-limit en serverless).
 3. Aprovisionar 7 keys/recursos prod en Vercel (Blob, Resend, Anthropic, Deepgram, Inngest, Axiom, Sentry).
-4. Aplicar migraciones DB `0002`, `0004`, `0006`, `0007`, `0008` a `vertice-mvp/main`.
+4. Aplicar migraciones DB `0002`, `0004`, `0006`, `0008` a `vertice-mvp/main` (`0007` ya aplicada 2026-05-14).
 5. Smoke E2E post-deploy contra prod.
 6. Pilotos: 2-3 aliados con magic link + soporte directo founder.
 
@@ -39,7 +39,7 @@
 | 5 | Motor conversacional (Sonnet 4.6 + Opus 4.7) | ✅ ~95% | Director + síntesis + generador casos + validador casos SIGNED OFF (2026-05-13). Pipeline activo con Opus 4.7 generador (`effort=high` + adaptive thinking) + Sonnet 4.6 validador (`effort=low`, latencia <2s). Pendiente solo: validación empírica con caso real en re-smoke voz |
 | 6 | Integración Deepgram STT | ✅ ~95% | Cableado al motor real validado, smoke 7/7 verde |
 | 7 | UI entrevista (preguntas + sidebar + autosave) | 🟡 ~85% | F1 consent promovido, F2 prompts cortos commiteado; falta validación con voz |
-| 8 | Síntesis final con Inngest (PDF + email) | 🟡 ~75% | Wire-up Blob cerrado 2026-05-13 (`lib/storage/blob.ts` gated por `BLOB_READ_WRITE_TOKEN` + dep dynamic import). Pendiente: `npm i @vercel/blob` + provisionar token + Resend email |
+| 8 | Síntesis final con Inngest (PDF + email) | ✅ Cerrada (2026-05-14) | `@vercel/blob@2.3.3` instalado, step `notificar-admin` cableado a Resend (`sendSintesisCompleta`), admin viewer renderea botón "Descargar PDF" cuando `pdf_url` existe + fallback grácil cuando no. Smoke E2E `scripts/smoke_fase8.ts` 7/7 verde. Falta sólo: provisionar `BLOB_READ_WRITE_TOKEN` (founder action en Vercel) |
 | 9 | Vista admin | ✅ Cerrada | Wave 1 productiva. Wave 2 redesign queda como post-alpha |
 | 10 | Telemetría + deploy + pilotos | 🟡 ~30% | Logs Axiom wirados; falta keys prod + alertas + smoke prod + pilotos |
 
@@ -63,7 +63,6 @@
 
 ### 3.2 Trabajo técnico pendiente (puede ejecutarlo un agente)
 
-- **Cerrar Fase 8 storage**: wire-up Blob cerrado 2026-05-13 (`lib/storage/blob.ts` + step `generar-pdf` cablea `uploadPdfToBlob` + persiste `pdf_url` via UPDATE). Migración 0007 ya agrega `perfil_decision_final.pdf_url`. Falta: (a) `npm i @vercel/blob` (1 min), (b) provisionar `BLOB_READ_WRITE_TOKEN` en Vercel env, (c) integración Resend para email de notificación al admin.
 - **Commit Sprint 2 Upstash final**: una vez provisionado, agregar las dos vars a `lib/env.ts` como optional + commit + push. El código ya está code-complete con fallback.
 
 ---

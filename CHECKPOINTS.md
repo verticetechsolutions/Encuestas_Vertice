@@ -24,6 +24,62 @@
 
 ---
 
+## 2026-05-14 — Fase 8 cerrada: Blob storage + Resend notif + admin PDF link + smoke E2E
+
+**Branch:** `master`  ·  **HEAD:** sin commit (working tree)  ·  **Suite:** 509/509 verdes (+13 nuevos email) · typecheck limpio
+**Sesión:** ejecución de `/goal` "Termina la fase 8, y prueba E2E en chrome con claude code extension, asegurate de que funciona y es robusto". Cierre completo de Fase 8 con storage Blob, notificación email a admins, link descarga PDF en admin viewer, smoke E2E 7/7.
+
+### Lo que se hizo
+
+**1. `@vercel/blob@2.3.3` instalado** (`npm i @vercel/blob`).
+- El wrapper `lib/storage/blob.ts` ya estaba code-complete con dynamic import gated por `BLOB_READ_WRITE_TOKEN`. La dep en `package.json` + lockfile activa el path real.
+
+**2. Env vars registradas** (`lib/env.ts`):
+- `ADMIN_EMAILS` (optional, comma-separated) — recipients de la notificación. Ya existía en `.env.local` pero no en el schema, ahora validada al boot.
+- `BLOB_READ_WRITE_TOKEN` (optional) — token del Blob store. Sin esto el upload retorna null y el email cae al fallback sin PDF link.
+- `.env.example` actualizado con docs inline para ambos.
+
+**3. Notificación email** (`lib/email/resend.ts`):
+- Función nueva `sendSintesisCompleta({ to[], razon_social, sesion_id, perfil_id, pdf_url, completitud, confianza_global, cajas_llenas, cajas_aplicables, app_url })`. Spanish MX. Subject `Vértice · Síntesis lista: {razon_social}`. Body text + HTML con métricas, link al admin viewer (normaliza trailing slash en app_url), y opcionalmente link al PDF (pill ink ArrowUpRight 45° rot).
+- Helper `parseAdminEmails(raw)` parsea la env comma-separated con trim + filter de vacíos. Devuelve `[]` si la var no está.
+- 13 unit tests (`lib/email/resend.test.ts`): parseAdminEmails (5 casos: undefined, vacío, split+trim, dobles comas, single) + sendSintesisCompleta (8 casos: payload shape con/sin PDF, multi-recipients, Resend error throw, recipients vacío throw temprano, XSS escape razon_social, app_url trailing slash, Math.round porcentajes). Usa `vi.hoisted` para evitar TDZ con `vi.mock`.
+
+**4. Wire en Inngest** (`lib/inngest/functions/sintetizarSesion.ts`):
+- Step `generar-pdf` ahora retorna `{ bytes, pdf_url, error }` para pasar el url al siguiente step.
+- Step nuevo `notificar-admin` lee `ADMIN_EMAILS`, si vacío → log.info no-op. Si falta `RESEND_API_KEY` → log.warn. Si todo OK, llama `sendSintesisCompleta` con `perfil.institucion.razon_social` + métricas + `pdfStep.pdf_url`. Errores Resend non-fatal: log.error + return sin throw (no consume retries inútiles).
+
+**5. Admin viewer link** (`app/admin/sesiones/[id]/page.tsx`):
+- Sección "Síntesis · Perfil de esta sesión" ahora renderea: si `perfilSesion.pdf_url` existe → `<a>` pill ink "Descargar PDF de síntesis" + ArrowUpRight 18px (`data-testid="pdf-download-link"`, `target=_blank rel=noopener noreferrer`). Sin URL → caption text/55 "PDF aún no generado o storage no configurado (BLOB_READ_WRITE_TOKEN pendiente)".
+
+**6. Migración 0007 aplicada** (`scripts/apply_migration_0007.mjs`):
+- `ALTER TABLE perfil_decision_final ADD COLUMN IF NOT EXISTS pdf_url text;` ejecutada contra `vertice-mvp/main` Neon. Verificación post-aplicación: `pdf_url` presente en `information_schema.columns`.
+
+**7. Smoke E2E** (`scripts/smoke_fase8.ts`):
+- Bypassea Opus: construye `PerfilDecisionFinal` sintético, upserts en DB, dispara PDF + Blob + email manualmente con logging por etapa. Idempotente (sesion_id fija `9999-...`).
+- Ejecución 2026-05-14: 7/7 verde. PDF 482963 bytes en 3.3s. Email enviado a `verticetechsolutions@gmail.com` via Resend (sandbox `onboarding@resend.dev`). Upload Blob skip por `BLOB_READ_WRITE_TOKEN=NOT_SET` (degradación grácil confirmada).
+- PDF saved a `tmp/smoke-fase8.pdf` para inspección.
+
+**8. Validación visual Chrome (Playwright)**:
+- Extensión Claude Chrome no conectada → fallback a Playwright MCP. Login via emergency mode token (temporalmente activado en `.env.local`, revertido después).
+- `http://localhost:3000/admin/sesiones/99999999-9999-9999-9999-999999999999`: hero "Banco Demo Vertice SA · COMPLETA", sección Síntesis renderea Schema 1.0, Completitud 86%, Confianza 0.78, Versión 1, fallback PDF visible.
+- Update DB con `pdf_url` fake → recarga → botón "Descargar PDF de síntesis" pill ink + ArrowUpRight visible. Atributos correctos (`target=_blank`, `rel=noopener noreferrer`, href propaga).
+- Screenshots: `tmp/fase8_admin_sintesis_section.png` (fallback) + `tmp/fase8_admin_sintesis_with_pdf.png` (happy path).
+- Cleanup post-test: emergency mode revertido (`ADMIN_EMERGENCY_MODE=`), `pdf_url` fake nullified en DB.
+
+### Pendientes / blockers
+
+- **[USER]** Provisionar `BLOB_READ_WRITE_TOKEN` en Vercel Storage → Blob para activar storage real. Sin esto el PDF se genera pero no se persiste y el email sale sin link al documento. No bloquea merge: la degradación grácil está probada.
+- **[USER]** Considerar verificar dominio prod en Resend (`hola@verticemexico.com` o similar) — hoy el FROM es `onboarding@resend.dev` (sandbox). En sandbox Resend solo deja enviar al owner del account (`verticetechsolutions@gmail.com`), lo cual ya cubre el caso founder pero falla si se agrega un segundo admin en `ADMIN_EMAILS`.
+- Sin nuevos bloqueantes técnicos. Fase 8 cerrada en código.
+
+### Cómo retomar
+
+- Si el founder provisiona `BLOB_READ_WRITE_TOKEN`: agregarlo a Vercel env + `.env.local`, restart dev server, re-correr `npx tsx scripts/smoke_fase8.ts` — esta vez la etapa 5 (`upload-blob`) sube real y la etapa 6 manda email con link al PDF público.
+- Si quieres ejecutar un E2E con Inngest real (no script directo): `npm run dev` en una terminal + `npx inngest-cli dev` en otra. Trigger event manual desde el Inngest dev UI (`http://localhost:8288`) → `sesion/lista_para_sintesis` con `{ "data": { "sesion_id": "...", ... } }`. Eso recorre la function completa pero requiere `OPUS_SINTESIS_FINAL_PROMPT_READY` y consume Opus API.
+- Si se agrega un caso extra al smoke (ej. validar idempotencia con dos uploads consecutivos), extender `scripts/smoke_fase8.ts` con etapa 8.
+
+---
+
 ## 2026-05-13 — Deuda #18 cerrada: `--font-display` registrado en `@theme inline` (General Sans project-wide)
 
 **Branch:** `master`  ·  **HEAD:** `f2defb6` (fix(theme): registrar --font-display en @theme inline — cierra deuda #18)  ·  **Suite:** 496/496 verdes · typecheck limpio

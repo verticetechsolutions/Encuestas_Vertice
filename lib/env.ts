@@ -45,6 +45,18 @@ const envSchema = z.object({
   RESEND_API_KEY: z.string().min(10).optional(),
   EMAIL_FROM: z.string().email().optional(),
 
+  // Recipients de la notificación de síntesis completa (Fase 8). Lista
+  // comma-separated de emails de admins. Si vacío, el step `notificar-admin`
+  // hace no-op + log. Sin esto NO se rompe la síntesis — sólo no se envía
+  // notificación. Formato: `a@b.com,c@d.com`.
+  ADMIN_EMAILS: z.string().optional(),
+
+  // Vercel Blob storage para PDFs de síntesis (Fase 8). Sin este token, el
+  // wrapper `uploadPdfToBlob` devuelve null y el email de notificación sale
+  // con sólo el link al admin viewer (sin link al PDF). Provisionar en Vercel
+  // → Storage → Blob.
+  BLOB_READ_WRITE_TOKEN: z.string().optional(),
+
   // -- Optional con default o tolerable nulo ----------------------------------
   NEXT_PUBLIC_APP_URL: z.string().url().default('http://localhost:3000'),
   ADMIN_PANEL_TOKEN: z.string().min(20).optional(),

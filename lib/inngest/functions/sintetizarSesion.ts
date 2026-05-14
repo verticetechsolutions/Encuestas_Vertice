@@ -34,6 +34,7 @@ import {
 } from '@/lib/motor/sintesis_final';
 import { generarPdfSintesis } from '@/lib/motor/sintesis_pdf';
 import { uploadPdfToBlob } from '@/lib/storage/blob';
+import { sendSintesisCompleta, parseAdminEmails } from '@/lib/email/resend';
 import type { PerfilDecisionFinal } from '@/lib/schemas/perfil_decision_final';
 
 export const sintetizarSesion = inngest.createFunction(
@@ -118,7 +119,7 @@ export const sintetizarSesion = inngest.createFunction(
     // sólo reintentaría éste. Errores de PDF se loguean pero no fallan la
     // function — el perfil_decision_final es el entregable canónico, el PDF
     // es un nice-to-have hasta que tengamos storage real (Fase 10).
-    await step.run('generar-pdf', async () => {
+    const pdfStep = await step.run('generar-pdf', async () => {
       // Inngest serializa el output de cada step. `result.perfil` viene del
       // step previo intacto. El schema canónico ahora declara `generado_at`
       // como `z.string().datetime()` (ISO 8601) — alineado con lo que Opus
@@ -163,7 +164,7 @@ export const sintetizarSesion = inngest.createFunction(
           pdf_bytes: pdf.bytes,
           pdf_url_persisted: url !== null,
         });
-        return { bytes: pdf.bytes, pdf_url: url };
+        return { bytes: pdf.bytes, pdf_url: url, error: null as string | null };
       } catch (err) {
         logger.error('inngest.generar_pdf.fallo', {
           event_id: event.id,
@@ -173,7 +174,78 @@ export const sintetizarSesion = inngest.createFunction(
         });
         // Non-fatal: el perfil ya está persistido. Devolvemos error markdown
         // sin re-throw para que Inngest no reintente este step.
-        return { error: err instanceof Error ? err.message : 'unknown' };
+        return {
+          bytes: 0,
+          pdf_url: null as string | null,
+          error: err instanceof Error ? err.message : 'unknown',
+        };
+      }
+    });
+
+    // Step separado para la notificación email a admins (Fase 8). Lee
+    // ADMIN_EMAILS env (comma-separated). Si vacío, no-op + log. Errores
+    // de Resend NO se re-lanzan: el perfil ya está persistido y el email es
+    // nice-to-have. NEXT_PUBLIC_APP_URL es la base para el link al admin
+    // viewer (en dev: http://localhost:3000).
+    await step.run('notificar-admin', async () => {
+      const recipients = parseAdminEmails(process.env.ADMIN_EMAILS);
+      if (recipients.length === 0) {
+        logger.info('inngest.notificar_admin.sin_recipients', {
+          event_id: event.id,
+          sesion_id: data.sesion_id,
+          perfil_id: result.perfil_id,
+          nota: 'ADMIN_EMAILS vacío o no configurado — skip notificación.',
+        });
+        return { sent: false, recipients_count: 0 };
+      }
+      if (!process.env.RESEND_API_KEY) {
+        logger.warn('inngest.notificar_admin.sin_resend_key', {
+          event_id: event.id,
+          sesion_id: data.sesion_id,
+          recipients_count: recipients.length,
+        });
+        return { sent: false, recipients_count: recipients.length };
+      }
+      const perfil = result.perfil as PerfilDecisionFinal;
+      const appUrl =
+        process.env.NEXT_PUBLIC_APP_URL ?? 'http://localhost:3000';
+      try {
+        await sendSintesisCompleta({
+          to: recipients,
+          razon_social: perfil.institucion.razon_social,
+          sesion_id: data.sesion_id,
+          perfil_id: result.perfil_id,
+          pdf_url: pdfStep.pdf_url,
+          completitud: perfil.metricas.completitud,
+          confianza_global: perfil.metricas.confianza_global,
+          cajas_llenas: perfil.metricas.cajas_llenas,
+          cajas_aplicables: perfil.metricas.cajas_aplicables,
+          app_url: appUrl,
+        });
+        logger.info('inngest.notificar_admin.ok', {
+          event_id: event.id,
+          sesion_id: data.sesion_id,
+          perfil_id: result.perfil_id,
+          recipients_count: recipients.length,
+          pdf_url_included: pdfStep.pdf_url !== null,
+        });
+        return { sent: true, recipients_count: recipients.length };
+      } catch (err) {
+        // Non-fatal: email es nice-to-have. Log + retornar sin throw para
+        // que Inngest no reintente (Resend rate-limit, dominio sin verificar,
+        // etc. no resuelven con retry inmediato).
+        logger.error('inngest.notificar_admin.fallo', {
+          event_id: event.id,
+          sesion_id: data.sesion_id,
+          perfil_id: result.perfil_id,
+          recipients_count: recipients.length,
+          error: err instanceof Error ? err.message : String(err),
+        });
+        return {
+          sent: false,
+          recipients_count: recipients.length,
+          error: err instanceof Error ? err.message : 'unknown',
+        };
       }
     });
 

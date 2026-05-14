@@ -26,7 +26,7 @@ import {
   cajas_declinadas,
   perfil_decision_final,
 } from '@/db/schema';
-import { ArrowLeft } from 'lucide-react';
+import { ArrowLeft, ArrowUpRight } from 'lucide-react';
 import { formatRelative } from '@/lib/utils';
 import type { SesionStatus } from '@/lib/admin/parse-status-filter';
 import { SectionCard } from '@/components/admin/section-card';
@@ -315,6 +315,22 @@ export default async function AdminSesionDetailPage({ params }: Props) {
                 mono
               />
             </div>
+            {perfilSesion.pdf_url ? (
+              <a
+                href={perfilSesion.pdf_url}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="inline-flex w-fit items-center gap-2 rounded-full bg-ink px-5 py-2.5 text-[13px] font-medium text-cream-pure transition hover:bg-ink/90 active:scale-[0.99]"
+                data-testid="pdf-download-link"
+              >
+                <span>Descargar PDF de síntesis</span>
+                <ArrowUpRight className="size-3.5" strokeWidth={2} />
+              </a>
+            ) : (
+              <p className="text-[12px] text-foreground/55">
+                PDF aún no generado o storage no configurado (BLOB_READ_WRITE_TOKEN pendiente).
+              </p>
+            )}
             <details className="squircle group/json rounded-2xl bg-ink text-cream-pure">
               <summary className="cursor-pointer rounded-2xl px-5 py-3 text-[12px] font-semibold tracking-tight text-cream-pure/85 transition hover:text-cream-pure [&::-webkit-details-marker]:hidden">
                 Ver JSON completo
