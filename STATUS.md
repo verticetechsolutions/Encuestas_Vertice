@@ -2,9 +2,9 @@
 
 > **Source of truth del proyecto.** Cualquier agente o sesión que toque este repo lee este documento primero y lo actualiza al cerrar tarea relevante. Si hay duda entre este doc y otros, **gana este doc** (excepto `IMPLEMENTATION.md` para detalles de contrato técnico de las fases).
 
-**Última actualización:** 2026-05-14 (Fase 8 cerrada — `@vercel/blob` instalado + Resend notif email + admin viewer PDF link + smoke E2E 7/7 verde)
+**Última actualización:** 2026-05-14 (Fase 8 + dominio Resend cerrado — `hola@verticemexico.com` verificado, email Delivered E2E real)
 **Branch canónica:** `master`
-**HEAD aproximado:** `0f5f473` (feat(fase8): cerrar storage Blob + Resend notif + admin PDF link) · working tree limpio · ramas vivas: ninguna activa
+**HEAD aproximado:** `52dcb0c` (docs Fase 8) · working tree con cambios `.env.example` + STATUS + CHECKPOINTS · ramas vivas: ninguna activa
 **Suite:** 509/509 tests verdes (+13 nuevos email) · typecheck limpio · migración 0007 aplicada a `vertice-mvp/main`
 
 ---
@@ -54,9 +54,11 @@
 - **Re-smoke entrevista entera con voz** (60-90 min). ≥10 turnos cubriendo varios grupos. Medir p50/p95 + WER + USD. Criterio go/no-go alpha definido arriba.
 - **Validar F2 en producción**: dictar Q1 + Q2 con mic real, capturar el batch que Sonnet emite tras el primer turn, validar formato (≤30 palabras, empieza con interrogativa, auxiliar opcional ≤200 chars).
 - **Provisionar Upstash Redis** (3 min). Crear DB `vertice-ratelimit` en Free tier, copiar `UPSTASH_REDIS_REST_URL` + `UPSTASH_REDIS_REST_TOKEN` a `.env.local`. Sin esto el rate-limit cae al fallback in-memory que NO funciona correctamente en Vercel multi-instance.
-- **Aprovisionar Vercel + dominio**: `BLOB_READ_WRITE_TOKEN`, `RESEND_API_KEY` + dominio verificado con DKIM/SPF/DMARC, `ANTHROPIC_API_KEY`, `DEEPGRAM_API_KEY` (role Member), `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY`, `AXIOM_TOKEN`, `SENTRY_DSN`.
+- **Provisionar `BLOB_READ_WRITE_TOKEN` en Vercel** (Fase 8). Vercel Dashboard → proyecto `vertice` → Storage → Create Blob → nombre `vertice-pdfs` → Copy `BLOB_READ_WRITE_TOKEN` → pegar en `.env.local` (dev) + Vercel env Production. Sin esto, los PDFs de síntesis se generan pero NO se persisten en storage (email sale con solo link al admin viewer, sin link al PDF). Degradación grácil ya probada; activar storage real requiere este paso.
+- ~~**Verificar dominio Resend**~~ ✅ **Cerrado 2026-05-14 vía Claude Chrome extension.** Dominio `verticemexico.com` verificado en Resend (Cloudflare, North Virginia, May 11): DKIM `resend._domainkey` TXT verified, SPF `send` MX + TXT verified, DMARC `_dmarc` TXT optional p=none. `EMAIL_FROM` migrado de `onboarding@resend.dev` (sandbox) a `hola@verticemexico.com`. Smoke re-run: email entregado a `verticetechsolutions@gmail.com` con shape correcto (subject "Vértice · Síntesis lista: Banco Demo...", métricas embedded). `EMAIL_FROM=hola@verticemexico.com` ya en `.env.local` + `.env.example`.
+- **Aprovisionar resto de Vercel**: `ANTHROPIC_API_KEY`, `DEEPGRAM_API_KEY` (role Member), `INNGEST_EVENT_KEY`, `INNGEST_SIGNING_KEY`, `AXIOM_TOKEN`, `SENTRY_DSN`, `RESEND_API_KEY` prod.
 - **Rotación** `ADMIN_PANEL_TOKEN` + `AXIOM_TOKEN` con scope mínimo (`Ingest` solamente).
-- **Migraciones DB** `0002`, `0004`, `0006`, `0007`, `0008` aplicadas a `vertice-mvp/main` (idempotentes). La `0007` agrega `perfil_decision_final.pdf_url` para Fase 8 storage; la `0008` agrega indexes en `audit_admin_actions` para cron retention.
+- **Migraciones DB** `0002`, `0004`, `0006`, `0008` aplicadas a `vertice-mvp/main` (la `0007` ya aplicada 2026-05-14). La `0008` agrega indexes en `audit_admin_actions` para cron retention.
 - **3 alertas Axiom** configuradas: Sonnet threshold > 40%, latencia Opus > 12s, Inngest sintesis fail > 5%.
 - **Smoke prod end-to-end** post-deploy (1 entrevista completa contra prod, no localhost).
 - **Pilotos iniciales**: lista de 2-3 aliados financieros + magic link + email bienvenida + ventana soporte directo founder + feedback form post-sesión.

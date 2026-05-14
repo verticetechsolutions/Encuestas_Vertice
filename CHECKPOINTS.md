@@ -24,6 +24,47 @@
 
 ---
 
+## 2026-05-14 — Dominio `verticemexico.com` verificado en Resend (Claude Chrome extension)
+
+**Branch:** `master`  ·  **HEAD:** working tree con cambios (sin commit todavía)  ·  **Suite:** 509/509 verdes
+**Sesión:** ejecución de `/goal` "Marca lo de Vercel como pendiente; verificá el dominio via Claude Chrome extension". Cierre del bloqueante de email production-ready: dominio verificado + EMAIL_FROM canónico activo.
+
+### Lo que se hizo
+
+**1. STATUS.md actualizado** — Provisionar `BLOB_READ_WRITE_TOKEN` en Vercel y verificar dominio Resend ahora aparecen como TODO explícitos separados en §3.1 (antes estaban dentro de un solo bullet "Aprovisionar Vercel + dominio" que ocultaba qué faltaba específicamente).
+
+**2. Domain check via Claude Chrome extension** — La extensión Claude Chrome no había conectado en los intentos iniciales (founder reinstaló + reinició Chrome → conectó). Una vez conectada:
+- Login a Resend via Google SSO (cuenta `verticetechsolutions@gmail.com`).
+- Navegación a `https://resend.com/domains` → encontrado `verticemexico.com` **ya verificado** (creado May 11, DNS verified 3:36 PM, Domain verified 3:37 PM).
+- Records detalle: DKIM `resend._domainkey` TXT (verified), SPF `send` MX + TXT (verified), DMARC `_dmarc` TXT optional (p=none, no activado todavía). Provider: Cloudflare. Region: us-east-1.
+- El work de verificación DNS ya estaba hecho — solo faltaba migrar el sender en código.
+
+**3. EMAIL_FROM migrado** — `.env.local` y `.env.example`: de `onboarding@resend.dev` (Resend sandbox, solo envía al owner del account) a `hola@verticemexico.com` (dominio verificado, soporta multi-recipient real).
+
+**4. Smoke re-run con sender nuevo** — `npx tsx scripts/smoke_fase8.ts`:
+- 7/7 etapas verde. Reutilizó sesion + perfil existentes (idempotente).
+- Resend logs: `/emails POST 200` "less than a minute ago".
+- Email detalle confirmado en Resend dashboard:
+  - From: `hola@verticemexico.com`
+  - To: `verticetechsolutions@gmail.com`
+  - Subject: `Vértice · Síntesis lista: Banco Demo Vertice SA`
+  - Email ID: `ca2374cd-dc7a-46d3-9f9e-62cc643f93f3`
+  - Status: Sent → Delivered (May 13, 10:46 PM)
+- Preview rendea correcto: "Síntesis lista · Completitud 86% (42/49 cajas) · Confianza global 78% · Perfil ID 7d9289a6-..."
+
+### Pendientes / blockers
+
+- **[USER]** `BLOB_READ_WRITE_TOKEN` en Vercel sigue pendiente (TODO explícito en STATUS §3.1). Sin esto los PDFs se generan pero no se persisten en storage; email sale sin link al PDF (degradación grácil). Para activar: Vercel Dashboard → proyecto vertice → Storage → Create Blob → copiar token a `.env.local` + Vercel env Production.
+- **[OPCIONAL]** Activar DMARC con policy más estricta (`p=quarantine` o `p=reject`) cuando los pilotos generen volumen suficiente y monitoring de Resend confirme zero false-positives en los dominios destino. Hoy `p=none` (telemetry-only) es lo correcto pre-piloto.
+- Sin nuevos bloqueantes técnicos. La Fase 8 está 100% deploy-ready (solo falta el Blob token en prod).
+
+### Cómo retomar
+
+- Si en algún momento Resend reporta DKIM o SPF como "Pending" después de un cambio DNS: re-correr `node scripts/resend_domain_setup.mjs verticemexico.com` (script creado pero no commiteado todavía — se hizo en branch paralela durante exploración) o usar Resend dashboard → Records tab para re-verify manual.
+- Si surge necesidad de un segundo dominio (ej. `vertice.mx`): repetir el flow desde Resend → Add domain. Cloudflare auto-configure simplifica DKIM + SPF; DMARC se setea manual.
+
+---
+
 ## 2026-05-14 — Fase 8 cerrada: Blob storage + Resend notif + admin PDF link + smoke E2E
 
 **Branch:** `master`  ·  **HEAD:** `0f5f473` (feat(fase8): cerrar storage Blob + Resend notif + admin PDF link)  ·  **Suite:** 509/509 verdes (+13 nuevos email) · typecheck limpio
