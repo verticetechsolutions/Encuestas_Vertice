@@ -186,6 +186,14 @@ table.pt { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 
 .pt td:first-child { font-weight: 600; padding-left: 12px; white-space: nowrap; }
 .pt input { width: 72px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); padding: 6px 8px; background: var(--surface); font-variant-numeric: tabular-nums; outline: none; }
 .pt input.wide { width: 170px; }
+.crit-big { display: flex; align-items: baseline; gap: 8px; } .crit-big b { font-family: var(--font-display); font-size: 40px; font-weight: 600; letter-spacing: -0.03em; line-height: 1; font-variant-numeric: tabular-nums; } .crit-big span { color: var(--panel-muted); font-size: 14px; }
+.crit-miss { display: flex; flex-direction: column; gap: 4px; max-height: 260px; overflow-y: auto; }
+.crit-miss button, .crit-miss span { text-align: left; background: none; border: none; padding: 3px 0; color: var(--p-bad); font-size: 12.5px; }
+.crit-miss button:hover { text-decoration: underline; }
+.crit-tbl { min-width: 520px; } .crit-tbl td:first-child { width: 36px; color: var(--faint); font-weight: 500; } .crit-tbl td:nth-child(2) { white-space: normal; font-weight: 600; width: 34%; }
+.crit-tbl tr.grp td { background: var(--hover); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.24em; color: var(--accent); font-weight: 500; padding-top: 12px; }
+.crit-tbl tr.falta em, .crit-tbl tr.confirmar em { color: var(--bad); font-style: normal; font-weight: 600; }
+.crit-tbl tr.na td:last-child { color: var(--faint); }
 .err { margin: 0; font-size: 13px; font-weight: 600; }
 .err.bad { color: var(--bad); }
 .err.warn { color: var(--warn); }
@@ -432,7 +440,7 @@ const BLOCKS = [
   { id: 'producto', short: 'Por producto', title: 'Requisitos por producto', lead: 'Arrendamiento y crédito casi nunca piden lo mismo. Díganos qué cambia.' },
   { id: 'riesgo', short: 'Riesgo', title: 'Reglas de riesgo', lead: 'Sus tres indicadores clave, cómo miden la capacidad de pago y qué toleran en Buró.' },
   { id: 'proceso', short: 'Tiempos', title: 'Tiempos y expedientes', lead: 'Cómo trabajaríamos los expedientes que les mande Vértice.' },
-  { id: 'validar', short: 'Validación', title: 'Validación final', lead: 'Revisen el perfil combinado a la derecha (Diego más esta vuelta) y confirmen que refleja su política vigente.' },
+  { id: 'validar', short: 'Validación', title: 'Validación final', lead: 'Revisen los 60 criterios del panel de la derecha (Diego más esta vuelta) y confirmen que reflejan su política vigente.' },
   { id: 'resumen', short: 'Resumen', title: 'Perfil de crédito validado de Value Arrendadora', lead: 'Así quedó su perfil completo. Revísenlo y envíenlo a Vértice.' },
 ];
 
@@ -578,7 +586,8 @@ const REASK = {
   clientes: { b: 'aclarar', crit: 1, because: () => 'Aclaración de la primera vuelta', help: 'Diego marcó solo persona física con actividad empresarial, pero confirmó que atienden corporativos y PyMEs, y su cliente perfecto es una manufacturera.', check: (v) => !(v || []).includes('pm') ? ['warn', 'Diego confirmó que atienden corporativos y PyMEs. ¿Seguro que no le arriendan a personas morales?'] : null },
   pm_tamano: { b: 'aclarar', crit: 1 },
   score_pm: { b: 'aclarar', crit: 1 },
-  capital: { b: 'aclarar' },
+  capital: { b: 'aclarar', crit: 1 },
+  arr_marcas: { b: 'producto', crit: 1, because: () => 'Faltó en la primera vuelta' },
   flex_acta: { b: 'aclarar', crit: 1, check: CONDS_REQ },
   flex_extranjeros: { b: 'aclarar', crit: 1, check: CONDS_REQ },
   flex_concurso: { b: 'aclarar', crit: 1, check: CONDS_REQ },
@@ -611,8 +620,59 @@ const NEWQ = [
 Q.splice(0, Q.length, ...Q.filter(q => q.type !== 'case'));
 Q.forEach(q => { const o = REASK[q.id]; if (o) Object.assign(q, o); else q.b = 'base'; });
 Q.push(...NEWQ);
-const ORDER = ['resp_nombre','resp_puesto','resp_area','caso_0','caso_1','caso_2','caso_3','caso_4','caso_5','clientes','pm_tamano','score_pm','capital','flex_acta','flex_extranjeros','flex_concurso','pct_grupo','pricing','tasa_sube','tasa_baja','prod_igual','por_producto','liquidez_min','ventas_val','conc_max','capacidad','capacidad_regla','expo_max','flex_buro','buro_dias','buro_reestr','flex_resico','flex_pep','t_viab','resp72','digital','conversion','valida','valida_nota'];
+const ORDER = ['resp_nombre','resp_puesto','resp_area','caso_0','caso_1','caso_2','caso_3','caso_4','caso_5','clientes','pm_tamano','score_pm','capital','flex_acta','flex_extranjeros','flex_concurso','pct_grupo','pricing','tasa_sube','tasa_baja','prod_igual','por_producto','arr_marcas','liquidez_min','ventas_val','conc_max','capacidad','capacidad_regla','expo_max','flex_buro','buro_dias','buro_reestr','flex_resico','flex_pep','t_viab','resp72','digital','conversion','valida','valida_nota'];
 Q.sort((x, y) => { const i = ORDER.indexOf(x.id), j = ORDER.indexOf(y.id); return (i < 0 ? 999 : i) - (j < 0 ? 999 : j); });
+const CRITERIA = [
+  ['Cliente y mercado', [
+    ['Tipo de cliente', ['clientes']], ['Tamaño de empresa', ['pm_tamano']], ['Productos que ofrecen', ['productos']], ['Productos prioritarios para Vértice', ['prioridad']],
+    ['Sectores que buscan', ['sectores_si']], ['Giros excluidos', ['sectores_no']], ['Sector con ventaja', ['sector_ventaja']], ['Zonas actuales', ['zonas']],
+    ['Zonas donde aceptarían operar', ['zonas_si']], ['Niveles de gobierno', ['gob_tipo']], ['Fuente de pago con gobierno', ['gob_pago']], ['Moneda', ['moneda']]]],
+  ['Tamaño y requisitos de entrada', [
+    ['Monto mínimo', ['monto_min']], ['Monto máximo', ['monto_max']], ['Ticket ideal', ['ticket']], ['Antigüedad mínima', ['antig']],
+    ['Facturación mínima', ['facturacion']], ['Score Buró de la empresa', ['score_pm']], ['Score Buró del socio o solicitante', ['score_pf']], ['Requisitos distintos por producto', ['por_producto', 'prod_igual']],
+    ['Monto máximo por cliente o grupo', ['expo_max']], ['Capital contable', ['capital']]]],
+  ['Arrendamiento', [
+    ['Activos que arriendan', ['arr_equipo']], ['Equipo usado', ['arr_usado']], ['Depósito o enganche', ['arr_deposito']], ['Valor residual', ['arr_residual']],
+    ['Opción de compra', ['arr_opcion']], ['Seguro del activo', ['arr_seguro']], ['GPS', ['arr_gps']], ['Equipo importado', ['arr_importado']],
+    ['Flotilla mínima', ['flota_min']], ['Servicios de flotilla', ['flota_serv']], ['Marcas o distribuidores con convenio', ['arr_marcas']]]],
+  ['Garantías y salud financiera', [
+    ['Garantías adicionales', ['garantias']], ['Cobertura de garantía', ['cobertura']], ['Aval u obligado solidario', ['aval']], ['Indicadores que más pesan', ['ratios']],
+    ['Liquidez mínima', ['liquidez_min']], ['Cómo validan ventas', ['ventas_val']], ['Concentración máxima en un cliente', ['conc_max']], ['Cómo miden capacidad de pago', ['capacidad']],
+    ['Caída de ventas tolerada', ['caida']]]],
+  ['Tolerancias', [
+    ['Atrasos en Buró', ['flex_buro']], ['Atraso máximo tolerado', ['buro_dias']], ['Créditos reestructurados', ['buro_reestr']], ['Sin historial crediticio', ['flex_sinhist']],
+    ['32-D negativa', ['flex_32d']], ['RESICO', ['flex_resico']], ['Juicios activos', ['flex_juicios']], ['PEP en socios', ['flex_pep']],
+    ['Acta o poderes irregulares', ['flex_acta']], ['Socios extranjeros', ['flex_extranjeros']], ['Concurso mercantil previo', ['flex_concurso']]]],
+  ['Proceso y precio', [
+    ['Tiempo de respuesta de viabilidad', ['t_viab']], ['Tiempo a comité', ['t_comite', 'comite_frec']], ['Tiempo a dispersión', ['t_fondeo']], ['Documentación', ['docs']],
+    ['Tasas y plazos por producto', ['pricing']], ['Factores que mueven la tasa', ['tasa_sube', 'tasa_baja']], ['Quién aprueba y excepciones', ['aprob', 'excepciones']]]],
+];
+function critRows(a) {
+  const rows = []; let n = 0;
+  CRITERIA.forEach(([g, items]) => items.forEach(([label, ids]) => {
+    n++;
+    const qs = ids.map(id => QBY[id]).filter(Boolean);
+    const vis = qs.filter(q => visible(q, a));
+    let st = 'falta', val = '', go = null;
+    if (!vis.length) { st = 'na'; val = 'No aplica a su operación'; }
+    else {
+      const ok = vis.filter(q => answered(q, a) && !state.pre.includes(q.id) && !((checkOf(q, a) || [])[0] === 'bad'));
+      if (ok.length) { st = 'ok'; val = ok.map(q => valueText(q, a[q.id], a)).filter(Boolean).join(' · '); }
+      else { const q0 = vis[0]; go = q0.b !== 'base' ? q0.b : null; if (state.pre.includes(q0.id)) st = 'confirmar'; }
+    }
+    rows.push({ n, g, label, st, val, go });
+  }));
+  return rows;
+}
+function critPanelHTML(a) {
+  const rows = critRows(a), done = rows.filter(r => r.st === 'ok' || r.st === 'na').length, miss = rows.filter(r => r.st === 'falta' || r.st === 'confirmar');
+  return '<div class="ps"><h3><i class="gold"></i>Criterios capturados</h3><div class="crit-big"><b>' + done + '</b><span>de ' + rows.length + '</span></div><div class="bar"><i style="width:' + Math.round(done * 100 / rows.length) + '%"></i></div>' +
+    (miss.length ? '<div class="crit-miss">' + miss.map(r => r.go ? '<button type="button" data-go="' + r.go + '">' + r.n + '. ' + esc(r.label) + (r.st === 'confirmar' ? ' (confirmar)' : '') + '</button>' : '<span>' + r.n + '. ' + esc(r.label) + '</span>').join('') + '</div>' : '<span class="pempty">Los 60 criterios están capturados.</span>') + '</div>';
+}
+function critTableHTML(a) {
+  const rows = critRows(a); let g = '';
+  return '<div class="tbl-wrap"><table class="pt crit-tbl"><thead><tr><th>#</th><th>Criterio</th><th>Valor</th></tr></thead><tbody>' + rows.map(r => { const head = r.g !== g ? '<tr class="grp"><td colspan="3">' + esc(r.g) + '</td></tr>' : ''; g = r.g; return head + '<tr class="' + r.st + '"><td>' + r.n + '</td><td>' + esc(r.label) + '</td><td>' + (r.st === 'ok' || r.st === 'na' ? esc(r.val) : '<em>' + (r.st === 'confirmar' ? 'Falta confirmar' : 'Falta') + '</em>') + '</td></tr>'; }).join('') + '</tbody></table></div>';
+}
 const CASES = [{"idx": 0, "kind": "base", "lease": true, "titulo": "Transportes Cumbres del Norte SA de CV (ficticio)", "sub": "Autotransporte de carga · Monterrey, N.L.", "especial": null, "rows": [["Tipo de cliente", "Persona moral", 0], ["Producto", "Arrendamiento financiero", 0], ["Activo", "10 tractocamiones con remolque", 0], ["Condición del equipo", "Nuevos", 0], ["Valor del equipo", "$20,000,000", 0], ["Plazo", "48 meses", 0], ["Depósito", "20% ($4,000,000)", 0], ["Opción de compra", "Valor simbólico", 0], ["Años operando", "8 años", 0], ["Facturación anual", "$150,000,000", 0], ["Score Buró empresa", "720", 0], ["Score Buró socio principal", "710", 0], ["Liquidez (razón circulante)", "1.6x", 0], ["Cliente principal", "18% de las ventas", 0], ["Ventas facturadas (CFDI)", "Coinciden con estados de cuenta", 0], ["Historial de pago", "Sin atrasos", 0], ["Situación fiscal", "Opinión 32-D positiva", 0]], "insight": {"si": ["ok", "Aprobaron el caso que cumple todo lo que dijeron: la política declarada es consistente"], "cond": ["warn", "Aun dentro de sus parámetros piden condiciones extra"], "no": ["bad", "Rechazaron un caso que cumple todo lo que dijeron: hay un criterio que no ha salido"]}}, {"idx": 1, "kind": "zona", "lease": true, "titulo": "Distribuidora Peninsular de Alimentos SA de CV (ficticio)", "sub": "Comercio mayoreo · Mérida, Yuc.", "especial": "Está en Mérida, fuera de las zonas donde originan hoy. Diego dijo que sí aceptarían el Sureste. Todo lo demás está dentro de sus parámetros.", "rows": [["Tipo de cliente", "Persona moral", 0], ["Producto", "Arrendamiento puro", 0], ["Activo", "25 camionetas de reparto", 0], ["Condición del equipo", "Nuevas", 0], ["Valor del equipo", "$15,000,000", 0], ["Plazo", "36 meses", 0], ["Depósito", "20%", 0], ["Valor residual", "15%", 0], ["Ubicación", "Mérida, Yuc.", 1], ["Años operando", "6 años", 0], ["Facturación anual", "$90,000,000", 0], ["Score Buró empresa", "700", 0], ["Liquidez (razón circulante)", "1.4x", 0], ["Cliente principal", "12% de las ventas", 0], ["Historial de pago", "Sin atrasos", 0], ["Situación fiscal", "Opinión 32-D positiva", 0]], "insight": {"si": ["ok", "Confirmado: originarían en el Sureste. Vértice puede abrirles zonas nuevas"], "cond": ["ok", "Originarían en el Sureste con condiciones"], "no": ["warn", "Dijeron que aceptarían otras zonas, pero rechazaron Mérida: la expansión geográfica tiene límites reales"]}}, {"idx": 2, "kind": "limite", "lease": true, "titulo": "Constructora Altavista del Bajío SA de CV (ficticio)", "sub": "Obra civil · León, Gto.", "especial": "El equipo es usado con 5 años de antigüedad y su límite es 3 años. A cambio ofrece 30% de depósito y prenda adicional sobre maquinaria propia.", "rows": [["Tipo de cliente", "Persona moral", 0], ["Producto", "Arrendamiento puro", 0], ["Activo", "2 excavadoras y 1 retroexcavadora", 0], ["Condición del equipo", "Usadas, 5 años de antigüedad", 1], ["Valor del equipo", "$8,000,000", 0], ["Plazo", "36 meses", 0], ["Depósito", "30%", 0], ["Garantía adicional", "Prenda sobre maquinaria propia, cobertura 1.5x", 0], ["Años operando", "12 años", 0], ["Facturación anual", "$110,000,000", 0], ["Score Buró empresa", "700", 0], ["Liquidez (razón circulante)", "1.5x", 0], ["Cliente principal", "25% de las ventas (gobierno estatal)", 0], ["Historial de pago", "Sin atrasos", 0], ["Situación fiscal", "Opinión 32-D positiva", 0]], "insight": {"si": ["ok", "Su límite de 3 años en equipo usado se flexibiliza con más depósito y garantía"], "cond": ["ok", "Su límite de equipo usado se flexibiliza con condiciones"], "no": ["bad", "Su límite de 3 años en equipo usado es firme, aun con 30% de depósito y prenda adicional"]}}, {"idx": 3, "kind": "limite", "lease": true, "titulo": "Plásticos Técnicos de Apodaca SA de CV (ficticio)", "sub": "Manufactura, maquila para empresas de EUA · Apodaca, N.L.", "especial": "Factura $22 millones, abajo de su mínimo de $30 millones, y el ticket es chico. Pero es el cliente perfecto que describió Diego: manufacturera de Nuevo León que maquila para Estados Unidos.", "rows": [["Tipo de cliente", "Persona moral", 0], ["Producto", "Arrendamiento financiero", 0], ["Activo", "2 máquinas de inyección de plástico", 0], ["Condición del equipo", "Nuevas", 0], ["Valor del equipo", "$3,500,000", 0], ["Plazo", "48 meses", 0], ["Depósito", "20%", 0], ["Años operando", "5 años", 0], ["Facturación anual", "$22,000,000", 1], ["Score Buró empresa", "690", 0], ["Liquidez (razón circulante)", "1.8x", 0], ["Cliente principal", "35% de las ventas (empresa de EUA, contrato a 3 años)", 0], ["Ventas facturadas (CFDI)", "Coinciden con estados de cuenta", 0], ["Historial de pago", "Sin atrasos", 0], ["Situación fiscal", "Opinión 32-D positiva", 0]], "insight": {"si": ["ok", "El mínimo de facturación se flexibiliza cuando el perfil es su cliente ideal"], "cond": ["ok", "El mínimo de facturación se flexibiliza con condiciones si es su cliente ideal"], "no": ["bad", "El mínimo de $30 millones de facturación es firme, aunque sea su perfil ideal"]}}, {"idx": 4, "kind": "tolerancia", "lease": false, "titulo": "Agroindustrias del Valle de Culiacán SA de CV (ficticio)", "sub": "Agroindustria de exportación · Culiacán, Sin.", "especial": "Tuvo un atraso de 60 días con un banco hace 18 meses, ya liquidado y al corriente desde entonces. Diego dijo que los atrasos en Buró \"dependen\". Todo lo demás está dentro de sus parámetros.", "rows": [["Tipo de cliente", "Persona moral", 0], ["Producto", "Crédito simple", 0], ["Monto", "$12,000,000", 0], ["Plazo", "36 meses", 0], ["Destino", "Capital de trabajo para el ciclo de exportación", 0], ["Años operando", "15 años", 0], ["Facturación anual", "$180,000,000", 0], ["Score Buró empresa", "680", 0], ["Liquidez (razón circulante)", "1.3x", 0], ["Cliente principal", "20% de las ventas", 0], ["Garantía", "Hipotecaria (bodega), cobertura 1.4x", 0], ["Historial de pago", "Atraso de 60 días hace 18 meses, liquidado. Al corriente desde entonces.", 1], ["Situación fiscal", "Opinión 32-D positiva", 0]], "insight": {"si": ["ok", "Un atraso de 60 días ya liquidado hace más de un año no es motivo de rechazo"], "cond": ["ok", "Un atraso de 60 días liquidado se acepta con condiciones"], "no": ["bad", "Un atraso de 60 días, aunque esté liquidado, es motivo de rechazo: su tolerancia en Buró es baja"]}}, {"idx": 5, "kind": "tolerancia", "lease": false, "titulo": "Servicios Industriales Regios SA de CV (ficticio)", "sub": "Mantenimiento industrial · Monterrey, N.L.", "especial": "Su liquidez es de 0.9x y un solo cliente concentra 45% de sus ventas: justo sus indicadores número 1 y número 3. A cambio, garantía hipotecaria con cobertura de 1.3x.", "rows": [["Tipo de cliente", "Persona moral", 0], ["Producto", "Crédito simple", 0], ["Monto", "$25,000,000", 0], ["Plazo", "48 meses", 0], ["Destino", "Compra de equipo y capital de trabajo", 0], ["Años operando", "10 años", 0], ["Facturación anual", "$200,000,000", 0], ["Score Buró empresa", "710", 0], ["Liquidez (razón circulante)", "0.9x", 1], ["Cliente principal", "45% de las ventas (planta automotriz)", 1], ["Garantía", "Hipotecaria, cobertura 1.3x", 0], ["Historial de pago", "Sin atrasos", 0], ["Situación fiscal", "Opinión 32-D positiva", 0]], "insight": {"si": ["ok", "Con garantía hipotecaria toleran liquidez baja y concentración alta"], "cond": ["warn", "Liquidez baja y concentración alta se aceptan solo con condiciones"], "no": ["bad", "Liquidez abajo de 1x o un cliente con 45% de las ventas son motivo de rechazo"]}}];
 const QBY = Object.fromEntries(Q.map(q => [q.id, q]));
 
@@ -1124,9 +1184,11 @@ function profileHTML(a, full) {
 function renderPanel() {
   const a = state.a, p = profileHTML(a, false), st = p.st;
   const crit = Q.filter(q => q.b !== 'base' && q.crit && visible(q, a)), critOk = crit.filter(q => isDone(q, a)).length;
+  const cr = critRows(a), cDone = cr.filter(r => r.st === 'ok' || r.st === 'na').length, casosOk = [0, 1, 2, 3, 4, 5].filter(i => isDone(QBY['caso_' + i], a)).length;
   $panel.innerHTML = '<div class="p-head"><span class="p-eyebrow">Perfil en vivo</span><div class="p-title">Perfil combinado: Diego más esta vuelta</div></div>' +
-    '<div class="meters"><div class="meter"><b>' + st.pct + '%</b><span>avance</span></div><div class="meter"><b>' + st.cajasOk + '/' + st.cajas + '</b><span>criterios capturados</span></div><div class="meter"><b>' + critOk + '/' + crit.length + '</b><span>obligatorias</span></div></div>' +
-    '<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + st.pct + '"><i style="width:' + st.pct + '%"></i></div>' + p.html;
+    '<div class="meters"><div class="meter"><b>' + cDone + '/60</b><span>criterios</span></div><div class="meter"><b>' + casosOk + '/6</b><span>casos decididos</span></div><div class="meter"><b>' + critOk + '/' + crit.length + '</b><span>obligatorias</span></div></div>' +
+    critPanelHTML(a) +
+    p.html;
   document.querySelector('#time span:last-child').textContent = st.min ? '≈ ' + st.min + ' min restantes' : 'Listo para enviar';
 }
 
@@ -1139,7 +1201,7 @@ function insightsHTML(a) {
 function summaryHTML(a, actions) {
   const p = profileHTML(a, true);
   const pend = Q.filter(q => q.b !== 'base' && q.crit && visible(q, a) && !isDone(q, a));
-  let h = (actions && pend.length ? '<div class="sum"><div class="ps"><h3 class="eyebrow">Faltan ' + pend.length + ' preguntas obligatorias</h3></div><div class="pending">' + pend.map(q => '<button type="button" data-go="' + q.b + '">' + esc(BLOCKS.find(b => b.id === q.b).short) + ': ' + esc(q.type === 'case' ? 'Caso ' + (q.idx + 1) : labelOf(q, a)) + '</button>').join('') + '</div></div>' : '') + '<div class="sum"><div class="panel-like">' + p.html + '</div><div class="ps"><h3 class="eyebrow">Lo que revelaron los casos de prueba</h3></div>' + insightsHTML(a);
+  let h = (actions && pend.length ? '<div class="sum"><div class="ps"><h3 class="eyebrow">Faltan ' + pend.length + ' preguntas obligatorias</h3></div><div class="pending">' + pend.map(q => '<button type="button" data-go="' + q.b + '">' + esc(BLOCKS.find(b => b.id === q.b).short) + ': ' + esc(q.type === 'case' ? 'Caso ' + (q.idx + 1) : labelOf(q, a)) + '</button>').join('') + '</div></div>' : '') + '<div class="sum"><div class="ps"><h3 class="eyebrow">Los 60 criterios de Value Arrendadora</h3></div>' + critTableHTML(a) + '<div class="panel-like">' + p.html + '</div><div class="ps"><h3 class="eyebrow">Lo que revelaron los casos de prueba</h3></div>' + insightsHTML(a);
   if (actions) {
     const st = p.st;
     h += '<div class="actions">' + (remote.mode === 'cloud' ? '<button type="button" class="btn" id="sendBtn">' + (state.enviado ? 'Enviado. Volver a enviar' : 'Enviar a Vértice') + '</button>' : '') +
@@ -1170,6 +1232,9 @@ function copyText(a, notes) {
     });
     L.push('');
   });
+  L.push('== LOS 60 CRITERIOS ==');
+  critRows(a).forEach(r => L.push(r.n + '. ' + r.label + ': ' + (r.st === 'ok' || r.st === 'na' ? r.val : (r.st === 'confirmar' ? 'FALTA CONFIRMAR' : 'FALTA'))));
+  L.push('');
   const ins = [0, 1, 2, 3, 4, 5].map(i => insightFor(caseSpec(i, a), a['caso_' + i])).filter(Boolean);
   if (ins.length) { L.push('== HALLAZGOS DE LOS CASOS =='); ins.forEach(x => L.push('- ' + x[1])); }
   return L.join('\n');
