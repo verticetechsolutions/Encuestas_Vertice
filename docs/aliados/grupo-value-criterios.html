@@ -1,0 +1,1108 @@
+<title>Criterios de Crédito Grupo Value</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Manrope:wght@400;500;600;700&family=Urbanist:wght@500;600;700;800&display=swap">
+<style>
+/* Layout: questionnaire column on cream paper + dark ink "live credit profile" panel that fills as answers arrive (mirrors Vértice survey-card-1). */
+:root {
+  --bg: #FAF8F4;
+  --surface: #FFFFFF;
+  --text: #0A0F1C;
+  --muted: rgb(10 15 28 / 0.64);
+  --faint: rgb(10 15 28 / 0.44);
+  --line: rgb(10 15 28 / 0.08);
+  --line-strong: rgb(10 15 28 / 0.16);
+  --hover: rgb(10 15 28 / 0.035);
+  --accent: #866D38;
+  --accent-fill: #C8A864;
+  --accent-soft: rgb(200 168 100 / 0.14);
+  --chip-on-bg: #0A0F1C;
+  --chip-on-fg: #F4F1EA;
+  --panel: #0A0F1C;
+  --panel-fg: #F4F1EA;
+  --panel-muted: rgb(244 241 234 / 0.62);
+  --panel-faint: rgb(244 241 234 / 0.38);
+  --panel-line: rgb(244 241 234 / 0.12);
+  --panel-gold: #E0BE7C;
+  --ok: #2E6A4C;  --ok-soft: rgb(46 106 76 / 0.10);
+  --warn: #8A5D0E; --warn-soft: rgb(176 122 20 / 0.12);
+  --bad: #8B3A3A;  --bad-soft: rgb(139 58 58 / 0.10);
+  --p-ok: #8FD1AE; --p-warn: #F0C977; --p-bad: #F0A0A0;
+  --font-display: 'General Sans', 'Urbanist', 'Satoshi', ui-sans-serif, system-ui, sans-serif;
+  --font-body: 'Satoshi', 'Manrope', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --r-sm: 8px; --r-md: 12px; --r-card: 18px; --r-pill: 9999px;
+  --logo-ink: #0F172A; --logo-gold: #8C805A;
+  --arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%230A0F1C' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M12 5l7 7-7 7'/%3E%3C/svg%3E");
+  --hairline: inset 0 0 0 1px rgb(10 15 28 / 0.06);
+  --shadow-card-ink: inset 0 0 0 1px rgb(244 241 234 / 0.055), inset 0 1px 0 rgb(200 168 100 / 0.18);
+  --shadow-cta: 0 0 0 1px rgb(10 15 28 / 0.04), 0 20px 50px -20px rgb(10 15 28 / 0.35);
+  --ease: cubic-bezier(0.16, 1, 0.3, 1);
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #0A0F1C; --surface: #121A2B; --text: #F4F1EA;
+    --muted: rgb(244 241 234 / 0.66); --faint: rgb(244 241 234 / 0.44);
+    --line: rgb(244 241 234 / 0.09); --line-strong: rgb(244 241 234 / 0.18); --hover: rgb(244 241 234 / 0.04);
+    --accent: #E0BE7C; --accent-fill: #C8A864; --accent-soft: rgb(200 168 100 / 0.16);
+    --chip-on-bg: #C8A864; --chip-on-fg: #0A0F1C;
+    --panel: #1A2236; --panel-fg: #F4F1EA; --panel-muted: rgb(244 241 234 / 0.64); --panel-faint: rgb(244 241 234 / 0.4);
+    --panel-line: rgb(244 241 234 / 0.12); --panel-gold: #E0BE7C;
+    --ok: #8FD1AE; --ok-soft: rgb(143 209 174 / 0.12);
+    --warn: #F0C977; --warn-soft: rgb(240 201 119 / 0.12);
+    --bad: #F0A0A0; --bad-soft: rgb(240 160 160 / 0.12);
+    --arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23C8A864' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M12 5l7 7-7 7'/%3E%3C/svg%3E"); --logo-ink: #F8FAFC; --hairline: inset 0 0 0 1px rgb(244 241 234 / 0.08); --shadow-cta: 0 0 0 1px rgb(244 241 234 / 0.04), 0 30px 70px -20px rgb(200 168 100 / 0.35);
+    color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #0A0F1C; --surface: #121A2B; --text: #F4F1EA;
+  --muted: rgb(244 241 234 / 0.66); --faint: rgb(244 241 234 / 0.44);
+  --line: rgb(244 241 234 / 0.09); --line-strong: rgb(244 241 234 / 0.18); --hover: rgb(244 241 234 / 0.04);
+  --accent: #E0BE7C; --accent-fill: #C8A864; --accent-soft: rgb(200 168 100 / 0.16);
+  --chip-on-bg: #C8A864; --chip-on-fg: #0A0F1C;
+  --panel: #1A2236; --panel-fg: #F4F1EA; --panel-muted: rgb(244 241 234 / 0.64); --panel-faint: rgb(244 241 234 / 0.4);
+  --panel-line: rgb(244 241 234 / 0.12); --panel-gold: #E0BE7C;
+  --ok: #8FD1AE; --ok-soft: rgb(143 209 174 / 0.12);
+  --warn: #F0C977; --warn-soft: rgb(240 201 119 / 0.12);
+  --bad: #F0A0A0; --bad-soft: rgb(240 160 160 / 0.12);
+  --arrow: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23C8A864' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M5 12h14M12 5l7 7-7 7'/%3E%3C/svg%3E"); --logo-ink: #F8FAFC; --hairline: inset 0 0 0 1px rgb(244 241 234 / 0.08); --shadow-cta: 0 0 0 1px rgb(244 241 234 / 0.04), 0 30px 70px -20px rgb(200 168 100 / 0.35);
+  color-scheme: dark;
+}
+* { box-sizing: border-box; }
+body { background: var(--bg); color: var(--text); font-family: var(--font-body); font-size: 15.5px; line-height: 1.55; -webkit-font-smoothing: antialiased; font-feature-settings: "ss01", "cv11"; }
+button, input, textarea, select { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 2px solid var(--accent-fill); outline-offset: 2px; }
+.app { max-width: 1240px; margin: 0 auto; padding-block: 20px 72px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: flex; flex-direction: column; gap: 18px; }
+
+/* header */
+.top { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px 20px; }
+.brand { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.brand-for { font-family: var(--font-display); font-weight: 600; font-size: 15px; letter-spacing: -0.01em; }
+.logo { height: 30px; width: auto; flex: none; display: block; }
+.lg-ink { fill: var(--logo-ink); } .lg-gold { fill: var(--logo-gold); }
+.brand { gap: 16px; }
+.brand-txt { display: flex; flex-direction: column; min-width: 0; padding-left: 16px; box-shadow: inset 1px 0 0 var(--line-strong); }
+.brand-sub { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.32em; font-weight: 500; color: var(--accent); line-height: 1.4; }
+.top-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.pill { display: inline-flex; align-items: center; gap: 7px; font-size: 12.5px; padding: 6px 12px; border-radius: var(--r-pill); box-shadow: var(--hairline); color: var(--muted); background: var(--surface); font-variant-numeric: tabular-nums; }
+.dot { width: 7px; height: 7px; border-radius: 50%; background: var(--faint); flex: none; }
+.pill[data-s="cloud"] .dot { background: var(--ok); }
+.pill[data-s="saving"] .dot { background: var(--accent-fill); }
+.pill[data-s="error"] .dot { background: var(--bad); }
+.btn-ghost { border: 1px solid var(--line-strong); background: var(--surface); border-radius: var(--r-pill); padding: 6px 12px; font-size: 12.5px; font-weight: 600; }
+.btn-ghost:hover { background: var(--hover); }
+
+/* steps */
+.steps { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
+.step { flex: none; display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--r-pill); border: 1px solid var(--line); background: transparent; font-size: 13px; font-weight: 600; color: var(--muted); }
+.step:hover { background: var(--hover); }
+.step[aria-current="step"] { background: var(--surface); color: var(--text); border-color: var(--line-strong); box-shadow: 0 1px 0 var(--line); }
+.step .sd { width: 8px; height: 8px; border-radius: 50%; border: 1.5px solid var(--faint); flex: none; }
+.step[data-st="partial"] .sd { border-color: var(--accent-fill); background: linear-gradient(90deg, var(--accent-fill) 50%, transparent 50%); }
+.step[data-st="done"] .sd { border-color: var(--ok); background: var(--ok); }
+.step .sc { font-weight: 500; font-size: 12px; color: var(--faint); font-variant-numeric: tabular-nums; }
+
+/* layout */
+.layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 28px; align-items: start; }
+@media (max-width: 980px) { .layout { grid-template-columns: minmax(0, 1fr); } }
+.main { min-width: 0; display: flex; flex-direction: column; gap: 14px; }
+.block-head { display: flex; flex-direction: column; gap: 6px; padding: 6px 2px 4px; }
+.eyebrow { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.32em; font-weight: 500; color: var(--accent); line-height: 1; }
+h1, h2, h3 { font-family: var(--font-display); text-wrap: balance; margin: 0; }
+.block-head { gap: 12px; padding: 10px 2px 8px; }
+.block-head h1 { font-size: clamp(28px, 3.6vw, 46px); font-weight: 500; letter-spacing: -0.022em; line-height: 1.05; }
+.block-head p { margin: 0; color: var(--muted); max-width: 58ch; font-size: 17px; line-height: 1.55; }
+
+.intro { background: var(--surface); box-shadow: var(--hairline); border-radius: var(--r-card); padding: 20px; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 16px; }
+@media (max-width: 520px) { .brand-txt { padding-left: 12px; } .logo { height: 24px; } }
+@media (max-width: 680px) { .intro { grid-template-columns: minmax(0, 1fr); } }
+.intro div { display: flex; flex-direction: column; gap: 4px; min-width: 0; }
+.intro b { font-family: var(--font-display); font-size: 16px; font-weight: 600; letter-spacing: -0.01em; }
+.intro span { color: var(--muted); font-size: 13.5px; }
+
+.q { background: var(--surface); border: 1px solid transparent; box-shadow: var(--hairline); border-radius: var(--r-card); padding: 22px 24px; display: flex; flex-direction: column; gap: 12px; min-width: 0; transition: border-color .4s ease, box-shadow .4s ease; }
+.q.new { border-color: var(--accent-fill); box-shadow: 0 0 0 3px var(--accent-soft); animation: settle 2.4s ease forwards; }
+@keyframes settle { 0%, 60% { border-color: var(--accent-fill); box-shadow: 0 0 0 3px var(--accent-soft); } 100% { border-color: transparent; box-shadow: var(--hairline); } }
+.q-top { display: flex; flex-direction: column; gap: 4px; }
+.because { align-self: flex-start; font-size: 10.5px; font-weight: 500; text-transform: uppercase; letter-spacing: 0.18em; color: var(--accent); background: var(--accent-soft); border-radius: var(--r-pill); padding: 5px 11px; }
+.q-label { font-family: var(--font-display); font-size: clamp(18px, 2vw, 21px); font-weight: 600; letter-spacing: -0.015em; line-height: 1.25; display: flex; gap: 8px; align-items: baseline; }
+.crit { font-family: var(--font-body); font-size: 10px; text-transform: uppercase; letter-spacing: 0.28em; color: var(--accent); font-weight: 500; flex: none; }
+.q-help { color: var(--muted); font-size: 13.5px; margin: 0; max-width: 64ch; }
+.q-foot { display: flex; justify-content: flex-start; }
+.note-btn { background: none; border: none; padding: 0; color: var(--faint); font-size: 12.5px; font-weight: 600; }
+.note-btn:hover { color: var(--accent); }
+
+.chips { display: flex; flex-wrap: wrap; gap: 8px; }
+.chip { border: 1px solid var(--line-strong); background: var(--surface); border-radius: var(--r-pill); padding: 7px 14px; font-size: 14px; font-weight: 500; display: inline-flex; align-items: center; gap: 7px; transition: background .15s ease, border-color .15s ease; text-align: left; }
+.chip:hover { background: var(--hover); border-color: var(--faint); }
+.chip[aria-pressed="true"] { background: var(--chip-on-bg); color: var(--chip-on-fg); border-color: var(--chip-on-bg); }
+.chip .rk { width: 18px; height: 18px; border-radius: 50%; display: grid; place-items: center; font-size: 11px; font-weight: 800; background: var(--accent-fill); color: #0A0F1C; }
+.chip.na { border-style: dashed; }
+
+.numrow { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.field { display: flex; align-items: center; gap: 8px; border: 1px solid var(--line-strong); border-radius: var(--r-md); padding: 0 12px; background: var(--surface); min-width: 0; }
+.field:focus-within { border-color: var(--accent-fill); box-shadow: 0 0 0 3px var(--accent-soft); }
+.field input { border: none; outline: none; background: transparent; padding: 10px 0; font-size: 16px; width: 150px; min-width: 0; font-variant-numeric: tabular-nums; }
+.field .unit { color: var(--faint); font-size: 13px; }
+.txt, .area { width: 100%; border: 1px solid var(--line-strong); border-radius: var(--r-md); padding: 10px 12px; background: var(--surface); font-size: 16px; outline: none; }
+.area { min-height: 84px; resize: vertical; line-height: 1.45; }
+.txt:focus, .area:focus { border-color: var(--accent-fill); box-shadow: 0 0 0 3px var(--accent-soft); }
+.hint { font-size: 12.5px; color: var(--faint); }
+
+.seg { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+@media (max-width: 560px) { .seg { grid-template-columns: minmax(0, 1fr); } }
+.seg button { border: 1px solid var(--line-strong); background: var(--surface); border-radius: var(--r-md); padding: 10px 12px; font-weight: 600; font-size: 14px; text-align: left; display: flex; align-items: center; gap: 8px; }
+.seg button:hover { background: var(--hover); }
+.seg button i { width: 9px; height: 9px; border-radius: 50%; flex: none; }
+.seg button[data-k="no"] i { background: var(--bad); }
+.seg button[data-k="cond"] i { background: var(--warn); }
+.seg button[data-k="si"] i { background: var(--ok); }
+.seg button[data-k="no"][aria-pressed="true"] { background: var(--bad-soft); border-color: var(--bad); color: var(--bad); }
+.seg button[data-k="cond"][aria-pressed="true"] { background: var(--warn-soft); border-color: var(--warn); color: var(--warn); }
+.seg button[data-k="si"][aria-pressed="true"] { background: var(--ok-soft); border-color: var(--ok); color: var(--ok); }
+.sub { display: flex; flex-direction: column; gap: 8px; padding: 12px 14px; border-left: 2px solid var(--accent-fill); background: var(--accent-soft); border-radius: 0 var(--r-md) var(--r-md) 0; }
+.sub-l { font-size: 13px; font-weight: 700; color: var(--muted); }
+
+.tbl-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: var(--r-md); }
+table.pt { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 13.5px; }
+.pt th { text-align: left; font-weight: 700; color: var(--muted); font-size: 12px; padding: 9px 10px; border-bottom: 1px solid var(--line); background: var(--hover); white-space: nowrap; }
+.pt td { padding: 6px 8px; border-bottom: 1px solid var(--line); }
+.pt tr:last-child td { border-bottom: none; }
+.pt td:first-child { font-weight: 600; padding-left: 12px; white-space: nowrap; }
+.pt input { width: 72px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); padding: 6px 8px; background: var(--surface); font-variant-numeric: tabular-nums; outline: none; }
+.pt input:focus { border-color: var(--accent-fill); }
+
+.contact { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
+@media (max-width: 560px) { .contact { grid-template-columns: minmax(0, 1fr); } }
+.contact label { display: flex; flex-direction: column; gap: 4px; font-size: 12.5px; font-weight: 600; color: var(--muted); }
+
+/* case card */
+.case { border: 1px solid var(--line-strong); border-radius: var(--r-md); overflow: hidden; }
+.case-h { padding: 14px 16px; background: var(--hover); border-bottom: 1px solid var(--line); display: flex; flex-direction: column; gap: 2px; }
+.case-h b { font-family: var(--font-display); font-size: 17px; }
+.case-h span { color: var(--muted); font-size: 13.5px; }
+.case dl { margin: 0; display: grid; grid-template-columns: minmax(120px, 0.8fr) minmax(0, 2fr); }
+.case dt, .case dd { margin: 0; padding: 8px 16px; border-bottom: 1px solid var(--line); font-size: 13.5px; min-width: 0; }
+.case dt { color: var(--muted); }
+.case dd { font-weight: 600; font-variant-numeric: tabular-nums; }
+.case dt.flag, .case dd.flag { background: var(--warn-soft); }
+.case dd.flag { color: var(--warn); }
+.case-x { padding: 12px 16px; font-size: 13.5px; background: var(--warn-soft); color: var(--text); border-top: 1px solid var(--line); }
+.case-x b { color: var(--warn); }
+.relink { align-self: flex-start; background: none; border: none; padding: 0; color: var(--faint); font-size: 12.5px; text-decoration: underline; text-underline-offset: 3px; }
+
+.nav { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; padding-top: 6px; align-items: center; }
+.btn { display: inline-flex; align-items: center; gap: 12px; height: 48px; border: 1px solid var(--chip-on-bg); background: var(--chip-on-bg); color: var(--chip-on-fg); border-radius: var(--r-pill); padding: 0 6px 0 24px; font-weight: 500; font-size: 13.5px; box-shadow: var(--shadow-cta); transition: filter 240ms var(--ease); }
+.btn::after { content: ""; width: 36px; height: 36px; border-radius: var(--r-pill); background: var(--chip-on-fg) var(--arrow) center / 16px no-repeat; flex: none; transition: transform 240ms var(--ease); }
+.btn:hover { filter: brightness(1.15); }
+.btn:hover::after { transform: translateX(2px); }
+.btn.sec { background: transparent; color: var(--text); border-color: var(--line-strong); box-shadow: none; padding: 0 20px; }
+.btn.sec::after { display: none; }
+.btn.sec:hover { border-color: var(--faint); filter: none; }
+.skipnote { font-size: 13px; color: var(--faint); }
+
+/* panel */
+.panel { position: sticky; top: calc(env(safe-area-inset-top, 0px) + 16px); background: var(--panel); color: var(--panel-fg); border-radius: var(--r-card); box-shadow: var(--shadow-card-ink); padding: 24px; display: flex; flex-direction: column; gap: 18px; max-height: calc(100vh - 32px); overflow-y: auto; min-width: 0; }
+@media (max-width: 980px) { .panel { position: static; max-height: none; } }
+.p-head { display: flex; flex-direction: column; gap: 4px; }
+.p-eyebrow { font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.32em; color: var(--panel-gold); font-weight: 500; }
+.p-title { font-family: var(--font-display); font-size: 22px; font-weight: 600; letter-spacing: -0.02em; line-height: 1.15; }
+.meters { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; }
+.meter { border: 1px solid var(--panel-line); border-radius: var(--r-md); padding: 10px; display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+.meter b { font-family: var(--font-display); font-size: 24px; font-weight: 600; letter-spacing: -0.02em; font-variant-numeric: tabular-nums; line-height: 1.1; }
+.meter span { font-size: 11px; color: var(--panel-muted); line-height: 1.3; }
+.bar { height: 4px; border-radius: 4px; background: var(--panel-line); overflow: hidden; }
+.bar i { display: block; height: 100%; background: var(--panel-gold); border-radius: 4px; transition: width .5s ease; }
+.ideal { border-left: 2px solid var(--panel-gold); padding: 2px 0 2px 12px; font-size: 14px; line-height: 1.5; }
+.ideal.empty { color: var(--panel-faint); }
+.ps { display: flex; flex-direction: column; gap: 8px; }
+.ps h3 { font-family: var(--font-body); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.24em; color: var(--panel-muted); font-weight: 500; display: flex; align-items: center; gap: 7px; }
+.ps h3 i { width: 7px; height: 7px; border-radius: 50%; }
+.ps h3 i.ok { background: var(--p-ok); } .ps h3 i.bad { background: var(--p-bad); } .ps h3 i.warn { background: var(--p-warn); } .ps h3 i.gold { background: var(--panel-gold); }
+.tags { display: flex; flex-wrap: wrap; gap: 5px; }
+.tag { font-size: 12px; padding: 3px 9px; border-radius: var(--r-pill); border: 1px solid var(--panel-line); color: var(--panel-fg); }
+.tag.bad { border-color: rgb(240 160 160 / 0.4); color: var(--p-bad); }
+.tag.warn { border-color: rgb(240 201 119 / 0.4); color: var(--p-warn); }
+.kv { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 5px 12px; font-size: 13px; }
+.kv span { color: var(--panel-muted); }
+.kv b { font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+.pempty { font-size: 12.5px; color: var(--panel-faint); }
+.cond-list { display: flex; flex-direction: column; gap: 6px; font-size: 13px; }
+.cond-list div { display: flex; flex-direction: column; }
+.cond-list small { color: var(--panel-muted); font-size: 12px; }
+
+/* summary (light surface) */
+.sum { background: var(--surface); box-shadow: var(--hairline); border-radius: var(--r-card); padding: 22px; display: flex; flex-direction: column; gap: 18px; }
+.sum .panel-like { background: var(--panel); color: var(--panel-fg); border-radius: var(--r-card); box-shadow: var(--shadow-card-ink); padding: 24px; display: flex; flex-direction: column; gap: 18px; }
+.insights { display: flex; flex-direction: column; gap: 10px; }
+.ins { border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px 14px; display: flex; gap: 10px; align-items: flex-start; }
+.ins i { width: 9px; height: 9px; border-radius: 50%; margin-top: 6px; flex: none; }
+.ins i.ok { background: var(--ok); } .ins i.warn { background: var(--warn); } .ins i.bad { background: var(--bad); }
+.ins p { margin: 0; font-size: 14px; }
+.actions { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.msg { font-size: 13.5px; color: var(--muted); }
+.copybox { width: 100%; min-height: 180px; font-size: 12.5px; font-family: ui-monospace, 'SF Mono', Menlo, monospace; border: 1px solid var(--line-strong); border-radius: var(--r-md); padding: 12px; background: var(--bg); }
+
+/* owner */
+.olist { display: flex; flex-direction: column; gap: 8px; }
+.orow { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 4px 12px; text-align: left; border: 1px solid var(--line); border-radius: var(--r-md); padding: 12px 14px; background: var(--surface); }
+.orow:hover { background: var(--hover); }
+.orow[aria-pressed="true"] { border-color: var(--accent-fill); }
+.orow b { font-family: var(--font-display); font-size: 16px; }
+.orow span { color: var(--muted); font-size: 13px; }
+.orow em { font-style: normal; font-size: 12.5px; font-weight: 700; color: var(--accent); text-align: right; font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) { .q.new { animation: none; } .bar i, .q { transition: none; } }
+</style>
+
+<div class="app">
+  <header class="top">
+    <div class="brand">
+      <svg class="logo" role="img" aria-label="Vértice" viewBox="0 0 7095 2369" fill="none" xmlns="http://www.w3.org/2000/svg">
+<g clip-path="url(#clip0_100_3)">
+<path fill-rule="evenodd" clip-rule="evenodd" d="M391.896 772.898C384.136 757.665 394.672 739.486 411.664 739.155C486.596 737.7 561.311 741.373 635.814 750.183C643.73 751.119 650.581 756.133 653.983 763.393C746.526 960.798 841.761 1160.36 939.68 1354.34C942.763 1360.45 943.054 1367.62 940.418 1373.93C910.971 1444.46 877.672 1510.07 840.527 1575.37C831.427 1591.37 808.444 1590.67 800.088 1574.26C663.774 1306.62 527.709 1039.5 391.896 772.898Z" class="lg-ink"/>
+<path fill-rule="evenodd" clip-rule="evenodd" d="M1348.26 752.541C1352.06 744.959 1359.62 740.023 1368.06 739.734C1439.95 737.267 1511.6 739.939 1583.04 747.736C1599.17 749.495 1608.24 767.104 1600.68 781.568C1464.37 1042.8 1328.2 1311.64 1192.17 1572.43C1183.59 1588.88 1160.41 1589.14 1151.7 1572.76C1117.59 1508.52 1084.45 1439.48 1052.29 1375.8C1048.97 1369.23 1048.89 1361.48 1052.09 1354.84C1149.53 1153.14 1248.25 952.366 1348.26 752.541Z" class="lg-ink"/>
+<path d="M975.145 1455.29C983.858 1438.52 1007.69 1438.52 1016.4 1455.29L1120.92 1656.53C1129.03 1672.14 1117.78 1690.86 1100.29 1690.86H891.264C873.768 1690.86 862.523 1672.14 870.634 1656.53L975.145 1455.29Z" class="lg-gold"/>
+<path d="M5337.73 717.463C5555.98 717.463 5721.09 841.989 5760.88 1037.7C5763.44 1050.25 5753.61 1061.54 5741.06 1061.54H5598.13C5588.97 1061.54 5581.13 1055.47 5578.23 1047.02C5543.47 945.415 5453.19 885.798 5333.86 885.798C5247.71 885.798 5177.81 917.258 5129.4 973.538C5080.95 1029.89 5053.68 1111.51 5053.68 1212.34C5053.68 1312.5 5081.26 1394.46 5129.9 1451.32C5178.48 1508.1 5248.39 1540.19 5333.86 1540.19C5455.56 1540.19 5549.38 1478.3 5583.35 1381.5C5586.31 1373.11 5594.13 1367.05 5603.29 1367.05H5743.21C5755.94 1367.05 5765.82 1378.65 5762.91 1391.33C5718.92 1583.14 5547.91 1708.52 5329.97 1708.52C5191.36 1708.52 5076.82 1659.98 4996.97 1573.61C4917.15 1487.28 4872.33 1363.51 4872.32 1213.64C4872.32 1065.04 4918.79 940.948 5000.38 853.982C5082 766.993 5198.45 717.464 5337.73 717.463ZM2383.16 733.086C2394.49 733.086 2403.67 742.275 2403.68 753.609V874.391C2403.67 885.723 2394.49 894.914 2383.16 894.914H1994.74C1987.95 894.914 1982.44 900.425 1982.44 907.226V1119.12C1982.44 1125.92 1987.95 1131.44 1994.74 1131.44H2339.23C2350.56 1131.44 2359.75 1140.63 2359.75 1151.96V1266.22C2359.75 1277.55 2350.56 1286.74 2339.23 1286.74H1994.74C1987.95 1286.74 1982.44 1292.27 1982.44 1299.06V1518.76C1982.44 1525.57 1987.95 1531.08 1994.74 1531.08H2383.16C2394.49 1531.08 2403.67 1540.26 2403.68 1551.6V1672.37C2403.67 1683.71 2394.49 1692.9 2383.16 1692.9H1829.35C1818.02 1692.9 1808.83 1683.71 1808.83 1672.37V753.609C1808.83 742.275 1818.02 733.086 1829.35 733.086H2383.16ZM3029.86 733.086C3137.76 733.086 3223.8 760.598 3282.92 812.212C3342.12 863.895 3373.81 939.308 3373.81 1034C3373.81 1156.87 3319.17 1246.81 3216.58 1295.08C3210.04 1298.15 3207.12 1305.8 3210.01 1312.11L3371.77 1663.8C3378.02 1677.39 3368.1 1692.9 3353.13 1692.9H3208.45C3200.38 1692.9 3193.07 1688.16 3189.75 1680.81L3038.23 1344.77C3036.24 1340.35 3031.85 1337.51 3027.01 1337.51H2851.17C2844.37 1337.51 2838.84 1343.04 2838.84 1349.84V1672.37C2838.84 1683.71 2829.65 1692.9 2818.32 1692.9H2685.76C2674.43 1692.9 2665.25 1683.71 2665.23 1672.37V753.609C2665.25 742.278 2674.43 733.087 2685.76 733.086H3029.86ZM4232.16 733.086C4243.49 733.086 4252.67 742.275 4252.68 753.609V874.391C4252.67 885.723 4243.49 894.914 4232.16 894.914H3988.47C3981.67 894.914 3976.16 900.425 3976.16 907.226V1672.37C3976.16 1683.71 3966.97 1692.9 3955.63 1692.9H3823.08C3811.74 1692.9 3802.56 1683.71 3802.56 1672.37V907.226C3802.56 900.426 3797.04 894.916 3790.24 894.914H3546.55C3535.21 894.913 3526.03 885.722 3526.03 874.391V753.609C3526.03 742.277 3535.21 733.087 3546.55 733.086H4232.16ZM4614.45 733.086C4625.78 733.087 4634.97 742.277 4634.97 753.609V1672.37C4634.97 1683.71 4625.78 1692.9 4614.45 1692.9H4481.89C4470.55 1692.9 4461.37 1683.71 4461.37 1672.37V753.609C4461.37 742.275 4470.55 733.086 4481.89 733.086H4614.45ZM6571.87 733.086C6583.2 733.088 6592.38 742.278 6592.38 753.609V874.391C6592.38 885.721 6583.2 894.911 6571.87 894.914H6183.45C6176.65 894.915 6171.14 900.426 6171.14 907.226V1119.12C6171.14 1125.91 6176.65 1131.44 6183.45 1131.44H6527.93C6539.27 1131.44 6548.45 1140.63 6548.45 1151.96V1266.22C6548.45 1277.55 6539.27 1286.74 6527.93 1286.74H6183.45C6176.65 1286.74 6171.14 1292.27 6171.14 1299.06V1518.76C6171.14 1525.57 6176.65 1531.08 6183.45 1531.08H6571.87C6583.2 1531.08 6592.38 1540.26 6592.38 1551.6V1672.37C6592.38 1683.71 6583.2 1692.9 6571.87 1692.9H6018.06C6006.72 1692.9 5997.54 1683.71 5997.54 1672.37V753.609C5997.54 742.277 6006.72 733.086 6018.06 733.086H6571.87ZM2851.17 889.703C2844.37 889.703 2838.84 895.214 2838.84 902.015V1169.89C2838.84 1176.69 2844.37 1182.2 2851.17 1182.2H3029.86C3081.49 1182.2 3122.07 1168.4 3149.7 1143.25C3177.27 1118.14 3192.45 1081.25 3192.45 1034C3192.45 987.422 3177.28 951.541 3149.75 927.245C3122.13 902.883 3081.54 889.703 3029.86 889.703H2851.17ZM2259.29 472.738C2275.63 472.738 2285.42 490.885 2276.45 504.532L2171.4 664.356C2167.6 670.129 2161.16 673.608 2154.25 673.611H2072.15C2056.87 673.608 2046.95 657.504 2053.82 643.856L2134.21 484.031C2137.69 477.105 2144.79 472.739 2152.55 472.738H2259.29Z" class="lg-ink" stroke="#0F172A" stroke-width="0.7"/>
+</g>
+<defs>
+<clipPath id="clip0_100_3">
+<rect width="7095" height="2369" fill="white"/>
+</clipPath>
+</defs>
+</svg>
+      <div class="brand-txt">
+        <span class="brand-sub" id="subt">Aliados financieros</span>
+        <span class="brand-for">Criterios de crédito · Grupo Value</span>
+      </div>
+    </div>
+    <div class="top-right">
+      <span class="pill" id="time"><span class="dot"></span><span>≈ 25 min</span></span>
+      <span class="pill" id="save" data-s="local"><span class="dot"></span><span>Guardado en este navegador</span></span>
+      <button class="btn-ghost" id="ownerBtn" type="button" hidden>Respuestas recibidas</button>
+    </div>
+  </header>
+
+  <nav class="steps" id="steps" aria-label="Bloques del cuestionario"></nav>
+
+  <div class="layout">
+    <main class="main" id="main"></main>
+    <aside class="panel" id="panel" aria-label="Perfil de crédito en vivo"></aside>
+  </div>
+</div>
+
+<script>
+(function () {
+'use strict';
+
+// ---------- catalogs (from Vértice credit box: lib/schemas/cajas.ts + db/seeds/enums.ts) ----------
+const TIPOS = [['sofom_enr','SOFOM ENR'],['sofom_er','SOFOM ER'],['banco','Banco'],['sofipo','SOFIPO'],['arrendadora','Arrendadora'],['factoraje','Empresa de factoraje'],['ifc','IFC / Fintech'],['otro','Otro']];
+const AREA = [['direccion','Dirección'],['comercial','Comercial / originación'],['riesgo','Riesgo / crédito'],['operaciones','Operaciones'],['otra','Otra']];
+const PRODUCTOS = [['credito_simple','Crédito simple'],['revolvente','Crédito revolvente'],['refaccionario','Refaccionario'],['avio','Habilitación o avío'],['hipotecario','Hipotecario empresarial'],['puente','Crédito puente'],['construccion','Crédito a la construcción'],['factoraje_con','Factoraje con recurso'],['factoraje_sin','Factoraje sin recurso'],['arr_puro','Arrendamiento puro'],['arr_fin','Arrendamiento financiero'],['confirming','Confirming'],['automotriz','Crédito automotriz'],['nomina','Crédito de nómina'],['personal','Crédito personal'],['otro','Otro']];
+const CLIENTES = [['pm','Persona moral (empresa)'],['pfae','Persona física con actividad empresarial'],['pf_asal','Persona física asalariada']];
+const TAMANO = [['micro','Micro'],['pequena','Pequeña'],['mediana','Mediana'],['grande','Grande']];
+const SECTORES = [['construccion','Construcción e inmobiliario'],['transporte','Transporte y logística'],['manufactura','Manufactura'],['agro','Agroindustria'],['comercio_may','Comercio mayoreo'],['comercio_men','Comercio menudeo'],['servicios','Servicios profesionales'],['salud','Salud'],['tecnologia','Tecnología'],['energia','Energía'],['mineria','Minería'],['turismo','Turismo'],['educacion','Educación'],['gobierno','Proveedores de gobierno'],['otro','Otro']];
+const EXCL_EXTRA = [['apuestas','Juegos y apuestas'],['cripto','Criptoactivos'],['armas','Armamento'],['politica','Partidos y asociaciones políticas'],['empeno','Casas de empeño'],['cambio','Casas de cambio y transmisores'],['adultos','Entretenimiento para adultos'],['arranque','Negocios en etapa de arranque']];
+const ZONAS = [['nacional','Todo el país'],['cdmx','CDMX y Edomex'],['bajio','Bajío'],['occidente','Occidente'],['norte','Norte'],['frontera','Frontera norte'],['sureste','Sureste'],['centro','Centro'],['sur','Sur'],['pacifico','Pacífico']];
+const MONEDA = [['mxn','Solo pesos'],['usd','Solo dólares'],['ambas','Pesos y dólares']];
+const GARANTIAS = [['hipotecaria','Hipotecaria (inmueble)'],['prenda_maq','Prenda sobre maquinaria o equipo'],['prenda_inv','Prenda sobre inventario'],['cesion','Cesión de derechos de cobro'],['fideicomiso','Fideicomiso de garantía'],['aval','Aval con patrimonio'],['standby','Carta de crédito stand-by'],['liquida','Garantía líquida (depósito)'],['sin_garantia','Sin garantía (quirografario)']];
+const COBERTURA = [['1','1.0x'],['1.25','1.25x'],['1.5','1.5x'],['2','2.0x'],['3','3.0x o más']];
+const AVAL = [['siempre','Siempre'],['desde_monto','A partir de cierto monto'],['depende','Depende del perfil'],['nunca','No lo pedimos']];
+const RATIOS = [['dscr','Cobertura de deuda (DSCR)'],['deuda_ebitda','Deuda / EBITDA'],['liquidez','Liquidez (razón circulante)'],['apalancamiento','Pasivo / capital'],['margen','Margen EBITDA o neto'],['flujo','Flujo en estados de cuenta'],['ventas','Ventas facturadas (CFDI)'],['rotacion','Días de cartera e inventario'],['capital','Capital contable'],['concentracion','Concentración de clientes']];
+const CAIDA = [['10','Hasta 10%'],['20','Hasta 20%'],['30','Hasta 30%'],['caso','Depende del caso'],['no_mide','No lo medimos']];
+const CAPITAL = [['positivo','Debe ser positivo'],['minimo','Mínimo como % del crédito'],['no_revisa','No es determinante']];
+const DTI = [['20','Hasta 20%'],['30','Hasta 30%'],['40','Hasta 40%'],['50','Hasta 50%']];
+const FLEX = [['no','No, rechazo automático'],['cond','Sí, con condiciones'],['si','Sí, sin problema']];
+const CONDS = [['mas_garantia','Más garantía'],['aval','Aval u obligado solidario'],['tasa','Tasa más alta'],['monto','Menor monto'],['plazo','Plazo más corto'],['aclaracion','Carta de aclaración o liquidación'],['comite','Comité especial'],['tiempo','Que pase cierto tiempo']];
+const BURO_DIAS = [['1_29','1 a 29 días'],['30_59','30 a 59 días'],['60_89','60 a 89 días'],['90','90+ si ya está liquidado']];
+const REESTR = [['si','Sí'],['depende','Depende de cuándo y por qué'],['no','No']];
+const T_VIAB = [['mismo_dia','Mismo día'],['48h','24 a 48 horas'],['5d','3 a 5 días'],['2s','1 a 2 semanas'],['mas','Más de 2 semanas']];
+const FREC = [['semanal','Semanal'],['quincenal','Quincenal'],['mensual','Mensual'],['demanda','Cuando se necesita']];
+const T_COMITE = [['1s','Menos de 1 semana'],['2s','1 a 2 semanas'],['4s','2 a 4 semanas'],['mas','Más de un mes']];
+const T_FONDEO = [['48h','24 a 48 horas'],['1s','Hasta 1 semana'],['2s','1 a 2 semanas'],['mas','Más de 2 semanas']];
+const DOCS_PM = [['acta','Acta constitutiva y poderes'],['ine','INE de representante y socios'],['csf','Constancia de situación fiscal'],['32d','Opinión de cumplimiento 32-D'],['eeff2','Estados financieros de 2 a 3 años'],['parciales','Estados financieros parciales'],['edocta','Estados de cuenta bancarios'],['declaraciones','Declaraciones anuales'],['buro','Autorización de consulta a Buró'],['domicilio','Comprobante de domicilio'],['cfdi','Facturación CFDI / XML'],['avaluo','Avalúo de la garantía'],['clientes','Relación de clientes y proveedores'],['flujo','Proyección de flujo o plan de negocio']];
+const DOCS_PF = [['ine','INE'],['csf','Constancia de situación fiscal'],['nomina','Recibos de nómina'],['edocta','Estados de cuenta bancarios'],['declaraciones','Declaración anual'],['buro','Autorización de consulta a Buró'],['domicilio','Comprobante de domicilio'],['constancia','Constancia laboral']];
+const EEFF = [['siempre','Siempre'],['desde_monto','A partir de cierto monto'],['nunca','No los pedimos']];
+const SCORING = [['sat','Facturación y datos del SAT'],['open','Movimientos bancarios (open finance)'],['buro_alt','Buró alterno'],['servicios','Pago de servicios y telefonía'],['propio','Modelo propio'],['ninguno','No usamos']];
+const INTEG = [['api','API'],['portal','Portal web para cargar expedientes'],['manual','Correo o manual']];
+const FACT_TASA = [['garantia','Garantía'],['score','Score de Buró'],['plazo','Plazo'],['monto','Monto'],['sector','Sector'],['antig','Antigüedad'],['relacion','Relación previa'],['ratios','Ratios financieros'],['fondeo','Costo de fondeo']];
+const AFORO = [['70','70%'],['80','80%'],['85','85%'],['90','90%'],['95','95% o más']];
+const PLAZO_FAC = [['30','30 días'],['60','60 días'],['90','90 días'],['120','120 días'],['180','180 días o más']];
+const PAGADORES = [['corp','Corporativos y empresas grandes'],['pyme','PyMEs'],['gob_fed','Gobierno federal'],['gob_est','Gobierno estatal o municipal'],['extranjero','Pagadores en el extranjero']];
+const CONC = [['20','Hasta 20%'],['30','Hasta 30%'],['50','Hasta 50%'],['sin','Sin tope']];
+const EQUIPO = [['transporte','Transporte y carga'],['construccion','Maquinaria de construcción'],['industrial','Maquinaria industrial'],['medico','Equipo médico'],['ti','Cómputo y TI'],['agricola','Maquinaria agrícola'],['autos','Autos utilitarios'],['otro','Otro']];
+const USADO = [['no','Solo nuevo'],['3','Usado hasta 3 años'],['5','Usado hasta 5 años'],['10','Usado hasta 10 años']];
+const RESIDUAL = [['10','Hasta 10%'],['20','10 a 20%'],['30','20 a 30%'],['mas','Más de 30%']];
+const RECHAZOS = [['capacidad','Capacidad de pago insuficiente'],['buro','Historial en Buró'],['garantia','Garantía insuficiente'],['docs','Expediente incompleto'],['fiscal','Situación fiscal (SAT)'],['antig','Poca antigüedad'],['monto','Monto fuera de rango'],['info','Información financiera poco confiable'],['sector','Sector o giro'],['concentracion','Dependencia de pocos clientes']];
+const VOLUMEN = [['5','1 a 5'],['15','6 a 15'],['30','16 a 30'],['mas','Más de 30']];
+const CASE_D = [['si','Lo aprobaría'],['cond','Con condiciones'],['no','Lo rechazaría']];
+function lab(list, k) { for (const o of list) if (o[0] === k) return o[1]; return k; }
+
+// ---------- helpers on answers ----------
+const arr = (a, id) => Array.isArray(a[id]) ? a[id] : [];
+const has = (a, id, k) => arr(a, id).includes(k);
+const isPM = a => has(a, 'clientes', 'pm');
+const isPFAE = a => has(a, 'clientes', 'pfae');
+const isPFA = a => has(a, 'clientes', 'pf_asal');
+const empresa = a => isPM(a) || isPFAE(a);
+const onlyPFA = a => isPFA(a) && !empresa(a);
+const prodAny = (a, ks) => arr(a, 'productos').some(p => ks.includes(p));
+const num = v => (typeof v === 'number' && isFinite(v)) ? v : null;
+const flexV = (a, id) => (a[id] && a[id].v) || null;
+const realGar = a => arr(a, 'garantias').filter(g => g !== 'sin_garantia');
+
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+function fmtMoney(n) {
+  if (num(n) == null) return '';
+  if (n >= 1e6) return '$' + (n / 1e6).toLocaleString('es-MX', { maximumFractionDigits: 1 }) + ' M';
+  if (n >= 1e3) return '$' + (n / 1e3).toLocaleString('es-MX', { maximumFractionDigits: 0 }) + ' mil';
+  return '$' + n.toLocaleString('es-MX');
+}
+function fmtFull(n) { return num(n) == null ? '' : '$' + Math.round(n).toLocaleString('es-MX'); }
+function parseMoney(str) {
+  const s = String(str || '').toLowerCase().replace(/[$,\s]/g, '').replace(/pesos|mxn/g, '');
+  if (!s) return null;
+  const m = s.match(/^(\d+(?:\.\d+)?)(k|mil|mm|m|mdp|millon|millones)?$/);
+  if (!m) return NaN;
+  let v = parseFloat(m[1]);
+  const suf = m[2];
+  if (suf === 'k' || suf === 'mil') v *= 1e3;
+  else if (suf) v *= 1e6;
+  return v;
+}
+function parseNum(str) { const s = String(str || '').replace(/[x,\s%]/gi, ''); if (!s) return null; const v = parseFloat(s); return isFinite(v) ? v : NaN; }
+function nice(n) { if (!n) return n; const p = Math.pow(10, Math.max(0, Math.floor(Math.log10(n)) - 1)); return Math.round(n / p) * p; }
+
+// ---------- blocks & questions ----------
+const BLOCKS = [
+  { id: 'inicio', short: 'Inicio', title: 'Antes de empezar', lead: 'Este cuestionario arma el perfil del cliente que Grupo Value quiere financiar, para que Vértice solo les presente solicitudes que encajan.' },
+  { id: 'mercado', short: 'Qué financian', title: 'Qué financian y a quién', lead: 'Productos, tipo de cliente, sectores y zonas. Lo que elijan aquí decide qué preguntas siguen.' },
+  { id: 'tamano', short: 'Tamaño', title: 'Tamaño de la operación', lead: 'Rangos de monto y requisitos mínimos de entrada.' },
+  { id: 'garantias', short: 'Garantías', title: 'Garantías y salud financiera', lead: 'Qué respalda el crédito y qué indicadores pesan más en la decisión.' },
+  { id: 'flex', short: 'Flexibilidad', title: 'Qué sí y qué no', lead: 'Para cada situación, dígannos si es rechazo automático o si hay manera. Esta parte es la que más tiempo nos ahorra a los dos.' },
+  { id: 'proceso', short: 'Proceso', title: 'Proceso y tiempos', lead: 'Cuánto tarda cada etapa y qué documentos piden para empezar.' },
+  { id: 'precio', short: 'Precio', title: 'Precio y plazos', lead: 'Rangos típicos por producto y qué mueve la tasa.' },
+  { id: 'vertice', short: 'Con Vértice', title: 'Cómo trabajar con Vértice', lead: 'Qué filtrar antes de mandarles un expediente y quién lo recibe.' },
+  { id: 'casos', short: 'Casos', title: 'Tres casos de prueba', lead: 'Armamos estos casos con sus propias respuestas. Dígannos qué harían con cada uno. Aquí es donde se ve qué criterios son firmes y cuáles se negocian.' },
+  { id: 'resumen', short: 'Resumen', title: 'Perfil de crédito de Grupo Value', lead: 'Así quedó su perfil. Revísenlo y envíenlo a Vértice.' },
+];
+
+const FLEX_LBL = {
+  flex_buro: 'Atrasos en Buró', flex_sinhist: 'Sin historial crediticio', flex_32d: '32-D negativa', flex_resico: 'Contribuyente RESICO',
+  flex_juicios: 'Juicios activos', flex_acta: 'Acta o poderes irregulares', flex_pep: 'PEP en socios', flex_extranjeros: 'Socios extranjeros >49%', flex_concurso: 'Salió de concurso mercantil'
+};
+
+const Q = [
+  // inicio
+  { id: 'resp_nombre', b: 'inicio', type: 'text', label: '¿Cómo te llamas?', placeholder: 'Nombre y apellido', est: 10 },
+  { id: 'resp_puesto', b: 'inicio', type: 'text', label: '¿Cuál es tu puesto?', placeholder: 'Ej. Director de crédito', est: 10 },
+  { id: 'resp_area', b: 'inicio', type: 'single', options: AREA, label: '¿Desde qué área contestas?', est: 6 },
+  { id: 'inst_tipo', b: 'inicio', type: 'single', options: TIPOS, caja: 'id_tipo_institucion', crit: 1, label: 'Tipo de institución', help: 'Lo dejamos marcado como SOFOM ENR. Cámbienlo si no es correcto.', est: 4 },
+  { id: 'inst_anios', b: 'inicio', type: 'num', unit: 'años', presets: [3, 5, 10, 15, 20], caja: 'id_anios_operacion', label: '¿Cuántos años lleva operando la institución?', est: 8 },
+  // mercado
+  { id: 'productos', b: 'mercado', type: 'multi', options: PRODUCTOS, caja: 'nm_productos_ofrecidos', crit: 1, label: '¿Qué productos de crédito ofrecen hoy?', help: 'Elijan todos los que operan. Cada producto abre sus propias preguntas de tasa y plazo.', est: 25 },
+  { id: 'clientes', b: 'mercado', type: 'multi', options: CLIENTES, caja: 'nm_tipos_cliente', crit: 1, label: '¿A qué tipo de cliente le prestan?', est: 10 },
+  { id: 'pm_tamano', b: 'mercado', type: 'multi', options: TAMANO, show: isPM, because: () => 'Porque le prestan a empresas', caja: 'nm_tipos_cliente', label: '¿De qué tamaño son las empresas que buscan?', est: 10 },
+  { id: 'sectores_si', b: 'mercado', type: 'multi', options: SECTORES, caja: 'nm_sectores_aceptados', crit: 1, label: '¿Qué sectores buscan activamente?', help: 'Los que de verdad quieren en su cartera, no solo los que aceptan.', est: 25 },
+  { id: 'sectores_no', b: 'mercado', type: 'multi', options: a => SECTORES.filter(s => !has(a, 'sectores_si', s[0]) && s[0] !== 'otro').concat(EXCL_EXTRA), caja: 'nm_sectores_excluidos', crit: 1, label: '¿Qué giros rechazan en automático?', help: 'Así nunca les mandamos una solicitud que no va a pasar.', est: 20 },
+  { id: 'sector_ventaja', b: 'mercado', type: 'single', options: a => SECTORES.filter(s => has(a, 'sectores_si', s[0])), show: a => arr(a, 'sectores_si').length >= 2, because: () => 'Porque eligieron varios sectores', caja: 'nm_sectores_ventaja', label: 'De esos sectores, ¿en cuál son más fuertes que la competencia?', est: 10 },
+  { id: 'zonas', b: 'mercado', type: 'multi', options: ZONAS, exclusive: ['nacional'], caja: 'nm_cobertura_geografica', crit: 1, label: '¿En qué zonas del país prestan?', est: 12 },
+  // tamaño
+  { id: 'monto_min', b: 'tamano', type: 'money', presets: [100e3, 250e3, 500e3, 1e6, 3e6], caja: 'ru_monto_min', crit: 1, label: '¿Cuál es el monto mínimo por crédito?', est: 12 },
+  { id: 'monto_max', b: 'tamano', type: 'money', presets: [5e6, 10e6, 30e6, 50e6, 100e6], caja: 'ru_monto_max', crit: 1, label: '¿Y el monto máximo?', est: 12 },
+  { id: 'ticket', b: 'tamano', type: 'money', presets: [1e6, 3e6, 5e6, 10e6, 20e6], caja: 'ru_ticket_ideal', label: '¿Cuál es el monto de crédito que más les gusta?', help: 'Su ticket ideal. Con esto priorizamos qué solicitudes mandarles primero.', est: 12 },
+  { id: 'moneda', b: 'tamano', type: 'single', options: MONEDA, caja: 'ru_moneda', crit: 1, label: '¿En qué moneda prestan?', est: 5 },
+  { id: 'antig', b: 'tamano', type: 'num', unit: 'años', presets: [1, 2, 3, 5], na: 'Sin requisito', caja: 'ru_antiguedad_min', crit: 1, label: a => onlyPFA(a) ? '¿Qué antigüedad laboral mínima piden?' : '¿Cuántos años mínimos de operación debe tener el negocio?', est: 10 },
+  { id: 'facturacion', b: 'tamano', type: 'money', presets: [1e6, 5e6, 10e6, 30e6, 100e6], na: 'Sin requisito', show: empresa, because: () => 'Porque le prestan a empresas o PFAE', caja: 'ru_facturacion_min', crit: 1, label: '¿Qué facturación anual mínima piden?', est: 12 },
+  { id: 'ingreso_pf', b: 'tamano', type: 'money', presets: [10e3, 15e3, 25e3, 40e3], na: 'Sin requisito', show: isPFA, because: () => 'Porque le prestan a asalariados', caja: 'ru_facturacion_min', label: '¿Qué ingreso mensual neto mínimo piden?', est: 10 },
+  { id: 'score_pm', b: 'tamano', type: 'num', presets: [550, 600, 650, 700], na: 'No lo usamos', show: isPM, because: () => 'Porque le prestan a empresas', caja: 'ru_score_pm_min', crit: 1, label: '¿Qué score mínimo de Buró le piden a la empresa?', est: 10 },
+  { id: 'score_pf', b: 'tamano', type: 'num', presets: [550, 600, 650, 700], na: 'No lo usamos', caja: 'ru_score_pf_min', crit: 1, label: a => isPM(a) ? '¿Qué score mínimo de Buró le piden al representante legal o socio principal?' : '¿Qué score mínimo de Buró le piden al solicitante?', est: 10 },
+  // garantías
+  { id: 'garantias', b: 'garantias', type: 'multi', options: GARANTIAS, caja: 'gr_tipos_garantia', crit: 1, label: '¿Qué garantías aceptan?', est: 20 },
+  { id: 'cobertura', b: 'garantias', type: 'single', options: COBERTURA, show: a => realGar(a).length > 0, because: () => 'Porque aceptan garantías', caja: 'gr_cobertura_min', crit: 1, label: '¿Qué cobertura mínima de garantía piden?', help: 'Valor de la garantía entre el monto del crédito.', est: 8 },
+  { id: 'quiro', b: 'garantias', type: 'text', show: a => has(a, 'garantias', 'sin_garantia'), because: () => 'Porque prestan sin garantía', caja: 'to_colateral', label: '¿Hasta qué monto o con qué perfil prestan sin garantía?', placeholder: 'Ej. Hasta $3 M si la empresa tiene 5+ años y DSCR arriba de 1.5x', est: 30 },
+  { id: 'aval', b: 'garantias', type: 'single', options: AVAL, caja: 'to_colateral', label: '¿Piden aval u obligado solidario?', est: 8 },
+  { id: 'dscr', b: 'garantias', type: 'num', unit: 'x', presets: [1.1, 1.2, 1.25, 1.3, 1.5], na: 'No lo usamos', show: empresa, caja: 'gr_dscr_min', crit: 1, label: '¿Qué cobertura de servicio de deuda (DSCR) mínima piden?', help: 'Flujo disponible entre el pago del crédito. 1.25x quiere decir que el flujo cubre 1.25 veces el pago.', est: 10 },
+  { id: 'deuda_ebitda', b: 'garantias', type: 'num', unit: 'x', presets: [2, 2.5, 3, 3.5, 4], na: 'No lo usamos', show: isPM, caja: 'gr_deuda_ebitda_max', crit: 1, label: '¿Qué apalancamiento máximo aceptan (deuda / EBITDA)?', est: 10 },
+  { id: 'ratios', b: 'garantias', type: 'rank', max: 3, options: RATIOS, show: empresa, caja: 'gr_ratios_definitorios', crit: 1, label: '¿Cuáles son los 3 indicadores que más pesan en su decisión?', help: 'Elijan en orden de importancia.', est: 20 },
+  { id: 'caida', b: 'garantias', type: 'single', options: CAIDA, show: empresa, caja: 'gr_caida_facturacion_max', label: '¿Qué caída de ventas contra el año anterior toleran?', est: 8 },
+  { id: 'capital', b: 'garantias', type: 'single', options: CAPITAL, show: isPM, caja: 'gr_capital_contable_min', label: '¿Qué piden del capital contable?', est: 8 },
+  { id: 'dti', b: 'garantias', type: 'single', options: DTI, show: isPFA, because: () => 'Porque le prestan a asalariados', caja: 'to_ratios_financieros', label: '¿Qué parte máxima del ingreso puede ir al pago de deudas?', est: 8 },
+  // flex
+  { id: 'flex_buro', b: 'flex', type: 'flex', caja: 'to_historial_credito', crit: 1, label: 'Cliente con atrasos en Buró de Crédito', est: 20 },
+  { id: 'buro_dias', b: 'flex', type: 'single', options: BURO_DIAS, show: a => ['cond', 'si'].includes(flexV(a, 'flex_buro')), because: () => 'Porque aceptan atrasos', caja: 'to_historial_credito', label: '¿Qué atraso máximo toleran?', est: 8 },
+  { id: 'buro_reestr', b: 'flex', type: 'single', options: REESTR, show: a => !!flexV(a, 'flex_buro'), caja: 'to_historial_credito', label: '¿Y créditos reestructurados?', est: 8 },
+  { id: 'flex_sinhist', b: 'flex', type: 'flex', caja: 'se_sin_historial', crit: 1, label: 'Cliente sin historial crediticio', est: 20 },
+  { id: 'flex_32d', b: 'flex', type: 'flex', caja: 'se_sat_32d_negativa', crit: 1, label: 'Opinión de cumplimiento del SAT (32-D) negativa', est: 20 },
+  { id: 'flex_resico', b: 'flex', type: 'flex', show: empresa, caja: 'to_situacion_fiscal', label: 'Contribuyente en RESICO', est: 15 },
+  { id: 'flex_juicios', b: 'flex', type: 'flex', caja: 'to_gobierno_documentacion', label: 'Juicios mercantiles o laborales activos', est: 15 },
+  { id: 'flex_acta', b: 'flex', type: 'flex', show: isPM, caja: 'to_gobierno_documentacion', label: 'Acta o poderes sin protocolizar, o cambio de socios sin inscribir', est: 15 },
+  { id: 'flex_pep', b: 'flex', type: 'flex', caja: 'se_pep_estructura', crit: 1, label: 'Persona políticamente expuesta (PEP) entre socios o solicitantes', est: 15 },
+  { id: 'flex_extranjeros', b: 'flex', type: 'flex', show: isPM, caja: 'se_socios_extranjeros', label: 'Socios extranjeros con más de 49%', est: 15 },
+  { id: 'flex_concurso', b: 'flex', type: 'flex', show: isPM, caja: 'se_concurso_mercantil', label: 'Empresa que ya salió de concurso mercantil', est: 15 },
+  // proceso
+  { id: 't_viab', b: 'proceso', type: 'single', options: T_VIAB, caja: 'op_tiempo_viabilidad', crit: 1, label: '¿En cuánto tiempo dan una respuesta preliminar de viabilidad?', est: 8 },
+  { id: 'comite_frec', b: 'proceso', type: 'single', options: FREC, caja: 'op_frecuencia_comite', crit: 1, label: '¿Cada cuánto sesiona su comité de crédito?', est: 6 },
+  { id: 't_comite', b: 'proceso', type: 'single', options: T_COMITE, caja: 'op_tiempo_comite', crit: 1, label: '¿Cuánto tarda un expediente completo en llegar a comité?', est: 6 },
+  { id: 't_fondeo', b: 'proceso', type: 'single', options: T_FONDEO, caja: 'op_tiempo_fondeo', crit: 1, label: '¿Y de la aprobación a la dispersión del dinero?', est: 6 },
+  { id: 'docs', b: 'proceso', type: 'multi', options: a => onlyPFA(a) ? DOCS_PF : (isPFA(a) ? DOCS_PM.concat(DOCS_PF.filter(d => !DOCS_PM.some(p => p[0] === d[0]))) : DOCS_PM), caja: 'op_documentacion_estandar', crit: 1, label: '¿Qué documentos piden siempre para empezar?', est: 25 },
+  { id: 'eeff', b: 'proceso', type: 'single', options: EEFF, show: isPM, caja: 'op_eeff_auditados', label: '¿Piden estados financieros auditados?', est: 6 },
+  { id: 'eeff_monto', b: 'proceso', type: 'money', presets: [5e6, 10e6, 20e6, 50e6], show: a => a.eeff === 'desde_monto', because: () => 'Porque los piden a partir de cierto monto', caja: 'op_eeff_auditados', label: '¿A partir de qué monto?', est: 8 },
+  { id: 'scoring', b: 'proceso', type: 'multi', options: SCORING, exclusive: ['ninguno'], show: a => a.inst_tipo !== 'banco', because: a => a.inst_tipo === 'sofom_enr' ? 'Pregunta específica para SOFOM ENR' : null, caja: 'cs_scoring_alternativo', crit: 1, label: '¿Usan información alternativa para evaluar?', est: 12 },
+  { id: 'integracion', b: 'proceso', type: 'single', options: INTEG, caja: 'cs_integracion_digital', label: '¿Cómo prefieren recibir los expedientes?', est: 6 },
+  // precio
+  { id: 'pricing', b: 'precio', type: 'pricing', show: a => arr(a, 'productos').length > 0, because: a => 'Una fila por cada producto que eligieron (' + arr(a, 'productos').length + ')', caja: ['pc_tasas_por_producto', 'pc_plazos_por_producto'], crit: 1, label: 'Tasa y plazo típicos por producto', help: 'Rangos aproximados. Si no manejan comisión, déjenla vacía.', est: 80 },
+  { id: 'tasa_sube', b: 'precio', type: 'multi', options: FACT_TASA, caja: 'pc_reglas_pricing', crit: 1, label: '¿Qué hace que la tasa suba?', est: 12 },
+  { id: 'tasa_baja', b: 'precio', type: 'multi', options: FACT_TASA, caja: 'pc_reglas_pricing', label: '¿Y qué la hace bajar?', est: 12 },
+  { id: 'conversion', b: 'precio', type: 'text', multiline: 1, caja: 'pc_conversion_producto', label: 'Si un cliente pide un producto y no califica, ¿qué le ofrecen en su lugar?', placeholder: 'Ej. Si pide crédito simple sin garantía, le ofrecemos factoraje sobre sus facturas.', est: 30 },
+  { id: 'revolv', b: 'precio', type: 'money', presets: [1e6, 3e6, 5e6, 10e6], show: a => has(a, 'productos', 'revolvente'), because: () => 'Porque ofrecen crédito revolvente', caja: 'cs_revolvente_ticket', crit: 1, label: '¿De qué tamaño es una línea revolvente típica?', est: 10 },
+  { id: 'fac_aforo', b: 'precio', type: 'single', options: AFORO, show: a => prodAny(a, ['factoraje_con', 'factoraje_sin']), because: () => 'Porque ofrecen factoraje', caja: 'cf_porcentaje_adelanto', crit: 1, label: '¿Qué porcentaje de la factura adelantan?', est: 6 },
+  { id: 'fac_plazo', b: 'precio', type: 'single', options: PLAZO_FAC, show: a => prodAny(a, ['factoraje_con', 'factoraje_sin']), because: () => 'Porque ofrecen factoraje', caja: 'cf_plazo_max_factura', crit: 1, label: '¿Qué plazo máximo de factura aceptan?', est: 6 },
+  { id: 'fac_pagadores', b: 'precio', type: 'multi', options: PAGADORES, show: a => prodAny(a, ['factoraje_con', 'factoraje_sin']), because: () => 'Porque ofrecen factoraje', caja: 'cf_sectores_pagadores', crit: 1, label: '¿Qué tipo de pagadores aceptan?', est: 10 },
+  { id: 'fac_conc', b: 'precio', type: 'single', options: CONC, show: a => prodAny(a, ['factoraje_con', 'factoraje_sin']), because: () => 'Porque ofrecen factoraje', caja: 'cf_concentracion_max_pagador', label: '¿Qué concentración máxima aceptan en un solo pagador?', est: 6 },
+  { id: 'arr_equipo', b: 'precio', type: 'multi', options: EQUIPO, show: a => prodAny(a, ['arr_puro', 'arr_fin']), because: () => 'Porque ofrecen arrendamiento', caja: 'ca_tipos_equipo', crit: 1, label: '¿Qué tipo de equipo arriendan?', est: 12 },
+  { id: 'arr_usado', b: 'precio', type: 'single', options: USADO, show: a => prodAny(a, ['arr_puro', 'arr_fin']), because: () => 'Porque ofrecen arrendamiento', caja: 'ca_equipo_usado', label: '¿Aceptan equipo usado?', est: 6 },
+  { id: 'arr_residual', b: 'precio', type: 'single', options: RESIDUAL, show: a => has(a, 'productos', 'arr_puro'), because: () => 'Porque ofrecen arrendamiento puro', caja: 'ca_valor_residual_min', label: '¿Qué valor residual manejan?', est: 6 },
+  // vértice
+  { id: 'rechazos', b: 'vertice', type: 'rank', max: 3, options: RECHAZOS, label: '¿Cuáles son los 3 motivos por los que más rechazan solicitudes?', help: 'En orden. Con esto filtramos antes de mandarles un expediente.', est: 20 },
+  { id: 'no_mandar', b: 'vertice', type: 'text', multiline: 1, label: '¿Qué tipo de solicitud les hace perder tiempo?', placeholder: 'Ej. Empresas que solo tienen 6 meses de estados de cuenta, o que piden 100% del valor del equipo.', est: 30 },
+  { id: 'perfecto', b: 'vertice', type: 'text', multiline: 1, label: 'Describan a su cliente perfecto en una frase', placeholder: 'Ej. Manufacturera del Bajío con 5+ años, factura $30 M+, pide $5 M para equipo con garantía prendaria.', est: 35 },
+  { id: 'crecer', b: 'vertice', type: 'text', label: '¿Qué tipo de cliente les falta hoy y quisieran más?', placeholder: 'Ej. Transportistas medianos del norte', est: 20 },
+  { id: 'volumen', b: 'vertice', type: 'single', options: VOLUMEN, label: '¿Cuántas solicitudes calificadas al mes les gustaría recibir de Vértice?', est: 6 },
+  { id: 'contacto', b: 'vertice', type: 'contact', caja: ['co_punto_contacto', 'co_email_telefono'], crit: 1, label: '¿Quién recibe los expedientes que mandemos?', est: 35 },
+  // casos
+  { id: 'caso_0', b: 'casos', type: 'case', idx: 0, est: 70 },
+  { id: 'caso_1', b: 'casos', type: 'case', idx: 1, est: 70 },
+  { id: 'caso_2', b: 'casos', type: 'case', idx: 2, est: 70 },
+];
+const QBY = Object.fromEntries(Q.map(q => [q.id, q]));
+
+// ---------- state ----------
+const LS_KEY = 'vertice-criterios-value-v1';
+const state = { a: { inst_tipo: 'sofom_enr' }, n: {}, block: 'inicio', updated: 0, enviado: false, view: 'form', ownerSel: null };
+const openNotes = new Set();
+let prevVisible = null;
+try {
+  const raw = localStorage.getItem(LS_KEY);
+  if (raw) { const s = JSON.parse(raw); if (s && s.a) { state.a = s.a; state.n = s.n || {}; state.block = s.block || 'inicio'; state.updated = s.updated || 0; state.enviado = !!s.enviado; } }
+} catch (e) {}
+function saveLocal() { try { localStorage.setItem(LS_KEY, JSON.stringify({ a: state.a, n: state.n, block: state.block, updated: state.updated, enviado: state.enviado })); } catch (e) {} }
+
+function visible(q, a) { return !q.show || !!q.show(a); }
+function optsOf(q, a) { return typeof q.options === 'function' ? q.options(a) : (q.options || []); }
+function labelOf(q, a) { return typeof q.label === 'function' ? q.label(a) : q.label; }
+function answered(q, a) {
+  const v = a[q.id];
+  if (v == null || v === '') return false;
+  if (Array.isArray(v)) return v.length > 0;
+  if (q.type === 'flex') return !!v.v;
+  if (q.type === 'case') return !!v.d;
+  if (q.type === 'pricing' || q.type === 'contact') return Object.values(v).some(x => x && (typeof x === 'object' ? Object.values(x).some(y => y !== '' && y != null) : true));
+  return true;
+}
+
+function stats(a) {
+  const vis = Q.filter(q => visible(q, a));
+  const done = vis.filter(q => answered(q, a));
+  const cajas = new Set(), cajasOk = new Set();
+  vis.forEach(q => { const cs = q.caja ? [].concat(q.caja) : []; cs.forEach(c => { cajas.add(c); if (answered(q, a)) cajasOk.add(c); }); });
+  const secs = vis.filter(q => !answered(q, a)).reduce((s, q) => s + (q.est || 12), 0);
+  const skipped = Q.length - vis.length;
+  return { total: vis.length, done: done.length, pct: vis.length ? Math.round(done.length * 100 / vis.length) : 0, cajas: cajas.size, cajasOk: cajasOk.size, min: Math.max(0, Math.ceil(secs / 60)), skipped };
+}
+
+// ---------- case builder ----------
+const SECTOR_CASE = {
+  construccion: ['Constructora Altavista del Norte', 'Obra civil y edificación', 'Capital de trabajo para arrancar dos obras ya contratadas'],
+  transporte: ['Fletes y Logística Sierra Madre', 'Autotransporte de carga', 'Compra de 3 tractocamiones'],
+  manufactura: ['Plásticos Industriales del Bajío', 'Manufactura de empaques plásticos', 'Ampliar una línea de producción'],
+  agro: ['Agrícola Valle Verde', 'Producción y empaque de hortalizas', 'Capital de trabajo para el ciclo agrícola'],
+  comercio_may: ['Distribuidora Ferretera Atlas', 'Distribución mayorista de ferretería', 'Inventario de temporada'],
+  comercio_men: ['Farmacias y Abarrotes La Paz', 'Cadena de 6 tiendas', 'Abrir 2 sucursales nuevas'],
+  servicios: ['Consultores Integrales Delta', 'Ingeniería y consultoría', 'Capital de trabajo por 3 contratos nuevos'],
+  salud: ['Clínica de Especialidades San Rafael', 'Clínica privada de especialidades', 'Equipo de imagenología'],
+  tecnologia: ['Nube Datos MX', 'Software y servicios de TI', 'Contratar equipo para un contrato corporativo'],
+  energia: ['Solar Pacífico Instalaciones', 'Instalación de paneles solares', 'Inventario de paneles e inversores'],
+  mineria: ['Agregados Pétreos del Centro', 'Extracción de materiales pétreos', 'Maquinaria de trituración'],
+  turismo: ['Hotel Casa Bugambilia', 'Hotel boutique de 40 habitaciones', 'Remodelación de habitaciones'],
+  educacion: ['Colegio Bilingüe Arboleda', 'Escuela privada de preescolar a preparatoria', 'Construcción de aulas nuevas'],
+  gobierno: ['Servicios Urbanos Integrales', 'Proveedor de servicios a municipios', 'Capital de trabajo mientras cobra al municipio'],
+  otro: ['Grupo Comercial Horizonte', 'Comercio y servicios', 'Capital de trabajo'],
+};
+const ALT_NAME = ['', 'Grupo', 'Corporativo'];
+const ISSUES = {
+  flex_buro: { row: ['Historial', 'Atraso de 45 días hace 14 meses con un proveedor. Ya liquidado y al corriente desde entonces.'], what: 'atrasos en Buró' },
+  flex_32d: { row: ['Situación fiscal', '32-D negativa por una declaración mensual omitida. Ya tiene cita en el SAT para regularizar.'], what: 'la 32-D negativa' },
+  flex_sinhist: { row: ['Historial', 'Nunca ha tenido crédito formal. Ha crecido con recursos propios.'], what: 'no tener historial crediticio', noScore: 1 },
+  flex_resico: { row: ['Situación fiscal', 'Tributa en RESICO, con estados financieros simplificados.'], what: 'tributar en RESICO' },
+  flex_juicios: { row: ['Legal', 'Juicio mercantil activo por $350 mil con un exproveedor. Su abogado estima resolverlo en 6 meses.'], what: 'el juicio activo' },
+  flex_acta: { row: ['Corporativo', 'Cambio de socios de hace 1 año sin inscribir en el Registro Público de Comercio.'], what: 'el cambio de socios sin inscribir' },
+  flex_pep: { row: ['Socios', 'Un socio con 20% de las acciones es regidor municipal en funciones (PEP).'], what: 'tener un PEP como socio' },
+  flex_extranjeros: { row: ['Socios', 'Un fondo extranjero tiene 55% de las acciones.'], what: 'tener socios extranjeros con mayoría' },
+  flex_concurso: { row: ['Legal', 'Salió de concurso mercantil hace 3 años con convenio cumplido.'], what: 'el concurso mercantil previo' },
+};
+
+function buildCase(idx, a) {
+  const si = arr(a, 'sectores_si');
+  const prods = arr(a, 'productos').filter(p => p !== 'otro');
+  const zonas = arr(a, 'zonas').filter(z => z !== 'nacional');
+  const kind = ['base', 'limite', 'tolerancia'][idx];
+  const pool = si.length ? si : ['comercio_may', 'manufactura', 'servicios'];
+  const sector = idx === 2 ? (pool[2] || (a.sector_ventaja && a.sector_ventaja !== pool[0] ? a.sector_ventaja : pool[1 % pool.length])) : pool[idx % pool.length];
+  const repeated = (idx === 2 && sector === pool[0]) || (idx === 1 && sector === pool[0]) || (idx === 2 && pool.length === 2 && sector === pool[1]);
+  const prod = prods[idx] || prods[0] || 'credito_simple';
+  const zona = zonas.length ? lab(ZONAS, zonas[idx % zonas.length]) : ['Bajío', 'Norte', 'Occidente'][idx];
+  const tipo = isPM(a) ? 'pm' : isPFAE(a) ? 'pfae' : isPFA(a) ? 'pf_asal' : 'pm';
+  const mMin = num(a.monto_min), mMax = num(a.monto_max);
+  let monto = num(a.ticket) || (mMin && mMax ? nice(Math.sqrt(mMin * mMax)) : 3e6);
+  if (idx === 2) monto = nice(monto * 0.8);
+  const pr = (a.pricing || {})[prod] || {};
+  const plazo = num(pr.pmax) ? Math.max(6, Math.round(num(pr.pmax) * 0.6)) : 36;
+  const sp = { idx, kind, especial: null, tested: null, rows: [] };
+
+  // baseline values comfortably inside their stated box
+  let antig = Math.max((num(a.antig) || 0) + 3, 4);
+  let fact = nice(Math.max((num(a.facturacion) || 0) * 1.8, monto * 5));
+  let sPM = Math.min(900, (num(a.score_pm) || 640) + 45);
+  let sPF = Math.min(850, (num(a.score_pf) || 640) + 50);
+  let dscr = (num(a.dscr) || 1.25) + 0.4;
+  const rg = realGar(a);
+  let gar = rg[0] ? lab(GARANTIAS, rg[0]) : 'Sin garantía real, aval del socio principal';
+  let cob = rg[0] ? (parseFloat(a.cobertura) || 1.2) + 0.3 : null;
+  let fiscal = 'Opinión 32-D positiva', hist = 'Sin atrasos', extra = null;
+  let flagKey = null;
+
+  if (kind === 'limite') {
+    if (tipo === 'pm' && num(a.score_pm)) { sPM = num(a.score_pm) - 30; flagKey = 'sPM'; sp.especial = 'El score de la empresa está 30 puntos abajo de su mínimo de ' + num(a.score_pm) + '.'; sp.tested = { dim: 'score mínimo de la empresa' }; }
+    else if (num(a.score_pf)) { sPF = num(a.score_pf) - 30; flagKey = 'sPF'; sp.especial = 'El score del ' + (tipo === 'pm' ? 'socio principal' : 'solicitante') + ' está 30 puntos abajo de su mínimo de ' + num(a.score_pf) + '.'; sp.tested = { dim: 'score mínimo de Buró' }; }
+    else if (num(a.antig) >= 2) { antig = num(a.antig) - 1; flagKey = 'antig'; sp.especial = 'Tiene ' + antig + ' años operando y su mínimo es ' + num(a.antig) + '.'; sp.tested = { dim: 'antigüedad mínima' }; }
+    else if (num(a.facturacion)) { fact = nice(num(a.facturacion) * 0.8); flagKey = 'fact'; sp.especial = 'Factura 20% menos que su mínimo de ' + fmtMoney(num(a.facturacion)) + '.'; sp.tested = { dim: 'facturación mínima' }; }
+    else if (mMax) { monto = nice(mMax * 1.2); flagKey = 'monto'; sp.especial = 'Pide 20% más que su monto máximo de ' + fmtMoney(mMax) + '.'; sp.tested = { dim: 'monto máximo' }; }
+    else { antig = 1; flagKey = 'antig'; sp.especial = 'Solo tiene 1 año operando.'; sp.tested = { dim: 'antigüedad' }; }
+    if (rg.length) { gar = lab(GARANTIAS, rg.includes('hipotecaria') ? 'hipotecaria' : rg[0]); cob = 2; }
+    dscr = Math.max(dscr, (num(a.dscr) || 1.25) + 0.6);
+    extra = 'Sus ventas crecieron 25% el último año.';
+    sp.especial += ' A cambio, ofrece garantía con cobertura de 2.0x y su flujo es muy sólido.';
+  }
+  if (kind === 'tolerancia') {
+    const order = ['flex_buro', 'flex_32d', 'flex_sinhist', 'flex_resico', 'flex_juicios', 'flex_acta', 'flex_pep', 'flex_extranjeros', 'flex_concurso'].filter(id => visible(QBY[id], a));
+    const pick = order.find(id => flexV(a, id) === 'cond') || order.find(id => flexV(a, id) === 'no') || order.find(id => flexV(a, id) === 'si') || 'flex_buro';
+    const iss = ISSUES[pick];
+    const stated = flexV(a, pick);
+    sp.tested = { id: pick, stated: stated, what: iss.what };
+    if (iss.row[0] === 'Historial') hist = iss.row[1]; else if (iss.row[0] === 'Situación fiscal') fiscal = iss.row[1]; else extra = iss.row[1];
+    flagKey = iss.row[0] === 'Historial' ? 'hist' : iss.row[0] === 'Situación fiscal' ? 'fiscal' : 'extra';
+    if (iss.noScore) { sPM = null; sPF = null; }
+    sp.especial = (stated === 'no' ? 'Ustedes marcaron "' + FLEX_LBL[pick].toLowerCase() + '" como rechazo automático. ¿También con este perfil? ' : stated === 'cond' ? 'Ustedes dijeron que con condiciones sí. ¿Qué condiciones pondrían aquí? ' : '') + 'Todo lo demás está dentro de sus parámetros.';
+  }
+
+  const R = (k, v, key) => sp.rows.push([k, v, key && key === flagKey ? 1 : 0]);
+  if (tipo === 'pf_asal') {
+    const nombres = ['Laura Méndez, 34 años', 'Jorge Ríos, 41 años', 'Ana Torres, 29 años'];
+    sp.titulo = nombres[idx] + ' (ficticio)';
+    sp.sub = ['Ingeniera de calidad en planta automotriz', 'Gerente de ventas en distribuidora', 'Enfermera en hospital privado'][idx];
+    const ing = nice(Math.max((num(a.ingreso_pf) || 18000) * 1.6, 25000));
+    R('Tipo de cliente', 'Persona física asalariada');
+    R('Producto', lab(PRODUCTOS, prod));
+    R('Monto solicitado', fmtFull(Math.min(monto, ing * 12)), 'monto');
+    R('Plazo', plazo + ' meses');
+    R('Antigüedad laboral', antig + ' años', 'antig');
+    R('Ingreso neto mensual', fmtFull(ing), 'fact');
+    R('Score Buró', sPF ? String(sPF) : 'Sin historial', 'sPF');
+    R('Ingreso que va a deudas', '28%');
+  } else {
+    const sc = SECTOR_CASE[sector] || SECTOR_CASE.otro;
+    sp.titulo = (repeated ? ALT_NAME[idx] + ' ' : '') + sc[0] + (tipo === 'pfae' ? ' (PFAE, ficticio)' : ' SA de CV (ficticio)');
+    sp.sub = sc[1] + ' · ' + zona;
+    R('Tipo de cliente', tipo === 'pfae' ? 'Persona física con actividad empresarial' : 'Persona moral');
+    R('Producto', lab(PRODUCTOS, prod));
+    R('Monto solicitado', fmtFull(monto), 'monto');
+    R('Plazo', plazo + ' meses');
+    R('Destino', sc[2]);
+    R('Años operando', antig + ' años', 'antig');
+    R('Facturación anual', fmtFull(fact), 'fact');
+    if (tipo === 'pm') R('Score Buró empresa', sPM ? String(sPM) : 'Sin historial', 'sPM');
+    R(tipo === 'pm' ? 'Score Buró socio principal' : 'Score Buró', sPF ? String(sPF) : 'Sin historial', 'sPF');
+    R('DSCR', dscr.toFixed(2) + 'x');
+    R('Garantía', gar + (cob ? ' · cobertura ' + cob.toFixed(2) + 'x' : ''));
+  }
+  R('Historial de pago', hist, 'hist');
+  R('Situación fiscal', fiscal, 'fiscal');
+  if (extra) R(kind === 'tolerancia' ? ISSUES[sp.tested.id].row[0] : 'Tendencia', extra, 'extra');
+  return sp;
+}
+
+function caseSpec(idx, a) { const v = a['caso_' + idx]; return (v && v.spec) ? v.spec : buildCase(idx, a); }
+
+function insightFor(spec, v) {
+  if (!v || !v.d) return null;
+  const why = [].concat((v.r || []).map(k => lab(RECHAZOS, k)), (v.c || []).map(k => lab(CONDS, k)).map(s => s.toLowerCase())).join(', ');
+  const t = v.t ? ' "' + v.t + '"' : '';
+  if (spec.kind === 'base') {
+    if (v.d === 'si') return ['ok', 'Aprobaron el caso que cumple con todo lo que dijeron. Sus criterios declarados son consistentes.'];
+    if (v.d === 'cond') return ['warn', 'Aun dentro de sus parámetros piden condiciones extra: ' + (why || 'ver nota') + '.' + t];
+    return ['bad', 'Rechazaron un caso que cumple con todo lo que dijeron. Hay un criterio que no salió en el cuestionario: ' + (why || 'ver nota') + '.' + t];
+  }
+  if (spec.kind === 'limite') {
+    const dim = spec.tested ? spec.tested.dim : 'su límite';
+    if (v.d === 'no') return ['bad', 'Su ' + dim + ' es firme, aun con garantía de 2.0x y buen flujo.' + t];
+    return ['ok', 'Su ' + dim + ' se puede flexibilizar si hay buena garantía y flujo' + (v.d === 'cond' && why ? ', con: ' + why : '') + '.' + t];
+  }
+  const tt = spec.tested || {}, what = tt.what || 'la situación especial';
+  if (tt.stated === 'no' && v.d !== 'no') return ['warn', 'Dijeron que ' + what + ' es rechazo automático, pero aprobaron el caso' + (why ? ' con: ' + why : '') + '. Es negociable con buen perfil.' + t];
+  if (v.d === 'no') return ['bad', 'Confirmado: ' + what + ' es motivo de rechazo.' + t];
+  return ['ok', 'Con ' + what + ' sí hay manera' + (why ? ': ' + why : '') + '.' + t];
+}
+
+// ---------- value text (summary / copy) ----------
+function valueText(q, v, a) {
+  if (v == null || v === '') return '';
+  switch (q.type) {
+    case 'single': return lab(optsOf(q, a).length ? optsOf(q, a) : [], v);
+    case 'multi': case 'rank': { const o = optsOf(q, a); return v.map((k, i) => (q.type === 'rank' ? (i + 1) + '. ' : '') + lab(o.length ? o : SECTORES.concat(EXCL_EXTRA), k)).join(', '); }
+    case 'money': return v === 'na' ? (q.na || 'No aplica') : fmtFull(v);
+    case 'num': return v === 'na' ? (q.na || 'No aplica') : (v + (q.unit ? (q.unit === 'x' ? 'x' : ' ' + q.unit) : ''));
+    case 'text': return v;
+    case 'flex': { let s = lab(FLEX, v.v); if (v.c && v.c.length) s += ' (' + v.c.map(k => lab(CONDS, k)).join(', ') + ')'; if (v.t) s += '. ' + v.t; return s; }
+    case 'pricing': return Object.keys(v).filter(p => has(a, 'productos', p)).map(p => { const r = v[p] || {}; const unit = p.startsWith('factoraje') ? '% mensual' : '% anual'; const parts = []; if (r.tmin || r.tmax) parts.push('tasa ' + (r.tmin || '?') + ' a ' + (r.tmax || '?') + unit); if (r.pmin || r.pmax) parts.push('plazo ' + (r.pmin || '?') + ' a ' + (r.pmax || '?') + ' meses'); if (r.com) parts.push('comisión ' + r.com + '%'); return parts.length ? lab(PRODUCTOS, p) + ': ' + parts.join(', ') : ''; }).filter(Boolean).join(' | ');
+    case 'contact': return ['nombre', 'puesto', 'email', 'tel'].map(k => v[k]).filter(Boolean).join(' · ');
+    case 'case': { let s = lab(CASE_D, v.d); const w = [].concat((v.c || []).map(k => lab(CONDS, k)), (v.r || []).map(k => lab(RECHAZOS, k))); if (w.length) s += ' (' + w.join(', ') + ')'; if (v.t) s += '. ' + v.t; return s; }
+  }
+  return String(v);
+}
+
+// ---------- rendering: question inputs ----------
+function chipsHTML(q, a) {
+  const o = optsOf(q, a), v = a[q.id];
+  if (!o.length) return '<p class="hint">Primero elijan opciones en la pregunta anterior.</p>';
+  return '<div class="chips" role="group">' + o.map(([k, l]) => {
+    let on = false, rk = '';
+    if (q.type === 'single') on = v === k;
+    else { const list = Array.isArray(v) ? v : []; on = list.includes(k); if (q.type === 'rank' && on) rk = '<span class="rk">' + (list.indexOf(k) + 1) + '</span>'; }
+    return '<button type="button" class="chip" data-q="' + q.id + '" data-v="' + esc(k) + '" aria-pressed="' + on + '">' + rk + esc(l) + '</button>';
+  }).join('') + '</div>';
+}
+function numHTML(q, a) {
+  const v = a[q.id], money = q.type === 'money';
+  const shown = v === 'na' || v == null ? '' : (money ? Math.round(v).toLocaleString('es-MX') : String(v));
+  let h = '<div class="numrow"><label class="field">' + (money ? '<span class="unit">$</span>' : '') +
+    '<input id="in-' + q.id + '" data-q="' + q.id + '" inputmode="decimal" autocomplete="off" value="' + esc(shown) + '" placeholder="' + (money ? 'Ej. 5,000,000 o 5m' : 'Escribe') + '" aria-label="' + esc(labelOf(q, a)) + '">' +
+    (q.unit && q.unit !== 'x' ? '<span class="unit">' + q.unit + '</span>' : '') + (q.unit === 'x' ? '<span class="unit">x</span>' : '') + (money ? '<span class="unit">MXN</span>' : '') + '</label>';
+  h += '<div class="chips">' + (q.presets || []).map(p => '<button type="button" class="chip" data-preset="' + p + '" data-q="' + q.id + '" aria-pressed="' + (v === p) + '">' + (money ? fmtMoney(p) : p + (q.unit === 'x' ? 'x' : '')) + '</button>').join('');
+  if (q.na) h += '<button type="button" class="chip na" data-na="1" data-q="' + q.id + '" aria-pressed="' + (v === 'na') + '">' + esc(q.na) + '</button>';
+  return h + '</div></div>';
+}
+function textHTML(q, a) {
+  const v = a[q.id] || '';
+  return q.multiline
+    ? '<textarea class="area" id="in-' + q.id + '" data-q="' + q.id + '" placeholder="' + esc(q.placeholder || '') + '" aria-label="' + esc(labelOf(q, a)) + '">' + esc(v) + '</textarea>'
+    : '<input class="txt" id="in-' + q.id + '" data-q="' + q.id + '" value="' + esc(v) + '" placeholder="' + esc(q.placeholder || '') + '" aria-label="' + esc(labelOf(q, a)) + '">';
+}
+function segHTML(q, cur, opts, attr) {
+  return '<div class="seg" role="group">' + opts.map(([k, l]) => '<button type="button" ' + attr + ' data-q="' + q.id + '" data-k="' + k + '" aria-pressed="' + (cur === k) + '"><i></i>' + esc(l) + '</button>').join('') + '</div>';
+}
+function subChips(q, list, sel, sub) {
+  return '<div class="chips">' + list.map(([k, l]) => '<button type="button" class="chip" data-q="' + q.id + '" data-sub="' + sub + '" data-v="' + k + '" aria-pressed="' + sel.includes(k) + '">' + esc(l) + '</button>').join('') + '</div>';
+}
+function flexHTML(q, a) {
+  const v = a[q.id] || {};
+  let h = segHTML(q, v.v, FLEX, 'data-flex="1"');
+  if (v.v === 'cond') {
+    h += '<div class="sub"><span class="sub-l">¿Con qué condiciones?</span>' + subChips(q, CONDS, v.c || [], 'c') +
+      '<input class="txt" id="in-' + q.id + '-t" data-q="' + q.id + '" data-sub="t" value="' + esc(v.t || '') + '" placeholder="Detalle opcional. Ej. solo si el atraso fue hace más de 12 meses"></div>';
+  }
+  return h;
+}
+function pricingHTML(q, a) {
+  const v = a.pricing || {}, prods = arr(a, 'productos');
+  if (!prods.length) return '<p class="hint">Elijan productos en el bloque "Qué financian".</p>';
+  const cell = (p, f, ph) => '<td><input id="pr-' + p + '-' + f + '" data-q="pricing" data-prod="' + p + '" data-f="' + f + '" inputmode="decimal" value="' + esc((v[p] || {})[f] || '') + '" placeholder="' + ph + '"></td>';
+  return '<div class="tbl-wrap"><table class="pt"><thead><tr><th>Producto</th><th>Tasa mín.</th><th>Tasa máx.</th><th>Plazo mín.</th><th>Plazo máx.</th><th>Comisión apertura</th></tr></thead><tbody>' +
+    prods.map(p => { const f = p.startsWith('factoraje') || p === 'confirming'; const u = f ? '% mes' : '% año'; return '<tr><td>' + esc(lab(PRODUCTOS, p)) + '</td>' + cell(p, 'tmin', u) + cell(p, 'tmax', u) + cell(p, 'pmin', 'meses') + cell(p, 'pmax', 'meses') + cell(p, 'com', '%') + '</tr>'; }).join('') +
+    '</tbody></table></div><span class="hint">Factoraje y confirming en tasa mensual; los demás en tasa anual.</span>';
+}
+function contactHTML(q, a) {
+  const v = a.contacto || {};
+  const f = (k, l, ph, type) => '<label>' + l + '<input class="txt" id="ct-' + k + '" data-q="contacto" data-f="' + k + '" type="' + (type || 'text') + '" value="' + esc(v[k] || '') + '" placeholder="' + ph + '"></label>';
+  return '<div class="contact">' + f('nombre', 'Nombre', 'Quién recibe los expedientes') + f('puesto', 'Puesto', 'Ej. Gerente de originación') + f('email', 'Correo', 'nombre@grupovalue.com', 'email') + f('tel', 'Teléfono', '10 dígitos', 'tel') + '</div>';
+}
+function caseHTML(q, a) {
+  const spec = caseSpec(q.idx, a), v = a[q.id] || {};
+  let h = '<div class="case"><div class="case-h"><b>' + esc(spec.titulo) + '</b><span>' + esc(spec.sub) + '</span></div><dl>' +
+    spec.rows.map(r => '<dt' + (r[2] ? ' class="flag"' : '') + '>' + esc(r[0]) + '</dt><dd' + (r[2] ? ' class="flag"' : '') + '>' + esc(r[1]) + '</dd>').join('') + '</dl>' +
+    (spec.especial ? '<div class="case-x"><b>Lo que tiene de especial:</b> ' + esc(spec.especial) + '</div>' : '') + '</div>';
+  h += segHTML(q, v.d, CASE_D, 'data-case="1"');
+  if (v.d === 'cond') h += '<div class="sub"><span class="sub-l">¿Qué condiciones pondrían?</span>' + subChips(q, CONDS, v.c || [], 'c') + '</div>';
+  if (v.d === 'no') h += '<div class="sub"><span class="sub-l">¿Por qué lo rechazarían?</span>' + subChips(q, RECHAZOS, v.r || [], 'r') + '</div>';
+  if (v.d) h += '<input class="txt" id="in-' + q.id + '-t" data-q="' + q.id + '" data-sub="t" value="' + esc(v.t || '') + '" placeholder="' + (v.d === 'no' ? '¿Qué tendría que cambiar para aprobarlo?' : '¿Qué tasa y plazo le darían? (opcional)') + '">';
+  if (v.spec) h += '<button type="button" class="relink" data-recase="' + q.id + '">Volver a armar este caso con mis respuestas actuales</button>';
+  return h;
+}
+
+function qHTML(q, a, isNew) {
+  if (q.type === 'case') {
+    const titles = ['Caso 1', 'Caso 2', 'Caso 3'];
+    return '<section class="q' + (isNew ? ' new' : '') + '" data-qid="' + q.id + '"><div class="q-top"><div class="q-label">' + titles[q.idx] + ': ¿le prestarían?</div></div>' + caseHTML(q, a) + '</section>';
+  }
+  const because = q.because ? q.because(a) : null;
+  let inner = '';
+  switch (q.type) {
+    case 'single': case 'multi': case 'rank': inner = chipsHTML(q, a); break;
+    case 'money': case 'num': inner = numHTML(q, a); break;
+    case 'text': inner = textHTML(q, a); break;
+    case 'flex': inner = flexHTML(q, a); break;
+    case 'pricing': inner = pricingHTML(q, a); break;
+    case 'contact': inner = contactHTML(q, a); break;
+  }
+  const noteOpen = openNotes.has(q.id) || !!state.n[q.id];
+  const note = noteOpen
+    ? '<textarea class="area" id="nt-' + q.id + '" data-note="' + q.id + '" placeholder="Matiz, excepción o comentario" aria-label="Comentario">' + esc(state.n[q.id] || '') + '</textarea>'
+    : '<div class="q-foot"><button type="button" class="note-btn" data-opennote="' + q.id + '">+ Agregar un matiz o excepción</button></div>';
+  return '<section class="q' + (isNew ? ' new' : '') + '" data-qid="' + q.id + '"><div class="q-top">' +
+    (because ? '<span class="because">' + esc(because) + '</span>' : '') +
+    '<div class="q-label">' + esc(labelOf(q, a)) + (q.crit ? '<span class="crit">Clave</span>' : '') + '</div>' +
+    (q.help ? '<p class="q-help">' + esc(q.help) + '</p>' : '') + '</div>' + inner + (q.type === 'flex' || q.type === 'contact' || q.type === 'pricing' ? '' : note) + '</section>';
+}
+
+// ---------- rendering: page ----------
+const $main = document.getElementById('main'), $panel = document.getElementById('panel'), $steps = document.getElementById('steps');
+
+function blockQs(b, a) { return Q.filter(q => q.b === b && visible(q, a)); }
+
+function renderSteps() {
+  const a = state.a;
+  $steps.innerHTML = BLOCKS.map(b => {
+    const qs = blockQs(b.id, a), d = qs.filter(q => answered(q, a)).length;
+    const st = b.id === 'resumen' ? (state.enviado ? 'done' : '') : (qs.length && d === qs.length ? 'done' : d ? 'partial' : '');
+    return '<button type="button" class="step" data-go="' + b.id + '" data-st="' + st + '"' + (state.block === b.id && state.view === 'form' ? ' aria-current="step"' : '') + '><span class="sd"></span>' + esc(b.short) + (b.id !== 'resumen' && qs.length ? '<span class="sc">' + d + '/' + qs.length + '</span>' : '') + '</button>';
+  }).join('');
+}
+
+function renderBlock(focusSel) {
+  if (state.view === 'owner') { renderOwner(); return; }
+  const a = state.a, b = BLOCKS.find(x => x.id === state.block) || BLOCKS[0];
+  const qs = blockQs(b.id, a);
+  const nowVis = new Set(Q.filter(q => visible(q, a)).map(q => q.id));
+  let h = '<div class="block-head"><span class="eyebrow">Bloque ' + (BLOCKS.indexOf(b) + 1) + ' de ' + BLOCKS.length + '</span><h1>' + esc(b.title) + '</h1><p>' + esc(b.lead) + '</p></div>';
+  if (b.id === 'inicio') {
+    h += '<div class="intro"><div><b>Se adapta a ustedes</b><span>Si algo no aplica a su operación, lo saltamos. Las preguntas nuevas aparecen marcadas con el motivo.</span></div><div><b>20 a 30 minutos</b><span>Casi todo se contesta con un clic. Lo de texto es opcional pero ayuda mucho.</span></div><div><b>Se guarda solo</b><span>Pueden cerrar y regresar. Al final ven su perfil completo y 3 casos de prueba.</span></div></div>';
+  }
+  if (b.id === 'resumen') { h += summaryHTML(a, true); }
+  else {
+    h += qs.map(q => qHTML(q, a, prevVisible && !prevVisible.has(q.id))).join('');
+    const skipped = Q.filter(q => q.b === b.id && !visible(q, a)).length;
+    const i = BLOCKS.indexOf(b), next = BLOCKS[i + 1], prev = BLOCKS[i - 1];
+    h += '<div class="nav">' + (prev ? '<button type="button" class="btn sec" data-go="' + prev.id + '">Anterior</button>' : '<span></span>') +
+      (skipped ? '<span class="skipnote">Omitimos ' + skipped + (skipped === 1 ? ' pregunta que no aplica' : ' preguntas que no aplican') + ' a su operación.</span>' : '') +
+      (next ? '<button type="button" class="btn" data-go="' + next.id + '">Siguiente: ' + esc(next.short) + '</button>' : '') + '</div>';
+  }
+  $main.innerHTML = h;
+  prevVisible = nowVis;
+  if (focusSel) { const el = $main.querySelector(focusSel); if (el) el.focus({ preventScroll: true }); }
+  renderSteps();
+}
+
+function tagList(items, cls) { return items.length ? '<div class="tags">' + items.map(t => '<span class="tag' + (cls ? ' ' + cls : '') + '">' + esc(t) + '</span>').join('') + '</div>' : ''; }
+
+function idealSentence(a) {
+  const bits = [];
+  let who = isPM(a) ? 'Empresa' + (arr(a, 'pm_tamano').length ? ' ' + arr(a, 'pm_tamano').map(k => lab(TAMANO, k).toLowerCase()).join(' o ') : '') : isPFAE(a) ? 'Persona física con actividad empresarial' : isPFA(a) ? 'Persona asalariada' : null;
+  if (!who) return null;
+  let s = who;
+  const si = arr(a, 'sectores_si').map(k => lab(SECTORES, k).toLowerCase());
+  if (si.length) { s += ' de ' + (si.length > 3 ? si.slice(0, 3).join(', ') + ' y otros' : si.join(', ')); bits.push(1); }
+  const z = arr(a, 'zonas');
+  if (z.length) { s += z.includes('nacional') ? ', en todo el país' : ', en ' + z.map(k => lab(ZONAS, k)).join(', '); bits.push(1); }
+  if (num(a.antig)) { s += ', con ' + a.antig + '+ años ' + (onlyPFA(a) ? 'en su empleo' : 'operando'); bits.push(1); }
+  if (num(a.facturacion)) { s += ', que factura desde ' + fmtMoney(a.facturacion) + ' al año'; bits.push(1); }
+  if (num(a.monto_min) || num(a.monto_max)) { s += ', y que pide ' + (num(a.monto_min) && num(a.monto_max) ? 'entre ' + fmtMoney(a.monto_min) + ' y ' + fmtMoney(a.monto_max) : num(a.monto_min) ? 'desde ' + fmtMoney(a.monto_min) : 'hasta ' + fmtMoney(a.monto_max)); bits.push(1); }
+  const g = realGar(a);
+  if (g.length) { s += ', con garantía ' + g.slice(0, 2).map(k => lab(GARANTIAS, k).toLowerCase()).join(' o '); bits.push(1); }
+  return bits.length >= 2 ? s + '.' : null;
+}
+
+function profileHTML(a, full) {
+  const st = stats(a);
+  const flexQs = Q.filter(q => q.type === 'flex' && visible(q, a));
+  const noList = arr(a, 'sectores_no').map(k => lab(SECTORES.concat(EXCL_EXTRA), k)).concat(flexQs.filter(q => flexV(a, q.id) === 'no').map(q => FLEX_LBL[q.id]));
+  const condQs = flexQs.filter(q => flexV(a, q.id) === 'cond');
+  const kv = [];
+  if (num(a.monto_min) || num(a.monto_max)) kv.push(['Monto por crédito', (fmtMoney(a.monto_min) || '?') + ' a ' + (fmtMoney(a.monto_max) || '?')]);
+  if (num(a.ticket)) kv.push(['Ticket ideal', fmtMoney(a.ticket)]);
+  if (a.moneda) kv.push(['Moneda', lab(MONEDA, a.moneda)]);
+  if (a.antig != null) kv.push([onlyPFA(a) ? 'Antigüedad laboral' : 'Antigüedad mínima', a.antig === 'na' ? 'Sin requisito' : a.antig + ' años']);
+  if (a.facturacion != null && visible(QBY.facturacion, a)) kv.push(['Facturación mínima', a.facturacion === 'na' ? 'Sin requisito' : fmtMoney(a.facturacion)]);
+  if (a.ingreso_pf != null && visible(QBY.ingreso_pf, a)) kv.push(['Ingreso mínimo', a.ingreso_pf === 'na' ? 'Sin requisito' : fmtMoney(a.ingreso_pf) + '/mes']);
+  if (a.score_pm != null && visible(QBY.score_pm, a)) kv.push(['Score Buró empresa', a.score_pm === 'na' ? 'No lo usan' : a.score_pm + '+']);
+  if (a.score_pf != null) kv.push(['Score Buró persona', a.score_pf === 'na' ? 'No lo usan' : a.score_pf + '+']);
+  if (a.cobertura && visible(QBY.cobertura, a)) kv.push(['Cobertura de garantía', lab(COBERTURA, a.cobertura)]);
+  if (a.dscr != null && visible(QBY.dscr, a)) kv.push(['DSCR mínimo', a.dscr === 'na' ? 'No lo usan' : a.dscr + 'x']);
+  if (a.deuda_ebitda != null && visible(QBY.deuda_ebitda, a)) kv.push(['Deuda / EBITDA máx.', a.deuda_ebitda === 'na' ? 'No lo usan' : a.deuda_ebitda + 'x']);
+  const times = [];
+  if (a.t_viab) times.push(['Viabilidad', lab(T_VIAB, a.t_viab)]);
+  if (a.comite_frec) times.push(['Comité', lab(FREC, a.comite_frec)]);
+  if (a.t_comite) times.push(['A comité', lab(T_COMITE, a.t_comite)]);
+  if (a.t_fondeo) times.push(['A fondeo', lab(T_FONDEO, a.t_fondeo)]);
+  const price = arr(a, 'productos').map(p => { const r = (a.pricing || {})[p] || {}; return (r.tmin || r.tmax) ? [lab(PRODUCTOS, p), (r.tmin || '?') + ' a ' + (r.tmax || '?') + (p.startsWith('factoraje') || p === 'confirming' ? '% mes' : '%')] : null; }).filter(Boolean);
+  const kvHTML = rows => '<div class="kv">' + rows.map(r => '<span>' + esc(r[0]) + '</span><b>' + esc(r[1]) + '</b>').join('') + '</div>';
+  const ideal = idealSentence(a);
+  const yes = arr(a, 'productos').map(k => lab(PRODUCTOS, k)).concat(arr(a, 'sectores_si').map(k => lab(SECTORES, k)));
+  let h = '';
+  h += '<div class="ps"><h3><i class="gold"></i>Cliente ideal</h3><div class="ideal' + (ideal ? '' : ' empty') + '">' + esc(ideal || 'Se arma solo conforme contestan: tipo de cliente, sector, zona, antigüedad, monto y garantía.') + '</div></div>';
+  h += '<div class="ps"><h3><i class="ok"></i>Sí financian</h3>' + (yes.length ? tagList(yes) : '<span class="pempty">Productos y sectores que buscan.</span>') + '</div>';
+  h += '<div class="ps"><h3><i class="bad"></i>Rechazo automático</h3>' + (noList.length ? tagList(noList, 'bad') : '<span class="pempty">Giros y situaciones que nunca pasan.</span>') + '</div>';
+  h += '<div class="ps"><h3><i class="warn"></i>Con condiciones</h3>' + (condQs.length ? '<div class="cond-list">' + condQs.map(q => { const v = a[q.id]; const c = (v.c || []).map(k => lab(CONDS, k)).join(', '); return '<div>' + esc(FLEX_LBL[q.id]) + (c || v.t ? '<small>' + esc([c, v.t].filter(Boolean).join('. ')) + '</small>' : '') + '</div>'; }).join('') + '</div>' : '<span class="pempty">Situaciones negociables y qué piden a cambio.</span>') + '</div>';
+  h += '<div class="ps"><h3><i class="gold"></i>Umbrales</h3>' + (kv.length ? kvHTML(kv) : '<span class="pempty">Montos, antigüedad, score, garantía.</span>') + '</div>';
+  if (times.length || full) h += '<div class="ps"><h3><i class="gold"></i>Tiempos</h3>' + (times.length ? kvHTML(times) : '<span class="pempty">Sin datos.</span>') + '</div>';
+  if (price.length) h += '<div class="ps"><h3><i class="gold"></i>Tasas</h3>' + kvHTML(price) + '</div>';
+  if (full) {
+    const extra = [];
+    if (arr(a, 'rechazos').length) extra.push(['Motivos de rechazo', a.rechazos.map((k, i) => (i + 1) + '. ' + lab(RECHAZOS, k)).join('  ')]);
+    if (a.volumen) extra.push(['Volumen deseado', lab(VOLUMEN, a.volumen) + ' al mes']);
+    const c = a.contacto || {};
+    if (c.nombre || c.email) extra.push(['Contacto', [c.nombre, c.puesto, c.email, c.tel].filter(Boolean).join(' · ')]);
+    if (extra.length) h += '<div class="ps"><h3><i class="gold"></i>Para Vértice</h3>' + kvHTML(extra) + '</div>';
+    if (a.perfecto) h += '<div class="ps"><h3><i class="gold"></i>En sus palabras</h3><div class="ideal">' + esc(a.perfecto) + '</div></div>';
+  }
+  return { html: h, st };
+}
+
+function renderPanel() {
+  const a = state.a, p = profileHTML(a, false), st = p.st;
+  const crit = Q.filter(q => q.crit && visible(q, a)), critOk = crit.filter(q => answered(q, a)).length;
+  $panel.innerHTML = '<div class="p-head"><span class="p-eyebrow">Perfil en vivo</span><div class="p-title">Lo que Grupo Value busca en un cliente</div></div>' +
+    '<div class="meters"><div class="meter"><b>' + st.pct + '%</b><span>avance</span></div><div class="meter"><b>' + st.cajasOk + '/' + st.cajas + '</b><span>criterios capturados</span></div><div class="meter"><b>' + critOk + '/' + crit.length + '</b><span>preguntas clave</span></div></div>' +
+    '<div class="bar" role="progressbar" aria-valuemin="0" aria-valuemax="100" aria-valuenow="' + st.pct + '"><i style="width:' + st.pct + '%"></i></div>' + p.html;
+  document.querySelector('#time span:last-child').textContent = st.min ? '≈ ' + st.min + ' min restantes' : 'Listo para enviar';
+}
+
+function insightsHTML(a) {
+  const items = [0, 1, 2].map(i => insightFor(caseSpec(i, a), a['caso_' + i])).filter(Boolean);
+  if (!items.length) return '<p class="msg">Contesten los 3 casos de prueba para ver qué criterios son firmes y cuáles negociables.</p>';
+  return '<div class="insights">' + items.map(([c, t]) => '<div class="ins"><i class="' + c + '"></i><p>' + esc(t) + '</p></div>').join('') + '</div>';
+}
+
+function summaryHTML(a, actions) {
+  const p = profileHTML(a, true);
+  let h = '<div class="sum"><div class="panel-like">' + p.html + '</div><div class="ps"><h3 class="eyebrow">Lo que revelaron los casos de prueba</h3></div>' + insightsHTML(a);
+  if (actions) {
+    const st = p.st;
+    h += '<div class="actions">' + (remote.mode === 'cloud' ? '<button type="button" class="btn" id="sendBtn">' + (state.enviado ? 'Enviado. Volver a enviar' : 'Enviar a Vértice') + '</button>' : '') +
+      '<button type="button" class="btn' + (remote.mode === 'cloud' ? ' sec' : '') + '" id="copyBtn">Copiar todas las respuestas</button>' +
+      '<span class="msg" id="sumMsg">' + (st.pct < 100 ? 'Llevan ' + st.pct + '% contestado. Pueden enviar así o completar lo pendiente.' : 'Todo contestado.') + '</span></div>' +
+      (remote.mode === 'cloud' ? '' : '<p class="msg">Sus respuestas están guardadas en este navegador. Copien el texto y péguenlo en el chat del Zoom o mándenlo por correo a su contacto de Vértice.</p>') +
+      '<textarea class="copybox" id="copyBox" readonly hidden aria-label="Respuestas en texto"></textarea>';
+  }
+  return h + '</div>';
+}
+
+function copyText(a, notes) {
+  const L = ['PERFIL DE CRÉDITO · ' + (a.resp_nombre ? a.resp_nombre + (a.resp_puesto ? ', ' + a.resp_puesto : '') + ' · ' : '') + 'Grupo Value', ''];
+  BLOCKS.forEach(b => {
+    const qs = blockQs(b.id, a).filter(q => answered(q, a) || (notes || {})[q.id]);
+    if (!qs.length) return;
+    L.push('== ' + b.title.toUpperCase() + ' ==');
+    qs.forEach(q => {
+      if (q.type === 'case') {
+        const sp = caseSpec(q.idx, a);
+        L.push('- Caso ' + (q.idx + 1) + ': ' + sp.titulo + '. ' + sp.rows.map(r => r[0] + ': ' + r[1]).join('; ') + (sp.especial ? '. Especial: ' + sp.especial : ''));
+        L.push('  Decisión: ' + valueText(q, a[q.id], a));
+      } else {
+        L.push('- ' + labelOf(q, a) + ': ' + (valueText(q, a[q.id], a) || '(sin respuesta)'));
+      }
+      if ((notes || {})[q.id]) L.push('  Matiz: ' + notes[q.id]);
+    });
+    L.push('');
+  });
+  const ins = [0, 1, 2].map(i => insightFor(caseSpec(i, a), a['caso_' + i])).filter(Boolean);
+  if (ins.length) { L.push('== HALLAZGOS DE LOS CASOS =='); ins.forEach(x => L.push('- ' + x[1])); }
+  return L.join('\n');
+}
+
+// ---------- owner view ----------
+let ownerDocs = [];
+function renderOwner() {
+  let h = '<div class="block-head"><span class="eyebrow">Solo tú ves esto</span><h1>Respuestas recibidas</h1><p>Cada persona de Grupo Value que contesta aparece aquí en tiempo real, aunque no haya terminado.</p></div>';
+  if (!ownerDocs.length) h += '<div class="sum"><p class="msg">Todavía no llega ninguna respuesta. Cuando alguien de Grupo Value empiece a contestar, aparece aquí.</p></div>';
+  else {
+    h += '<div class="olist">' + ownerDocs.map(d => '<button type="button" class="orow" data-osel="' + esc(d.id) + '" aria-pressed="' + (state.ownerSel === d.id) + '"><b>' + esc((d.a && d.a.resp_nombre) || 'Sin nombre') + (d.id === remote.uid ? ' (tú)' : '') + '</b><em>' + (d.avance || 0) + '%' + (d.estado === 'enviado' ? ' · enviado' : '') + '</em><span>' + esc([(d.a && d.a.resp_puesto), d.a && d.a.resp_area ? lab(AREA, d.a.resp_area) : ''].filter(Boolean).join(' · ') || 'Puesto pendiente') + '</span><span>' + (d.actualizado ? new Date(d.actualizado).toLocaleString('es-MX', { dateStyle: 'medium', timeStyle: 'short' }) : '') + '</span></button>').join('') + '</div>';
+    const sel = ownerDocs.find(d => d.id === state.ownerSel);
+    if (sel && sel.a) h += summaryHTML(sel.a, false) + '<div class="actions"><button type="button" class="btn" id="ownerCopy">Copiar respuestas de esta persona</button><span class="msg" id="ownerMsg"></span></div><textarea class="copybox" id="ownerBox" readonly hidden aria-label="Respuestas en texto"></textarea>';
+  }
+  h += '<div class="nav"><button type="button" class="btn sec" id="backForm">Volver al cuestionario</button></div>';
+  $main.innerHTML = h;
+  renderSteps();
+}
+
+// ---------- remote (db) ----------
+const remote = { mode: 'local', db: null, uid: null, writing: false, dirty: false, timer: null };
+function setSave(mode, text) {
+  remote.mode = mode === 'saving' ? remote.mode : mode;
+  const el = document.getElementById('save');
+  el.dataset.s = mode;
+  el.lastElementChild.textContent = text || ({ cloud: 'Guardado en Vértice', saving: 'Guardando…', local: 'Guardado en este navegador', error: 'Sin conexión con Vértice' })[mode];
+}
+function docBody() {
+  const st = stats(state.a);
+  return { a: state.a, n: state.n, avance: st.pct, criterios: st.cajasOk, estado: state.enviado ? 'enviado' : 'en_progreso', actualizado: state.updated || Date.now() };
+}
+function scheduleRemote() {
+  if (!remote.db || remote.mode === 'readonly') return;
+  clearTimeout(remote.timer);
+  remote.timer = setTimeout(pushRemote, 1500);
+}
+async function pushRemote() {
+  if (!remote.db) return;
+  if (remote.writing) { remote.dirty = true; return; }
+  remote.writing = true; remote.dirty = false;
+  setSave('saving');
+  try {
+    await remote.db.doc('respuestas/' + remote.uid).set(docBody());
+    setSave('cloud');
+  } catch (e) {
+    const code = e && e.code;
+    if (code === 'invalid_argument' || code === 'not_granted' || code === 'revoked') { remote.db = null; setSave('local'); }
+    else if (code === 'unavailable') { setTimeout(() => { remote.dirty = true; }, 1200 + Math.random() * 1500); setSave('error'); }
+    else setSave('error');
+  }
+  remote.writing = false;
+  if (remote.dirty) { remote.dirty = false; setTimeout(pushRemote, 300); }
+}
+async function initRemote() {
+  if (!window.claude || typeof window.claude.use !== 'function') return;
+  let db = null, user = null;
+  try { [db, user] = await Promise.all([window.claude.use('db'), window.claude.use('user')]); } catch (e) { return; }
+  if (!db || !user) return;
+  let uid = null;
+  try { uid = await user.id(); } catch (e) {}
+  if (!uid) return;
+  let canW = null;
+  try { canW = await user.can('data.write'); } catch (e) {}
+  let owner = false;
+  try { owner = await user.isOwner(); } catch (e) {}
+  remote.uid = uid;
+  if (owner) {
+    const btn = document.getElementById('ownerBtn');
+    btn.hidden = false;
+    let first = true;
+    const t = setTimeout(() => { if (first) btn.textContent = 'Respuestas recibidas (cargando…)'; }, 10000);
+    db.collection('respuestas').onSnapshot(snap => {
+      if (!snap.metadata.fromCache) { first = false; clearTimeout(t); }
+      ownerDocs = snap.docs.map(d => Object.assign({ id: d.id }, d.data())).sort((x, y) => (y.actualizado || 0) - (x.actualizado || 0));
+      btn.textContent = 'Respuestas recibidas (' + ownerDocs.length + ')';
+      if (state.view === 'owner') renderOwner();
+    }, () => { clearTimeout(t); btn.textContent = 'Respuestas recibidas (sin conexión)'; });
+  }
+  if (canW === false) { setSave('local'); return; }
+  remote.db = db;
+  // restore own saved answers if newer than this browser's copy
+  try {
+    const snap = await Promise.race([db.doc('respuestas/' + uid).get(), new Promise((_, rej) => setTimeout(() => rej({ code: 'timeout' }), 10000))]);
+    if (snap.exists) {
+      const d = snap.data();
+      if (d && d.a && (d.actualizado || 0) > (state.updated || 0)) {
+        state.a = JSON.parse(JSON.stringify(d.a)); state.n = JSON.parse(JSON.stringify(d.n || {})); state.updated = d.actualizado; state.enviado = d.estado === 'enviado';
+        saveLocal(); prevVisible = null; renderBlock(); renderPanel();
+      }
+    }
+    setSave('cloud');
+    if ((state.updated || 0) > ((snap.exists && snap.data().actualizado) || 0)) scheduleRemote();
+  } catch (e) {
+    setSave(e && e.code === 'timeout' ? 'error' : 'local');
+    if (e && e.code !== 'timeout') remote.db = null;
+  }
+}
+
+// ---------- events ----------
+function commit(rerender, focusSel) {
+  state.updated = Date.now();
+  saveLocal();
+  scheduleRemote();
+  renderPanel();
+  if (rerender) renderBlock(focusSel); else renderSteps();
+}
+function sel(q, extra) { return '[data-q="' + q + '"]' + (extra || ''); }
+
+document.addEventListener('click', e => {
+  const t = e.target.closest('button');
+  if (!t) return;
+  const a = state.a;
+  if (t.dataset.go) { state.view = 'form'; state.block = t.dataset.go; prevVisible = new Set(Q.filter(q => visible(q, a)).map(q => q.id)); saveLocal(); renderBlock(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  if (t.id === 'ownerBtn') { state.view = 'owner'; renderOwner(); window.scrollTo({ top: 0 }); return; }
+  if (t.id === 'backForm') { state.view = 'form'; renderBlock(); return; }
+  if (t.dataset.osel) { state.ownerSel = t.dataset.osel; renderOwner(); return; }
+  if (t.id === 'ownerCopy') { const d = ownerDocs.find(x => x.id === state.ownerSel); if (d) doCopy(copyText(d.a, d.n), 'ownerBox', 'ownerMsg'); return; }
+  if (t.id === 'copyBtn') { doCopy(copyText(a, state.n), 'copyBox', 'sumMsg'); return; }
+  if (t.id === 'sendBtn') { state.enviado = true; commit(false); const m = document.getElementById('sumMsg'); if (m) m.textContent = 'Enviado. Vértice ya tiene su perfil. Gracias.'; t.textContent = 'Enviado. Volver a enviar'; return; }
+  if (t.dataset.opennote) { openNotes.add(t.dataset.opennote); renderBlock('#nt-' + t.dataset.opennote); return; }
+  if (t.dataset.recase) { delete a[t.dataset.recase]; commit(true); return; }
+  const qid = t.dataset.q; if (!qid) return;
+  const q = QBY[qid];
+  if (t.dataset.preset) { a[qid] = parseFloat(t.dataset.preset); commit(true, sel(qid, '[data-preset="' + t.dataset.preset + '"]')); return; }
+  if (t.dataset.na) { a[qid] = a[qid] === 'na' ? null : 'na'; commit(true, sel(qid, '[data-na]')); return; }
+  if (t.dataset.flex) { const v = Object.assign({}, a[qid] || {}); v.v = v.v === t.dataset.k ? null : t.dataset.k; if (v.v !== 'cond') { v.c = []; } a[qid] = v; commit(true, sel(qid, '[data-k="' + t.dataset.k + '"]')); return; }
+  if (t.dataset.case) {
+    const v = Object.assign({}, a[qid] || {});
+    v.d = v.d === t.dataset.k ? null : t.dataset.k;
+    if (v.d && !v.spec) v.spec = buildCase(q.idx, a);
+    v.c = v.d === 'cond' ? (v.c || []) : []; v.r = v.d === 'no' ? (v.r || []) : [];
+    a[qid] = v; commit(true, sel(qid, '[data-k="' + t.dataset.k + '"]')); return;
+  }
+  if (t.dataset.sub) { const v = Object.assign({}, a[qid] || {}); const key = t.dataset.sub; const list = (v[key] || []).slice(); const i = list.indexOf(t.dataset.v); if (i >= 0) list.splice(i, 1); else list.push(t.dataset.v); v[key] = list; a[qid] = v; commit(true, sel(qid, '[data-sub="' + key + '"][data-v="' + t.dataset.v + '"]')); return; }
+  if (t.dataset.v != null && q) {
+    const k = t.dataset.v;
+    if (q.type === 'single') a[qid] = a[qid] === k ? null : k;
+    else {
+      let list = arr(a, qid).slice();
+      const i = list.indexOf(k);
+      if (i >= 0) list.splice(i, 1);
+      else {
+        if (q.exclusive && q.exclusive.includes(k)) list = [k];
+        else { list = list.filter(x => !(q.exclusive || []).includes(x)); if (q.max && list.length >= q.max) list.shift(); list.push(k); }
+      }
+      a[qid] = list;
+      // keep dependent answers coherent
+      if (qid === 'sectores_si') { a.sectores_no = arr(a, 'sectores_no').filter(x => !list.includes(x)); if (a.sector_ventaja && !list.includes(a.sector_ventaja)) a.sector_ventaja = null; }
+    }
+    commit(true, sel(qid, '[data-v="' + k + '"]'));
+  }
+});
+
+document.addEventListener('input', e => {
+  const t = e.target, a = state.a;
+  if (t.dataset.note) { state.n[t.dataset.note] = t.value; commit(false); return; }
+  const qid = t.dataset.q; if (!qid) return;
+  if (qid === 'pricing') { const p = Object.assign({}, a.pricing || {}); p[t.dataset.prod] = Object.assign({}, p[t.dataset.prod] || {}, { [t.dataset.f]: t.value.trim() }); a.pricing = p; commit(false); return; }
+  if (qid === 'contacto') { a.contacto = Object.assign({}, a.contacto || {}, { [t.dataset.f]: t.value }); commit(false); return; }
+  if (t.dataset.sub === 't') { a[qid] = Object.assign({}, a[qid] || {}, { t: t.value }); commit(false); return; }
+  const q = QBY[qid]; if (!q) return;
+  if (q.type === 'money' || q.type === 'num') {
+    const v = q.type === 'money' ? parseMoney(t.value) : parseNum(t.value);
+    if (v === null) a[qid] = null; else if (!isNaN(v)) a[qid] = v;
+    // reflect preset / NA chips without re-rendering the input
+    t.closest('.q').querySelectorAll('[data-preset],[data-na]').forEach(c => c.setAttribute('aria-pressed', String(c.dataset.na ? a[qid] === 'na' : a[qid] === parseFloat(c.dataset.preset))));
+    commit(false); return;
+  }
+  a[qid] = t.value; commit(false);
+});
+document.addEventListener('change', e => {
+  const t = e.target, q = QBY[t.dataset.q];
+  if (q && q.type === 'money' && num(state.a[q.id]) != null) t.value = Math.round(state.a[q.id]).toLocaleString('es-MX');
+});
+
+function doCopy(text, boxId, msgId) {
+  const box = document.getElementById(boxId), msg = document.getElementById(msgId);
+  const fallback = () => { if (box) { box.hidden = false; box.value = text; box.focus(); box.select(); } if (msg) msg.textContent = 'Seleccionamos el texto. Cópienlo con Ctrl+C o Cmd+C.'; };
+  try {
+    navigator.clipboard.writeText(text).then(() => { if (msg) msg.textContent = 'Copiado. Péguenlo en el chat del Zoom o en un correo.'; if (box) { box.hidden = false; box.value = text; } }, fallback);
+  } catch (err) { fallback(); }
+}
+
+// ---------- boot ----------
+renderBlock();
+renderPanel();
+initRemote();
+})();
+</script>

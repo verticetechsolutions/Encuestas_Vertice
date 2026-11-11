@@ -24,6 +24,28 @@
 
 ---
 
+## 2026-11-11 — Cuestionario adaptativo de criterios para Grupo Value (SOFOM ENR)
+
+**Branch:** `claude/serene-ritchie-k8fz1l`  ·  **Suite:** sin cambios (no se tocó código de la app)
+**Sesión:** founder pidió un "dash inteligente" para captar al 100% los criterios de crédito de Grupo Value en un Zoom de máx. 30 min, contestado por ellos mismos.
+
+### Lo que se hizo
+- Página standalone publicada como Artifact de claude.ai (link privado del founder). Fuente versionada en `docs/aliados/grupo-value-criterios.html`.
+- Preguntas derivadas del credit box canónico (`lib/schemas/cajas.ts`, 49 cajas base + extensión `cs_*` SOFOM ENR, `cf_*` factoraje, `ca_*` arrendamiento) y enums de `db/seeds/enums.ts`. Cada pregunta mapea a su `caja_codigo`.
+- Ramificación por reglas: tipo de cliente, productos, garantías y flexibilidades abren/cierran preguntas; panel de perfil en vivo (cliente ideal, rechazos automáticos, condiciones, umbrales, tiempos, tasas).
+- 3 casos de prueba generados con las respuestas del aliado (dentro de parámetros, en el límite, situación especial), inspirados en `db/seeds/safe_rails_casos.ts`. Hallazgos automáticos: criterios firmes vs negociables.
+- Persistencia: db del Artifact (`respuestas/<userId>`, cada quien escribe solo lo suyo; owner lee todo en "Respuestas recibidas") + localStorage + botón "Copiar respuestas" como respaldo.
+- Estilo: tokens DS Vértice (ink/gold/survey-bg, eyebrow 0.32em, botón pill con flecha, card surface-1). Satoshi/General Sans declaradas primero; fallback Manrope/Urbanist porque Fontshare no es cargable desde Artifacts.
+
+### Pendientes / blockers
+- [USER] Para que las respuestas lleguen solas, compartir el Artifact por invitación de correo como Editor (sin link público): usuarios fuera de la org solo escriben con ese nivel. Si no, usan "Copiar respuestas".
+- Mapear las respuestas capturadas a `extracciones` de una institución real cuando el pipeline esté en prod.
+
+### Cómo retomar
+- Editar `docs/aliados/grupo-value-criterios.html` y republicar al mismo Artifact (URL en el historial de la sesión).
+
+---
+
 ## 2026-05-14 — Dominio `verticemexico.com` verificado en Resend (Claude Chrome extension)
 
 **Branch:** `master`  ·  **HEAD:** working tree con cambios (sin commit todavía)  ·  **Suite:** 509/509 verdes
