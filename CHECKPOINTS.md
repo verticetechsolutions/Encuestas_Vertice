@@ -24,6 +24,23 @@
 
 ---
 
+## 2026-11-11 (noche) — Encuesta "Ser aliado de Vértice" en verticemexico.com + Deivid
+
+**Branch:** `claude/serene-ritchie-k8fz1l`  ·  **Suite:** sin cambios en esta app
+**Sesión:** el founder pidió que la encuesta viva en verticemexico.com (menú «Ser aliado de Vértice») y que las respuestas se vean en Deivid.
+
+### Lo que se hizo
+- Encuesta general (una pregunta a la vez, repreguntas, 6 casos dinámicos, checklist de 60 criterios). Fuente web sin datos de ningún aliado: `docs/aliados/ser-aliado-web.html`.
+- mesa-hostess-vertice/deivid PR #11: `/ser-aliado` (página), `/api/ser-aliado` (guardado con zod, pase con huella), `/tablero/encuestas` y migración 0017 (`encuestas_aliado`).
+- mesa-hostess-vertice/vertice-web PR #8: botón «Ser aliado» (escritorio) y sección en el menú móvil; rewrite de `/ser-aliado` hacia Deivid.
+- Versión en claude.ai (artifact) para contestar hoy; reconoce a Value Arrendadora y solo pregunta lo que falta.
+
+### Pendientes / blockers
+- [Alex] Aplicar migración 0017 en la base de Deivid, publicar Deivid y luego mezclar el PR de vertice-web (en ese orden).
+- [USER] Hacer privado `verticetechsolutions/Encuestas_Vertice` (es público y trae `.env.local`).
+
+---
+
 ## 2026-11-11 (tarde) — Cuestionario adaptado a Value Arrendadora
 
 **Branch:** `claude/serene-ritchie-k8fz1l`  ·  **Suite:** sin cambios (no se tocó código de la app)
