@@ -94,6 +94,14 @@ button { cursor: pointer; }
 .btn-ghost { border: 1px solid var(--line-strong); background: var(--surface); border-radius: var(--r-pill); padding: 6px 12px; font-size: 12.5px; font-weight: 600; }
 .btn-ghost:hover { background: var(--hover); }
 
+.sendbar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 12px 16px; border-radius: var(--r-md); background: var(--warn-soft); box-shadow: inset 0 0 0 1px var(--warn); }
+.fab { position: fixed; z-index: 20; right: calc(16px + env(safe-area-inset-right, 0px)); bottom: calc(16px + env(safe-area-inset-bottom, 0px)); height: 44px; border-radius: var(--r-pill); border: 1px solid var(--chip-on-bg); background: var(--chip-on-bg); color: var(--chip-on-fg); padding: 0 18px; font-weight: 600; font-size: 13.5px; box-shadow: var(--shadow-cta); }
+.fab:hover { filter: brightness(1.15); }
+.app { padding-bottom: 96px; }
+.sendbar p { margin: 0; font-size: 13.5px; max-width: 72ch; min-width: 0; flex: 1 1 320px; }
+.sendbar b { color: var(--warn); }
+.sendbar-act { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.sendbar .copybox { flex-basis: 100%; min-height: 120px; }
 /* steps */
 .steps { display: flex; gap: 6px; overflow-x: auto; padding-bottom: 4px; scrollbar-width: thin; }
 .step { flex: none; display: inline-flex; align-items: center; gap: 8px; padding: 8px 12px; border-radius: var(--r-pill); border: 1px solid var(--line); background: transparent; font-size: 13px; font-weight: 600; color: var(--muted); }
@@ -177,6 +185,7 @@ table.pt { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 
 .pt tr:last-child td { border-bottom: none; }
 .pt td:first-child { font-weight: 600; padding-left: 12px; white-space: nowrap; }
 .pt input { width: 72px; border: 1px solid var(--line-strong); border-radius: var(--r-sm); padding: 6px 8px; background: var(--surface); font-variant-numeric: tabular-nums; outline: none; }
+.pt input.wide { width: 170px; }
 .pt input:focus { border-color: var(--accent-fill); }
 
 .contact { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; }
@@ -290,6 +299,14 @@ table.pt { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 
     </div>
   </header>
 
+  <div class="sendbar" id="sendbar" hidden role="status">
+    <p><b>Importante:</b> sus respuestas se guardan solo en este navegador. Al terminar, o si tienen que salir antes, den clic en "Copiar mis respuestas" y péguenlas en el chat del Zoom o en un correo a Vértice.</p>
+    <div class="sendbar-act"><button type="button" class="btn" id="barCopy">Copiar mis respuestas</button><span class="msg" id="barMsg"></span></div>
+    <textarea class="copybox" id="barBox" readonly hidden aria-label="Respuestas en texto"></textarea>
+  </div>
+
+  <button type="button" class="fab" id="fabCopy" hidden>Copiar mis respuestas</button>
+
   <nav class="steps" id="steps" aria-label="Bloques del cuestionario"></nav>
 
   <div class="layout">
@@ -351,6 +368,13 @@ const GOB_TIPO = [['federal','Federal'],['estatal','Estatal'],['municipal','Muni
 const GOB_PAGO = [['participaciones','Participaciones federales'],['fideicomiso','Fideicomiso de fuente de pago'],['partida','Partida presupuestal autorizada'],['congreso','Autorización del congreso local'],['otro','Otro']];
 const CRECER = [['pyme','PyMEs'],['medianas','Empresas medianas'],['fuera_ne','Fuera del noreste'],['sectores','Sectores nuevos'],['pfae','Personas físicas con actividad empresarial'],['gobierno','Más gobierno'],['flotillas','Más flotillas'],['credito','Más crédito simple']];
 const FACT = [['si','Correcto'],['parcial','En parte'],['no','No es así']];
+const COMISION = [['pct','Sí, un % sobre el monto colocado'],['fija','Sí, una cantidad fija por operación'],['caso','Se negocia por operación'],['no','No pagamos comisión a originadores']];
+const PRESOL = [['resumen','Ficha resumen de la operación'],['eeff','Estados financieros'],['edocta','Estados de cuenta bancarios'],['buro','Consulta de Buró'],['sat','Constancia fiscal y 32-D'],['cotizacion','Cotización del activo'],['flujo','Proyección de flujo']];
+const SLA_V = [['24h','24 horas'],['48h','48 horas'],['5d','Hasta 5 días'],['mas','Más de una semana']];
+const FORMAL = [['operacion','Operación por operación'],['convenio','Convenio de originación'],['exclusiva','Exclusividad por cliente o zona'],['hablar','Lo platicamos']];
+const APROB = [['comite','Todo pasa por el comité de crédito'],['niveles','Hay niveles: montos chicos los aprueba un funcionario'],['consejo','Montos grandes suben a consejo']];
+const EXCEP = [['nunca','No hacemos excepciones'],['comite','Solo el comité'],['director','El director general'],['consejo','El consejo']];
+const GRID_COLS = [['mmin','Monto mín.','$'],['mmax','Monto máx.','$'],['antig','Antigüedad mín.','años'],['score','Score mín.','pts'],['eng','Enganche o depósito','%'],['otro','Otro requisito distinto','texto']];
 const USADO = [['no','Solo nuevo'],['3','Usado hasta 3 años'],['5','Usado hasta 5 años'],['10','Usado hasta 10 años']];
 const RESIDUAL = [['10','Hasta 10%'],['20','10 a 20%'],['30','20 a 30%'],['mas','Más de 30%']];
 const RECHAZOS = [['capacidad','Capacidad de pago insuficiente'],['buro','Historial en Buró'],['garantia','Garantía insuficiente'],['docs','Expediente incompleto'],['fiscal','Situación fiscal (SAT)'],['antig','Poca antigüedad'],['monto','Monto fuera de rango'],['info','Información financiera poco confiable'],['sector','Sector o giro'],['concentracion','Dependencia de pocos clientes'],['activo','Tipo o antigüedad del activo'],['zona','Fuera de su zona']];
@@ -473,6 +497,7 @@ const Q = [
   { id: 'ingreso_pf', b: 'tamano', type: 'money', presets: [10e3, 15e3, 25e3, 40e3], na: 'Sin requisito', show: isPFA, because: () => 'Porque le prestan a asalariados', caja: 'ru_facturacion_min', label: '¿Qué ingreso mensual neto mínimo piden?', est: 10 },
   { id: 'score_pm', b: 'tamano', type: 'num', presets: [550, 600, 650, 700], na: 'No lo usamos', show: isPM, because: () => 'Porque le prestan a empresas', caja: 'ru_score_pm_min', crit: 1, label: '¿Qué score mínimo de Buró le piden a la empresa?', est: 10 },
   { id: 'score_pf', b: 'tamano', type: 'num', presets: [550, 600, 650, 700], na: 'No lo usamos', caja: 'ru_score_pf_min', crit: 1, label: a => isPM(a) ? '¿Qué score mínimo de Buró le piden al representante legal o socio principal?' : '¿Qué score mínimo de Buró le piden al solicitante?', est: 10 },
+  { id: 'por_producto', b: 'tamano', type: 'grid', cols: GRID_COLS, show: a => arr(a, 'productos').filter(p => p !== 'flotilla' && p !== 'otro').length >= 2, because: () => 'Porque manejan arrendamiento y crédito', caja: ['ru_monto_min', 'ru_monto_max', 'ru_antiguedad_min', 'ru_score_pm_min'], crit: 1, label: '¿Estos requisitos cambian según el producto?', help: 'Llenen solo lo que sea distinto a lo que contestaron arriba. Por ejemplo, si en crédito simple piden más antigüedad o más score que en arrendamiento automotriz.', est: 60 },
   // garantías
   { id: 'garantias', b: 'garantias', type: 'multi', options: GARANTIAS, caja: 'gr_tipos_garantia', crit: 1, label: a => leasing(a) ? 'Además del propio activo, ¿qué garantías adicionales aceptan o piden?' : '¿Qué garantías aceptan?', est: 15 },
   { id: 'cobertura', b: 'garantias', type: 'single', options: COBERTURA, show: a => realGar(a).length > 0, because: () => 'Porque aceptan garantías', caja: 'gr_cobertura_min', crit: 1, label: '¿Qué cobertura mínima de garantía piden?', help: 'Valor de la garantía entre el monto del crédito.', est: 8 },
@@ -502,6 +527,9 @@ const Q = [
   { id: 't_comite', b: 'proceso', type: 'single', options: T_COMITE, caja: 'op_tiempo_comite', crit: 1, label: '¿Cuánto tarda un expediente completo en llegar a comité?', est: 6 },
   { id: 't_fondeo', b: 'proceso', type: 'single', options: T_FONDEO, caja: 'op_tiempo_fondeo', crit: 1, label: '¿Y de la aprobación a la dispersión del dinero?', est: 6 },
   { id: 'docs', b: 'proceso', type: 'multi', options: a => onlyPFA(a) ? DOCS_PF : (isPFA(a) ? DOCS_PM.concat(DOCS_PF.filter(d => !DOCS_PM.some(p => p[0] === d[0]))) : DOCS_PM), caja: 'op_documentacion_estandar', crit: 1, label: '¿Qué documentos piden siempre para empezar?', est: 25 },
+  { id: 'aprob', b: 'proceso', type: 'multi', options: APROB, caja: 'op_tiempo_comite', crit: 1, label: '¿Quién aprueba según el monto?', est: 8 },
+  { id: 'aprob_umbral', b: 'proceso', type: 'money', presets: [2e6, 5e6, 10e6, 20e6, 50e6], show: a => has(a, 'aprob', 'niveles') || has(a, 'aprob', 'consejo'), because: () => 'Porque tienen niveles de aprobación', caja: 'op_tiempo_comite', label: '¿A partir de qué monto la operación sube al siguiente nivel?', est: 8 },
+  { id: 'excepciones', b: 'proceso', type: 'single', options: EXCEP, caja: 'pc_conversion_producto', label: '¿Quién puede autorizar una excepción a su política de crédito?', help: 'Si agregan un matiz, cuéntennos qué tan seguido pasa y en qué casos.', est: 10 },
   { id: 'eeff', b: 'proceso', type: 'single', options: EEFF, show: isPM, caja: 'op_eeff_auditados', label: '¿Piden estados financieros auditados?', est: 6 },
   { id: 'eeff_monto', b: 'proceso', type: 'money', presets: [5e6, 10e6, 20e6, 50e6], show: a => a.eeff === 'desde_monto', because: () => 'Porque los piden a partir de cierto monto', caja: 'op_eeff_auditados', label: '¿A partir de qué monto?', est: 8 },
   { id: 'scoring', b: 'proceso', type: 'multi', options: SCORING, exclusive: ['ninguno'], show: a => a.inst_tipo !== 'banco', because: a => a.inst_tipo === 'sofom_enr' ? 'Pregunta específica para SOFOM ENR' : null, caja: 'cs_scoring_alternativo', crit: 1, label: '¿Usan información alternativa para evaluar?', est: 12 },
@@ -524,6 +552,12 @@ const Q = [
   { id: 'crecer_donde', b: 'vertice', type: 'multi', options: CRECER, label: '¿Hacia dónde quieren diversificar su cartera?', help: 'Sus reportes hablan de crecer en Guadalajara y CDMX, con créditos de menor monto y más flotillas. Aquí es donde Vértice puede sumar.', est: 12 },
   { id: 'crecer', b: 'vertice', type: 'text', label: '¿Qué tipo de cliente les falta hoy y quisieran más?', placeholder: 'Ej. Transportistas medianos del norte', est: 20 },
   { id: 'volumen', b: 'vertice', type: 'single', options: VOLUMEN, label: '¿Cuántas solicitudes calificadas al mes les gustaría recibir de Vértice?', est: 6 },
+  { id: 'comision', b: 'vertice', type: 'single', options: COMISION, label: '¿Pagan comisión a originadores externos?', est: 8 },
+  { id: 'comision_pct', b: 'vertice', type: 'num', unit: '%', presets: [0.5, 1, 1.5, 2, 3], show: a => a.comision === 'pct', because: () => 'Porque pagan un porcentaje', label: '¿De cuánto, aproximadamente?', est: 6 },
+  { id: 'presolicitud', b: 'vertice', type: 'multi', options: PRESOL, crit: 1, caja: 'op_documentacion_estandar', label: '¿Qué información mínima necesitan para darnos una respuesta preliminar?', help: 'Lo que les mandaríamos antes del expediente completo.', est: 12 },
+  { id: 'sla_vertice', b: 'vertice', type: 'single', options: SLA_V, crit: 1, caja: 'op_tiempo_viabilidad', label: '¿En cuánto tiempo nos darían esa respuesta preliminar?', est: 6 },
+  { id: 'formal', b: 'vertice', type: 'single', options: FORMAL, label: '¿Cómo les gustaría formalizar la relación con Vértice?', est: 6 },
+  { id: 'primer_exp', b: 'vertice', type: 'text', multiline: 1, label: '¿Qué tendría que traer el primer expediente de Vértice para que lo aprueben?', placeholder: 'Ej. Flotilla de 20+ unidades en Guadalajara, empresa con 5 años y estados financieros auditados.', est: 30 },
   { id: 'contacto', b: 'vertice', type: 'contact', caja: ['co_punto_contacto', 'co_email_telefono'], crit: 1, label: '¿Quién recibe los expedientes que mandemos?', est: 35 },
   // casos
   { id: 'caso_0', b: 'casos', type: 'case', idx: 0, est: 70 },
@@ -567,7 +601,7 @@ function answered(q, a) {
   if (Array.isArray(v)) return v.length > 0;
   if (q.type === 'flex' || q.type === 'fact') return !!v.v;
   if (q.type === 'case') return !!v.d;
-  if (q.type === 'pricing' || q.type === 'contact') return Object.values(v).some(x => x && (typeof x === 'object' ? Object.values(x).some(y => y !== '' && y != null) : true));
+  if (q.type === 'pricing' || q.type === 'grid' || q.type === 'contact') return Object.values(v).some(x => x && (typeof x === 'object' ? Object.values(x).some(y => y !== '' && y != null) : true));
   return true;
 }
 
@@ -809,6 +843,7 @@ function valueText(q, v, a) {
     case 'fact': return lab(FACT, v.v) + (v.t ? '. ' + v.t : '');
     case 'flex': { let s = lab(FLEX, v.v); if (v.c && v.c.length) s += ' (' + v.c.map(k => lab(CONDS, k)).join(', ') + ')'; if (v.t) s += '. ' + v.t; return s; }
     case 'pricing': return Object.keys(v).filter(p => has(a, 'productos', p)).map(p => { const r = v[p] || {}; const unit = p.startsWith('factoraje') ? '% mensual' : '% anual'; const parts = []; if (r.tmin || r.tmax) parts.push('tasa ' + (r.tmin || '?') + ' a ' + (r.tmax || '?') + unit); if (r.pmin || r.pmax) parts.push('plazo ' + (r.pmin || '?') + ' a ' + (r.pmax || '?') + ' meses'); if (r.com) parts.push('comisión ' + r.com + '%'); return parts.length ? lab(PRODUCTOS, p) + ': ' + parts.join(', ') : ''; }).filter(Boolean).join(' | ');
+    case 'grid': return Object.keys(v).filter(p => has(a, 'productos', p)).map(p => { const r = v[p] || {}; const parts = q.cols.filter(c => r[c[0]]).map(c => c[1] + ' ' + r[c[0]] + (c[2] === 'texto' || c[2] === '$' ? '' : c[2] === '%' ? '%' : ' ' + c[2])); return parts.length ? lab(PRODUCTOS, p) + ': ' + parts.join(', ') : ''; }).filter(Boolean).join(' | ');
     case 'contact': return ['nombre', 'puesto', 'email', 'tel'].map(k => v[k]).filter(Boolean).join(' · ');
     case 'case': { let s = lab(CASE_D, v.d); const w = [].concat((v.c || []).map(k => lab(CONDS, k)), (v.r || []).map(k => lab(RECHAZOS, k))); if (w.length) s += ' (' + w.join(', ') + ')'; if (v.t) s += '. ' + v.t; return s; }
   }
@@ -863,6 +898,12 @@ function factHTML(q, a) {
   if (v.v === 'parcial' || v.v === 'no') h += '<input class="txt" id="in-' + q.id + '-t" data-q="' + q.id + '" data-sub="t" value="' + esc(v.t || '') + '" placeholder="¿Qué cambia? Nos ayuda a no repetir el error">';
   return h;
 }
+function gridHTML(q, a) {
+  const v = a[q.id] || {}, prods = arr(a, 'productos').filter(p => p !== 'flotilla' && p !== 'otro');
+  const cell = (p, c) => '<td><input id="gr-' + q.id + '-' + p + '-' + c[0] + '" data-q="' + q.id + '" data-prod="' + p + '" data-f="' + c[0] + '"' + (c[0] === 'otro' ? ' class="wide"' : ' inputmode="decimal"') + ' value="' + esc((v[p] || {})[c[0]] || '') + '" placeholder="' + c[2] + '"></td>';
+  return '<div class="tbl-wrap"><table class="pt"><thead><tr><th>Producto</th>' + q.cols.map(c => '<th>' + esc(c[1]) + '</th>').join('') + '</tr></thead><tbody>' +
+    prods.map(p => '<tr><td>' + esc(lab(PRODUCTOS, p)) + '</td>' + q.cols.map(c => cell(p, c)).join('') + '</tr>').join('') + '</tbody></table></div><span class="hint">Montos en pesos, puede ser 5m o 500k. Dejen vacío lo que sea igual para todos.</span>';
+}
 function pricingHTML(q, a) {
   const v = a.pricing || {}, prods = arr(a, 'productos').filter(p => p !== 'flotilla' && p !== 'otro');
   if (!prods.length) return '<p class="hint">Elijan productos en el bloque "Qué financian".</p>';
@@ -904,6 +945,7 @@ function qHTML(q, a, isNew) {
     case 'flex': inner = flexHTML(q, a); break;
     case 'fact': inner = factHTML(q, a); break;
     case 'pricing': inner = pricingHTML(q, a); break;
+    case 'grid': inner = gridHTML(q, a); break;
     case 'contact': inner = contactHTML(q, a); break;
   }
   const noteOpen = openNotes.has(q.id) || !!state.n[q.id];
@@ -914,7 +956,7 @@ function qHTML(q, a, isNew) {
     (q.src ? '<span class="because src">Fuente: ' + esc(q.src) + '</span>' : '') +
     (isPre ? '<span class="because pre">Prellenado con lo que sabemos de ustedes · confirmen o corrijan <button type="button" class="okpre" data-okpre="' + q.id + '">Está bien</button></span>' : because ? '<span class="because">' + esc(because) + '</span>' : '') +
     '<div class="q-label">' + esc(labelOf(q, a)) + (q.crit ? '<span class="crit">Clave</span>' : '') + '</div>' +
-    (q.help ? '<p class="q-help">' + esc(q.help) + '</p>' : '') + '</div>' + inner + (q.type === 'flex' || q.type === 'fact' || q.type === 'contact' || q.type === 'pricing' ? '' : note) + '</section>';
+    (q.help ? '<p class="q-help">' + esc(q.help) + '</p>' : '') + '</div>' + inner + (q.type === 'flex' || q.type === 'fact' || q.type === 'contact' || q.type === 'pricing' || q.type === 'grid' ? '' : note) + '</section>';
 }
 
 // ---------- rendering: page ----------
@@ -1019,6 +1061,12 @@ function profileHTML(a, full) {
     const extra = [];
     if (arr(a, 'rechazos').length) extra.push(['Motivos de rechazo', a.rechazos.map((k, i) => (i + 1) + '. ' + lab(RECHAZOS, k)).join('  ')]);
     if (a.volumen) extra.push(['Volumen deseado', lab(VOLUMEN, a.volumen) + ' al mes']);
+    if (a.comision) extra.push(['Comisión a originadores', lab(COMISION, a.comision) + (num(a.comision_pct) ? ' (' + a.comision_pct + '%)' : '')]);
+    if (a.sla_vertice) extra.push(['Respuesta preliminar', lab(SLA_V, a.sla_vertice)]);
+    if (a.formal) extra.push(['Formalización', lab(FORMAL, a.formal)]);
+    if (arr(a, 'aprob').length) extra.push(['Aprobación', a.aprob.map(k => lab(APROB, k)).join('; ') + (num(a.aprob_umbral) ? ' (sube desde ' + fmtMoney(a.aprob_umbral) + ')' : '')]);
+    const gtxt = a.por_producto ? valueText(QBY.por_producto, a.por_producto, a) : '';
+    if (gtxt) h += '<div class="ps"><h3><i class="gold"></i>Requisitos por producto</h3><div class="cond-list">' + gtxt.split(' | ').map(x => '<div>' + esc(x) + '</div>').join('') + '</div></div>';
     const c = a.contacto || {};
     if (c.nombre || c.email) extra.push(['Contacto', [c.nombre, c.puesto, c.email, c.tel].filter(Boolean).join(' · ')]);
     if (extra.length) h += '<div class="ps"><h3><i class="gold"></i>Para Vértice</h3>' + kvHTML(extra) + '</div>';
@@ -1098,10 +1146,13 @@ function renderOwner() {
 
 // ---------- remote (db) ----------
 const remote = { mode: 'local', db: null, uid: null, writing: false, dirty: false, timer: null };
+let remoteReady = false;
+function updateSendbar() { const off = !remoteReady || remote.mode === 'cloud' || state.view === 'owner'; const el = document.getElementById('sendbar'), f = document.getElementById('fabCopy'); if (el) el.hidden = off; if (f) f.hidden = off; }
 function setSave(mode, text) {
   remote.mode = mode === 'saving' ? remote.mode : mode;
   const el = document.getElementById('save');
   el.dataset.s = mode;
+  updateSendbar();
   el.lastElementChild.textContent = text || ({ cloud: 'Guardado en Vértice', saving: 'Guardando…', local: 'Guardado en este navegador', error: 'Sin conexión con Vértice' })[mode];
 }
 function docBody() {
@@ -1197,6 +1248,8 @@ document.addEventListener('click', e => {
   if (t.id === 'backForm') { state.view = 'form'; renderBlock(); return; }
   if (t.dataset.osel) { state.ownerSel = t.dataset.osel; renderOwner(); return; }
   if (t.id === 'ownerCopy') { const d = ownerDocs.find(x => x.id === state.ownerSel); if (d) doCopy(copyText(d.a, d.n), 'ownerBox', 'ownerMsg'); return; }
+  if (t.id === 'fabCopy') { const done = () => { t.textContent = 'Copiado'; setTimeout(() => { t.textContent = 'Copiar mis respuestas'; }, 2500); }; const txt = copyText(a, state.n); try { navigator.clipboard.writeText(txt).then(done, () => { doCopy(txt, 'barBox', 'barMsg'); window.scrollTo({ top: 0, behavior: 'smooth' }); }); } catch (err) { doCopy(txt, 'barBox', 'barMsg'); window.scrollTo({ top: 0 }); } return; }
+  if (t.id === 'barCopy') { doCopy(copyText(a, state.n), 'barBox', 'barMsg'); return; }
   if (t.id === 'copyBtn') { doCopy(copyText(a, state.n), 'copyBox', 'sumMsg'); return; }
   if (t.id === 'sendBtn') { state.enviado = true; commit(false); const m = document.getElementById('sumMsg'); if (m) m.textContent = 'Enviado. Vértice ya tiene su perfil. Gracias.'; t.textContent = 'Enviado. Volver a enviar'; return; }
   if (t.dataset.opennote) { openNotes.add(t.dataset.opennote); renderBlock('#nt-' + t.dataset.opennote); return; }
@@ -1240,6 +1293,7 @@ document.addEventListener('input', e => {
   if (t.dataset.note) { state.n[t.dataset.note] = t.value; commit(false); return; }
   const qid = t.dataset.q; if (!qid) return;
   if (state.pre.includes(qid)) state.pre = state.pre.filter(x => x !== qid);
+  if (QBY[qid] && QBY[qid].type === 'grid') { const g = Object.assign({}, a[qid] || {}); g[t.dataset.prod] = Object.assign({}, g[t.dataset.prod] || {}, { [t.dataset.f]: t.value.trim() }); a[qid] = g; commit(false); return; }
   if (qid === 'pricing') { const p = Object.assign({}, a.pricing || {}); p[t.dataset.prod] = Object.assign({}, p[t.dataset.prod] || {}, { [t.dataset.f]: t.value.trim() }); a.pricing = p; commit(false); return; }
   if (qid === 'contacto') { a.contacto = Object.assign({}, a.contacto || {}, { [t.dataset.f]: t.value }); commit(false); return; }
   if (t.dataset.sub === 't') { a[qid] = Object.assign({}, a[qid] || {}, { t: t.value }); commit(false); return; }
@@ -1269,6 +1323,7 @@ function doCopy(text, boxId, msgId) {
 // ---------- boot ----------
 renderBlock();
 renderPanel();
-initRemote();
+initRemote().finally(() => { remoteReady = true; updateSendbar(); });
+setTimeout(() => { remoteReady = true; updateSendbar(); }, 12000);
 })();
 </script>
