@@ -32,4 +32,3 @@ Ticket promedio, plazos, depósito, valor residual, equipo usado, PFAE/PyME, tip
 - **Calidad:** IMOR 0.23% (1T-2026). Etapa 2 subió a 2.17% desde 0.5% (alerta temprana).
 - **Fondeo:** bancos 7,210 M y CEBURS 2,985 M; NAFIN, Bancomext, FIFOMI, Banobras y banca comercial.
 - **Estrategia (PCR):** crecer en Guadalajara y CDMX, créditos de menor monto para bajar concentración, más flotillas. HR proyecta solo 2.5% de crecimiento anual.
-- **Sensible, no usar en la encuesta:** HR bajó a HR A- (5-oct-2026) arrastrada por Value Casa de Bolsa; concentración "Limitada" (top clientes ~2.1x capital; cliente 1 = gobierno con participaciones federales, 0.8x capital); capital/activos ~19.7% al 1T-2026, debajo del umbral de 20% de Moody's.
