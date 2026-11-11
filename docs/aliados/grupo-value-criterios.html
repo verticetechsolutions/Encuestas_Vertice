@@ -1146,6 +1146,9 @@ async function initRemote() {
   if (owner) {
     const btn = document.getElementById('ownerBtn');
     btn.hidden = false;
+    const openOwnerFromHash = () => { if (location.hash === '#respuestas') { state.view = 'owner'; renderOwner(); window.scrollTo({ top: 0 }); } };
+    window.addEventListener('hashchange', openOwnerFromHash);
+    openOwnerFromHash();
     let first = true;
     const t = setTimeout(() => { if (first) btn.textContent = 'Respuestas recibidas (cargando…)'; }, 10000);
     db.collection('respuestas').onSnapshot(snap => {
