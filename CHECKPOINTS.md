@@ -24,7 +24,22 @@
 
 ---
 
-## 2026-11-11 — Cuestionario adaptativo de criterios para Grupo Value (SOFOM ENR)
+## 2026-11-11 (tarde) — Cuestionario adaptado a Value Arrendadora
+
+**Branch:** `claude/serene-ritchie-k8fz1l`  ·  **Suite:** sin cambios (no se tocó código de la app)
+**Sesión:** founder pidió investigar a "Grupo Value" y amoldar el cuestionario a lo que ya sabemos de ellos, con casos de arrendamiento.
+
+### Lo que se hizo
+- Investigación pública: es **Value Arrendadora, SOFOM E.R.** (no ENR), Value Grupo Financiero. Arrendamiento financiero/puro + flotillas es el núcleo; crédito simple ~10% y factoraje marginal. Ficha en `docs/aliados/value-arrendadora-ficha.md`.
+- `docs/aliados/grupo-value-criterios.html` v2: bloque "Lo que ya sabemos" (9 datos a confirmar/corregir), respuestas prellenadas marcadas, bloque Arrendamiento (activos, usado, depósito, residual, opción de compra, seguro, GPS, importado, flotillas, marcas), preguntas de gobierno y diversificación, 4 casos de arrendamiento (base, fuera de zona, límite de equipo usado, situación especial). Republicado al mismo Artifact.
+
+### Pendientes / blockers
+- [USER] Push bloqueado (403, sin acceso de escritura de GitHub en este entorno). Reconectar GitHub.
+- [USER] Verificar cifras de calificación de HR (oct-2026) antes de citarlas; no están en el cuestionario.
+
+---
+
+## 2026-11-11 — Cuestionario adaptativo de criterios para Value Arrendadora (v1)
 
 **Branch:** `claude/serene-ritchie-k8fz1l`  ·  **Suite:** sin cambios (no se tocó código de la app)
 **Sesión:** founder pidió un "dash inteligente" para captar al 100% los criterios de crédito de Grupo Value en un Zoom de máx. 30 min, contestado por ellos mismos.
