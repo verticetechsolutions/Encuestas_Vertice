@@ -194,6 +194,18 @@ table.pt { border-collapse: collapse; width: 100%; min-width: 620px; font-size: 
 .crit-tbl tr.grp td { background: var(--hover); font-size: 10.5px; text-transform: uppercase; letter-spacing: 0.24em; color: var(--accent); font-weight: 500; padding-top: 12px; }
 .crit-tbl tr.falta em, .crit-tbl tr.confirmar em { color: var(--bad); font-style: normal; font-weight: 600; }
 .crit-tbl tr.na td:last-child { color: var(--faint); }
+[hidden] { display: none !important; }
+.chat-top { display: flex; flex-direction: column; gap: 8px; }
+.chat-prog { font-size: 13.5px; color: var(--muted); font-variant-numeric: tabular-nums; }
+.chat-prog b { color: var(--text); }
+.bar.light { background: var(--line); }
+.bar.light i { background: var(--accent-fill); }
+.linkbtn { background: none; border: none; padding: 0; color: var(--accent); font-size: 13px; font-weight: 600; align-self: flex-start; text-decoration: underline; text-underline-offset: 3px; }
+.prev { margin: 0; font-size: 13.5px; color: var(--muted); padding: 10px 14px; border-radius: var(--r-md); background: var(--hover); }
+.chat-q { display: flex; flex-direction: column; gap: 10px; }
+.chat-q .q { padding: 26px 28px; }
+.chat-q .q-label { font-size: clamp(20px, 2.6vw, 27px); line-height: 1.2; }
+.chat-nav { align-items: center; }
 .err { margin: 0; font-size: 13px; font-weight: 600; }
 .err.bad { color: var(--bad); }
 .err.warn { color: var(--warn); }
@@ -616,6 +628,11 @@ const NEWQ = [
   { id: 'digital', b: 'proceso', type: 'single', crit: 1, options: [['si','Sí, PDF por correo o portal'],['ambos','Digital para revisar, impreso para comité'],['impreso','Lo necesitamos impreso']], label: '¿Aceptan el expediente en digital?', est: 6 },
   { id: 'valida', b: 'validar', type: 'single', crit: 1, options: [['si','Sí, reflejan nuestra política vigente'],['ajustes','Sí, con los ajustes que anotamos'],['no','No, hay que revisarlos con otra área']], label: '¿El perfil combinado (Diego más esta vuelta) refleja la política de crédito vigente de Value Arrendadora?', est: 10 },
   { id: 'valida_nota', b: 'validar', type: 'text', multiline: 1, crit: 1, label: '¿Hay algo que no preguntamos y que sea motivo de rechazo o de aprobación?', placeholder: 'Si no hay nada más, escriban "Nada más".', est: 30 },
+  { id: 'residual_plazo', b: 'producto', type: 'text', crit: 1, show: a => !!a.arr_residual, because: () => 'Diego dijo que el residual depende del plazo', caja: 'ca_valor_residual_min', label: '¿Cómo cambia el valor residual según el plazo?', placeholder: 'Ej. 24 meses: 20% · 36 meses: 15% · 48 meses: 10%', est: 20 },
+  { id: 'gps_monto', b: 'producto', type: 'money', crit: 1, presets: [1e6, 3e6, 5e6, 10e6], show: a => a.arr_gps === 'desde_monto', because: () => 'Diego dijo que piden GPS a partir de cierto monto', caja: 'to_colateral', label: '¿A partir de qué monto piden GPS en las unidades?', est: 8 },
+  { id: 'aval_dep', b: 'riesgo', type: 'multi', crit: 1, options: [['monto','El monto'],['antig','La antigüedad'],['score','El score de Buró'],['garantia','Si hay garantía adicional'],['liquidez','La liquidez'],['socios','La estructura de socios']], show: a => a.aval === 'depende', because: () => 'Diego contestó "depende del perfil"', caja: 'to_colateral', label: '¿De qué depende que pidan aval u obligado solidario?', est: 10 },
+  { id: 'caida_dep', b: 'riesgo', type: 'single', crit: 1, options: [['10','Hasta 10%'],['20','Hasta 20%'],['30','Hasta 30%'],['mas','Más de 30% si está bien explicada']], show: a => a.caida === 'caso', because: () => 'Diego contestó "depende del caso"', caja: 'gr_caida_facturacion_max', label: '¿Cuál es la caída de ventas más grande que han llegado a aceptar?', est: 8 },
+  { id: 'reestr_dep', b: 'riesgo', type: 'multi', crit: 1, options: [['tiempo','Que haya pasado cierto tiempo'],['liquidada','Que ya esté liquidada'],['causa','La causa (crisis, pandemia, un cliente que no pagó)'],['monto','El monto'],['cumplio','Que haya cumplido el convenio']], show: a => a.buro_reestr === 'depende', because: () => 'Diego contestó "depende de cuándo y por qué"', caja: 'to_historial_credito', label: '¿De qué depende que acepten un crédito reestructurado?', est: 10 },
 ].concat([0, 1, 2, 3, 4, 5].map(i => ({ id: 'caso_' + i, b: 'casos', type: 'case', idx: i, crit: 1, est: 60 })));
 Q.splice(0, Q.length, ...Q.filter(q => q.type !== 'case'));
 Q.forEach(q => { const o = REASK[q.id]; if (o) Object.assign(q, o); else q.b = 'base'; });
@@ -632,15 +649,15 @@ const CRITERIA = [
     ['Facturación mínima', ['facturacion']], ['Score Buró de la empresa', ['score_pm']], ['Score Buró del socio o solicitante', ['score_pf']], ['Requisitos distintos por producto', ['por_producto', 'prod_igual']],
     ['Monto máximo por cliente o grupo', ['expo_max']], ['Capital contable', ['capital']]]],
   ['Arrendamiento', [
-    ['Activos que arriendan', ['arr_equipo']], ['Equipo usado', ['arr_usado']], ['Depósito o enganche', ['arr_deposito']], ['Valor residual', ['arr_residual']],
-    ['Opción de compra', ['arr_opcion']], ['Seguro del activo', ['arr_seguro']], ['GPS', ['arr_gps']], ['Equipo importado', ['arr_importado']],
+    ['Activos que arriendan', ['arr_equipo']], ['Equipo usado', ['arr_usado']], ['Depósito o enganche', ['arr_deposito']], ['Valor residual', ['arr_residual', 'residual_plazo']],
+    ['Opción de compra', ['arr_opcion']], ['Seguro del activo', ['arr_seguro']], ['GPS', ['arr_gps', 'gps_monto']], ['Equipo importado', ['arr_importado']],
     ['Flotilla mínima', ['flota_min']], ['Servicios de flotilla', ['flota_serv']], ['Marcas o distribuidores con convenio', ['arr_marcas']]]],
   ['Garantías y salud financiera', [
-    ['Garantías adicionales', ['garantias']], ['Cobertura de garantía', ['cobertura']], ['Aval u obligado solidario', ['aval']], ['Indicadores que más pesan', ['ratios']],
+    ['Garantías adicionales', ['garantias']], ['Cobertura de garantía', ['cobertura']], ['Aval u obligado solidario', ['aval', 'aval_dep']], ['Indicadores que más pesan', ['ratios']],
     ['Liquidez mínima', ['liquidez_min']], ['Cómo validan ventas', ['ventas_val']], ['Concentración máxima en un cliente', ['conc_max']], ['Cómo miden capacidad de pago', ['capacidad']],
-    ['Caída de ventas tolerada', ['caida']]]],
+    ['Caída de ventas tolerada', ['caida', 'caida_dep']]]],
   ['Tolerancias', [
-    ['Atrasos en Buró', ['flex_buro']], ['Atraso máximo tolerado', ['buro_dias']], ['Créditos reestructurados', ['buro_reestr']], ['Sin historial crediticio', ['flex_sinhist']],
+    ['Atrasos en Buró', ['flex_buro']], ['Atraso máximo tolerado', ['buro_dias']], ['Créditos reestructurados', ['buro_reestr', 'reestr_dep']], ['Sin historial crediticio', ['flex_sinhist']],
     ['32-D negativa', ['flex_32d']], ['RESICO', ['flex_resico']], ['Juicios activos', ['flex_juicios']], ['PEP en socios', ['flex_pep']],
     ['Acta o poderes irregulares', ['flex_acta']], ['Socios extranjeros', ['flex_extranjeros']], ['Concurso mercantil previo', ['flex_concurso']]]],
   ['Proceso y precio', [
@@ -653,34 +670,72 @@ function critRows(a) {
     n++;
     const qs = ids.map(id => QBY[id]).filter(Boolean);
     const vis = qs.filter(q => visible(q, a));
-    let st = 'falta', val = '', go = null;
+    let st = 'falta', val = '', go = null, jump = null;
     if (!vis.length) { st = 'na'; val = 'No aplica a su operación'; }
     else {
       const ok = vis.filter(q => answered(q, a) && !state.pre.includes(q.id) && !((checkOf(q, a) || [])[0] === 'bad'));
-      if (ok.length) { st = 'ok'; val = ok.map(q => valueText(q, a[q.id], a)).filter(Boolean).join(' · '); }
-      else { const q0 = vis[0]; go = q0.b !== 'base' ? q0.b : null; if (state.pre.includes(q0.id)) st = 'confirmar'; }
+      val = ok.map(q => valueText(q, a[q.id], a)).filter(Boolean).join(' · ');
+      if (ok.length === vis.length) st = 'ok';
+      else { const q0 = vis.find(q => !ok.includes(q)); go = q0.b !== 'base' ? q0.b : null; jump = q0.b !== 'base' ? q0.id : null; if (state.pre.includes(q0.id)) st = 'confirmar'; }
     }
-    rows.push({ n, g, label, st, val, go });
+    rows.push({ n, g, label, st, val, go, jump });
   }));
   return rows;
 }
 function critPanelHTML(a) {
   const rows = critRows(a), done = rows.filter(r => r.st === 'ok' || r.st === 'na').length, miss = rows.filter(r => r.st === 'falta' || r.st === 'confirmar');
   return '<div class="ps"><h3><i class="gold"></i>Criterios capturados</h3><div class="crit-big"><b>' + done + '</b><span>de ' + rows.length + '</span></div><div class="bar"><i style="width:' + Math.round(done * 100 / rows.length) + '%"></i></div>' +
-    (miss.length ? '<div class="crit-miss">' + miss.map(r => r.go ? '<button type="button" data-go="' + r.go + '">' + r.n + '. ' + esc(r.label) + (r.st === 'confirmar' ? ' (confirmar)' : '') + '</button>' : '<span>' + r.n + '. ' + esc(r.label) + '</span>').join('') + '</div>' : '<span class="pempty">Los 60 criterios están capturados.</span>') + '</div>';
+    (miss.length ? '<div class="crit-miss">' + miss.map(r => r.go ? '<button type="button" data-go="' + r.go + '" data-jump="' + (r.jump || '') + '">' + r.n + '. ' + esc(r.label) + (r.st === 'confirmar' ? ' (confirmar)' : '') + '</button>' : '<span>' + r.n + '. ' + esc(r.label) + '</span>').join('') + '</div>' : '<span class="pempty">Los 60 criterios están capturados.</span>') + '</div>';
 }
 function critTableHTML(a) {
   const rows = critRows(a); let g = '';
-  return '<div class="tbl-wrap"><table class="pt crit-tbl"><thead><tr><th>#</th><th>Criterio</th><th>Valor</th></tr></thead><tbody>' + rows.map(r => { const head = r.g !== g ? '<tr class="grp"><td colspan="3">' + esc(r.g) + '</td></tr>' : ''; g = r.g; return head + '<tr class="' + r.st + '"><td>' + r.n + '</td><td>' + esc(r.label) + '</td><td>' + (r.st === 'ok' || r.st === 'na' ? esc(r.val) : '<em>' + (r.st === 'confirmar' ? 'Falta confirmar' : 'Falta') + '</em>') + '</td></tr>'; }).join('') + '</tbody></table></div>';
+  return '<div class="tbl-wrap"><table class="pt crit-tbl"><thead><tr><th>#</th><th>Criterio</th><th>Valor</th></tr></thead><tbody>' + rows.map(r => { const head = r.g !== g ? '<tr class="grp"><td colspan="3">' + esc(r.g) + '</td></tr>' : ''; g = r.g; return head + '<tr class="' + r.st + '"><td>' + r.n + '</td><td>' + esc(r.label) + '</td><td>' + (r.st === 'ok' || r.st === 'na' ? esc(r.val) : (r.val ? esc(r.val) + ' ' : '') + '<em>' + (r.st === 'confirmar' ? 'Falta confirmar' : r.val ? 'Falta completar' : 'Falta') + '</em>') + '</td></tr>'; }).join('') + '</tbody></table></div>';
 }
-const CASES = [{"idx": 0, "kind": "base", "lease": true, "titulo": "Transportes Cumbres del Norte SA de CV (ficticio)", "sub": "Autotransporte de carga · Monterrey, N.L.", "especial": null, "rows": [["Tipo de cliente", "Persona moral", 0], ["Producto", "Arrendamiento financiero", 0], ["Activo", "10 tractocamiones con remolque", 0], ["Condición del equipo", "Nuevos", 0], ["Valor del equipo", "$20,000,000", 0], ["Plazo", "48 meses", 0], ["Depósito", "20% ($4,000,000)", 0], ["Opción de compra", "Valor simbólico", 0], ["Años operando", "8 años", 0], ["Facturación anual", "$150,000,000", 0], ["Score Buró empresa", "720", 0], ["Score Buró socio principal", "710", 0], ["Liquidez (razón circulante)", "1.6x", 0], ["Cliente principal", "18% de las ventas", 0], ["Ventas facturadas (CFDI)", "Coinciden con estados de cuenta", 0], ["Historial de pago", "Sin atrasos", 0], ["Situación fiscal", "Opinión 32-D positiva", 0]], "insight": {"si": ["ok", "Aprobaron el caso que cumple todo lo que dijeron: la política declarada es consistente"], "cond": ["warn", "Aun dentro de sus parámetros piden condiciones extra"], "no": ["bad", "Rechazaron un caso que cumple todo lo que dijeron: hay un criterio que no ha salido"]}}, {"idx": 1, "kind": "zona", "lease": true, "titulo": "Distribuidora Peninsular de Alimentos SA de CV (ficticio)", "sub": "Comercio mayoreo · Mérida, Yuc.", "especial": "Está en Mérida, fuera de las zonas donde originan hoy. Diego dijo que sí aceptarían el Sureste. Todo lo demás está dentro de sus parámetros.", "rows": [["Tipo de cliente", "Persona moral", 0], ["Producto", "Arrendamiento puro", 0], ["Activo", "25 camionetas de reparto", 0], ["Condición del equipo", "Nuevas", 0], ["Valor del equipo", "$15,000,000", 0], ["Plazo", "36 meses", 0], ["Depósito", "20%", 0], ["Valor residual", "15%", 0], ["Ubicación", "Mérida, Yuc.", 1], ["Años operando", "6 años", 0], ["Facturación anual", "$90,000,000", 0], ["Score Buró empresa", "700", 0], ["Liquidez (razón circulante)", "1.4x", 0], ["Cliente principal", "12% de las ventas", 0], ["Historial de pago", "Sin atrasos", 0], ["Situación fiscal", "Opinión 32-D positiva", 0]], "insight": {"si": ["ok", "Confirmado: originarían en el Sureste. Vértice puede abrirles zonas nuevas"], "cond": ["ok", "Originarían en el Sureste con condiciones"], "no": ["warn", "Dijeron que aceptarían otras zonas, pero rechazaron Mérida: la expansión geográfica tiene límites reales"]}}, {"idx": 2, "kind": "limite", "lease": true, "titulo": "Constructora Altavista del Bajío SA de CV (ficticio)", "sub": "Obra civil · León, Gto.", "especial": "El equipo es usado con 5 años de antigüedad y su límite es 3 años. A cambio ofrece 30% de depósito y prenda adicional sobre maquinaria propia.", "rows": [["Tipo de cliente", "Persona moral", 0], ["Producto", "Arrendamiento puro", 0], ["Activo", "2 excavadoras y 1 retroexcavadora", 0], ["Condición del equipo", "Usadas, 5 años de antigüedad", 1], ["Valor del equipo", "$8,000,000", 0], ["Plazo", "36 meses", 0], ["Depósito", "30%", 0], ["Garantía adicional", "Prenda sobre maquinaria propia, cobertura 1.5x", 0], ["Años operando", "12 años", 0], ["Facturación anual", "$110,000,000", 0], ["Score Buró empresa", "700", 0], ["Liquidez (razón circulante)", "1.5x", 0], ["Cliente principal", "25% de las ventas (gobierno estatal)", 0], ["Historial de pago", "Sin atrasos", 0], ["Situación fiscal", "Opinión 32-D positiva", 0]], "insight": {"si": ["ok", "Su límite de 3 años en equipo usado se flexibiliza con más depósito y garantía"], "cond": ["ok", "Su límite de equipo usado se flexibiliza con condiciones"], "no": ["bad", "Su límite de 3 años en equipo usado es firme, aun con 30% de depósito y prenda adicional"]}}, {"idx": 3, "kind": "limite", "lease": true, "titulo": "Plásticos Técnicos de Apodaca SA de CV (ficticio)", "sub": "Manufactura, maquila para empresas de EUA · Apodaca, N.L.", "especial": "Factura $22 millones, abajo de su mínimo de $30 millones, y el ticket es chico. Pero es el cliente perfecto que describió Diego: manufacturera de Nuevo León que maquila para Estados Unidos.", "rows": [["Tipo de cliente", "Persona moral", 0], ["Producto", "Arrendamiento financiero", 0], ["Activo", "2 máquinas de inyección de plástico", 0], ["Condición del equipo", "Nuevas", 0], ["Valor del equipo", "$3,500,000", 0], ["Plazo", "48 meses", 0], ["Depósito", "20%", 0], ["Años operando", "5 años", 0], ["Facturación anual", "$22,000,000", 1], ["Score Buró empresa", "690", 0], ["Liquidez (razón circulante)", "1.8x", 0], ["Cliente principal", "35% de las ventas (empresa de EUA, contrato a 3 años)", 0], ["Ventas facturadas (CFDI)", "Coinciden con estados de cuenta", 0], ["Historial de pago", "Sin atrasos", 0], ["Situación fiscal", "Opinión 32-D positiva", 0]], "insight": {"si": ["ok", "El mínimo de facturación se flexibiliza cuando el perfil es su cliente ideal"], "cond": ["ok", "El mínimo de facturación se flexibiliza con condiciones si es su cliente ideal"], "no": ["bad", "El mínimo de $30 millones de facturación es firme, aunque sea su perfil ideal"]}}, {"idx": 4, "kind": "tolerancia", "lease": false, "titulo": "Agroindustrias del Valle de Culiacán SA de CV (ficticio)", "sub": "Agroindustria de exportación · Culiacán, Sin.", "especial": "Tuvo un atraso de 60 días con un banco hace 18 meses, ya liquidado y al corriente desde entonces. Diego dijo que los atrasos en Buró \"dependen\". Todo lo demás está dentro de sus parámetros.", "rows": [["Tipo de cliente", "Persona moral", 0], ["Producto", "Crédito simple", 0], ["Monto", "$12,000,000", 0], ["Plazo", "36 meses", 0], ["Destino", "Capital de trabajo para el ciclo de exportación", 0], ["Años operando", "15 años", 0], ["Facturación anual", "$180,000,000", 0], ["Score Buró empresa", "680", 0], ["Liquidez (razón circulante)", "1.3x", 0], ["Cliente principal", "20% de las ventas", 0], ["Garantía", "Hipotecaria (bodega), cobertura 1.4x", 0], ["Historial de pago", "Atraso de 60 días hace 18 meses, liquidado. Al corriente desde entonces.", 1], ["Situación fiscal", "Opinión 32-D positiva", 0]], "insight": {"si": ["ok", "Un atraso de 60 días ya liquidado hace más de un año no es motivo de rechazo"], "cond": ["ok", "Un atraso de 60 días liquidado se acepta con condiciones"], "no": ["bad", "Un atraso de 60 días, aunque esté liquidado, es motivo de rechazo: su tolerancia en Buró es baja"]}}, {"idx": 5, "kind": "tolerancia", "lease": false, "titulo": "Servicios Industriales Regios SA de CV (ficticio)", "sub": "Mantenimiento industrial · Monterrey, N.L.", "especial": "Su liquidez es de 0.9x y un solo cliente concentra 45% de sus ventas: justo sus indicadores número 1 y número 3. A cambio, garantía hipotecaria con cobertura de 1.3x.", "rows": [["Tipo de cliente", "Persona moral", 0], ["Producto", "Crédito simple", 0], ["Monto", "$25,000,000", 0], ["Plazo", "48 meses", 0], ["Destino", "Compra de equipo y capital de trabajo", 0], ["Años operando", "10 años", 0], ["Facturación anual", "$200,000,000", 0], ["Score Buró empresa", "710", 0], ["Liquidez (razón circulante)", "0.9x", 1], ["Cliente principal", "45% de las ventas (planta automotriz)", 1], ["Garantía", "Hipotecaria, cobertura 1.3x", 0], ["Historial de pago", "Sin atrasos", 0], ["Situación fiscal", "Opinión 32-D positiva", 0]], "insight": {"si": ["ok", "Con garantía hipotecaria toleran liquidez baja y concentración alta"], "cond": ["warn", "Liquidez baja y concentración alta se aceptan solo con condiciones"], "no": ["bad", "Liquidez abajo de 1x o un cliente con 45% de las ventas son motivo de rechazo"]}}];
+const ZCITY = { norte: 'Monterrey, N.L.', cdmx: 'Ciudad de México', bajio: 'León, Gto.', occidente: 'Guadalajara, Jal.', frontera: 'Reynosa, Tamps.', sureste: 'Mérida, Yuc.', centro: 'Puebla, Pue.', sur: 'Oaxaca, Oax.', pacifico: 'Culiacán, Sin.' };
+const mx = n => '$' + Math.round(n).toLocaleString('es-MX');
+const nv = (v, d) => (typeof v === 'number' && isFinite(v)) ? v : d;
+const depTxt = a => a.arr_deposito && a.arr_deposito !== 'caso' ? lab(DEPOSITO, a.arr_deposito) : '20% del valor';
+const scoreOk = a => Math.min(850, Math.max(nv(a.score_pm, 650), nv(a.score_pf, 650)) + 50);
+const CASEB = [
+  a => { const t = nv(a.ticket, 20e6), liq = Math.max(nv(a.liquidez_min, 1.2) + 0.4, 1.6), cm = parseFloat(a.conc_max), conc = isFinite(cm) ? Math.max(8, Math.min(cm - 12, 18)) : 18;
+    return { idx: 0, kind: 'base', lease: true, titulo: 'Transportes Cumbres del Norte SA de CV (ficticio)', sub: 'Autotransporte de carga · Monterrey, N.L.', especial: null,
+      rows: [['Tipo de cliente', 'Persona moral', 0], ['Producto', 'Arrendamiento financiero', 0], ['Activo', '10 tractocamiones con remolque', 0], ['Condición del equipo', 'Nuevos', 0], ['Valor del equipo', mx(t), 0], ['Plazo', '48 meses', 0], ['Depósito', depTxt(a), 0], ['Opción de compra', a.arr_opcion ? lab(OPCION, a.arr_opcion) : 'Valor simbólico', 0], ['Años operando', (nv(a.antig, 3) + 5) + ' años', 0], ['Facturación anual', mx(Math.max(nv(a.facturacion, 30e6) * 5, t * 7.5)), 0], ['Score Buró empresa', String(scoreOk(a) + 20), 0], ['Liquidez (razón circulante)', liq.toFixed(1) + 'x', 0], ['Cliente principal', conc + '% de las ventas', 0], ['Ventas facturadas (CFDI)', 'Coinciden con estados de cuenta', 0], ['Historial de pago', 'Sin atrasos', 0], ['Situación fiscal', 'Opinión 32-D positiva', 0]],
+      insight: { si: ['ok', 'Aprobaron el caso que cumple todo lo que dijeron: su política declarada es consistente'], cond: ['warn', 'Aun dentro de sus parámetros piden condiciones extra'], no: ['bad', 'Rechazaron un caso que cumple todo lo que dijeron: hay un criterio que no ha salido'] } }; },
+  a => { const zs = arr(a, 'zonas_si'), z = zs.find(k => ZCITY[k]) || 'sureste', city = ZCITY[z], said = zs.includes(z);
+    return { idx: 1, kind: 'zona', lease: true, titulo: 'Distribuidora Regional de Alimentos SA de CV (ficticio)', sub: 'Comercio mayoreo · ' + city,
+      especial: 'Está en ' + city + ', fuera de las zonas donde originan hoy. ' + (said ? 'Ustedes dijeron que sí aceptarían ' + lab(ZONAS, z) + '.' : 'No está entre las zonas que mencionaron.') + ' Todo lo demás está dentro de sus parámetros.',
+      rows: [['Tipo de cliente', 'Persona moral', 0], ['Producto', 'Arrendamiento puro', 0], ['Activo', '25 camionetas de reparto', 0], ['Condición del equipo', 'Nuevas', 0], ['Valor del equipo', mx(15e6), 0], ['Plazo', '36 meses', 0], ['Depósito', depTxt(a), 0], ['Valor residual', a.arr_residual ? lab(RESIDUAL, a.arr_residual) : '15%', 0], ['Ubicación', city, 1], ['Años operando', (nv(a.antig, 3) + 3) + ' años', 0], ['Facturación anual', mx(Math.max(nv(a.facturacion, 30e6) * 3, 90e6)), 0], ['Score Buró empresa', String(scoreOk(a)), 0], ['Liquidez (razón circulante)', (nv(a.liquidez_min, 1.2) + 0.2).toFixed(1) + 'x', 0], ['Cliente principal', '12% de las ventas', 0], ['Historial de pago', 'Sin atrasos', 0], ['Situación fiscal', 'Opinión 32-D positiva', 0]],
+      insight: { si: ['ok', 'Confirmado: originarían en ' + city + '. Vértice puede abrirles zonas nuevas'], cond: ['ok', 'Originarían en ' + city + ' con condiciones'], no: ['warn', 'Rechazaron ' + city + ': la expansión geográfica tiene límites reales'] } }; },
+  a => { const lim = ({ no: 0, '3': 3, '5': 5, '10': 10 })[a.arr_usado], L = lim == null ? 3 : lim, age = L + 2;
+    return { idx: 2, kind: 'limite', lease: true, titulo: 'Constructora Altavista de Querétaro SA de CV (ficticio)', sub: 'Obra civil · Querétaro, Qro.',
+      especial: 'El equipo es usado con ' + age + ' años de antigüedad y su límite es ' + (L ? L + ' años' : 'solo equipo nuevo') + '. A cambio ofrece 30% de depósito y prenda adicional sobre maquinaria propia.',
+      rows: [['Tipo de cliente', 'Persona moral', 0], ['Producto', 'Arrendamiento puro', 0], ['Activo', '2 excavadoras y 1 retroexcavadora', 0], ['Condición del equipo', 'Usadas, ' + age + ' años de antigüedad', 1], ['Valor del equipo', mx(8e6), 0], ['Plazo', '36 meses', 0], ['Depósito', '30%', 0], ['Garantía adicional', 'Prenda sobre maquinaria propia, cobertura 1.5x', 0], ['Años operando', '12 años', 0], ['Facturación anual', mx(110e6), 0], ['Score Buró empresa', String(scoreOk(a)), 0], ['Liquidez (razón circulante)', (nv(a.liquidez_min, 1.2) + 0.3).toFixed(1) + 'x', 0], ['Cliente principal', '25% de las ventas (gobierno estatal)', 0], ['Historial de pago', 'Sin atrasos', 0], ['Situación fiscal', 'Opinión 32-D positiva', 0]],
+      insight: { si: ['ok', 'Su límite de antigüedad en equipo usado se flexibiliza con más depósito y garantía'], cond: ['ok', 'Su límite de equipo usado se flexibiliza con condiciones'], no: ['bad', 'Su límite de antigüedad en equipo usado es firme, aun con 30% de depósito y prenda adicional'] } }; },
+  a => { const fm = nv(a.facturacion, 30e6), f = Math.max(1e6, Math.round(fm * 0.75 / 1e6) * 1e6);
+    return { idx: 3, kind: 'limite', lease: true, titulo: 'Plásticos Técnicos de Apodaca SA de CV (ficticio)', sub: 'Manufactura, maquila para empresas de EUA · Apodaca, N.L.',
+      especial: 'Factura ' + fmtMoney(f) + ', abajo de su mínimo de ' + fmtMoney(fm) + ', y el ticket es chico. Pero es el cliente perfecto que describieron: manufacturera de Nuevo León que maquila para Estados Unidos.',
+      rows: [['Tipo de cliente', 'Persona moral', 0], ['Producto', 'Arrendamiento financiero', 0], ['Activo', '2 máquinas de inyección de plástico', 0], ['Condición del equipo', 'Nuevas', 0], ['Valor del equipo', mx(3.5e6), 0], ['Plazo', '48 meses', 0], ['Depósito', depTxt(a), 0], ['Años operando', (nv(a.antig, 3) + 2) + ' años', 0], ['Facturación anual', mx(f), 1], ['Score Buró empresa', String(scoreOk(a)), 0], ['Liquidez (razón circulante)', '1.8x', 0], ['Cliente principal', '35% de las ventas (empresa de EUA, contrato a 3 años)', 0], ['Ventas facturadas (CFDI)', 'Coinciden con estados de cuenta', 0], ['Historial de pago', 'Sin atrasos', 0], ['Situación fiscal', 'Opinión 32-D positiva', 0]],
+      insight: { si: ['ok', 'El mínimo de facturación se flexibiliza cuando el perfil es su cliente ideal'], cond: ['ok', 'El mínimo de facturación se flexibiliza con condiciones si es su cliente ideal'], no: ['bad', 'El mínimo de ' + fmtMoney(fm) + ' de facturación es firme, aunque sea su perfil ideal'] } }; },
+  a => { const m = ({ '1_29': [45, '1 a 29 días'], '30_59': [75, '30 a 59 días'], '60_89': [100, '60 a 89 días'], '90': [120, '90+ días si ya está liquidado'] })[a.buro_dias], d = m ? m[0] : 60;
+    return { idx: 4, kind: 'tolerancia', lease: false, titulo: 'Agroindustrias del Valle de Culiacán SA de CV (ficticio)', sub: 'Agroindustria de exportación · Culiacán, Sin.',
+      especial: 'Tuvo un atraso de ' + d + ' días con un banco hace 18 meses, ya liquidado y al corriente desde entonces. ' + (m ? 'Ustedes dijeron que toleran ' + m[1] + '.' : 'Los atrasos en Buró "dependen", según la primera vuelta.') + ' Todo lo demás está dentro de sus parámetros.',
+      rows: [['Tipo de cliente', 'Persona moral', 0], ['Producto', 'Crédito simple', 0], ['Monto', mx(12e6), 0], ['Plazo', '36 meses', 0], ['Destino', 'Capital de trabajo para el ciclo de exportación', 0], ['Años operando', '15 años', 0], ['Facturación anual', mx(180e6), 0], ['Score Buró empresa', String(scoreOk(a)), 0], ['Liquidez (razón circulante)', (nv(a.liquidez_min, 1.2) + 0.1).toFixed(1) + 'x', 0], ['Cliente principal', '20% de las ventas', 0], ['Garantía', 'Hipotecaria (bodega), cobertura 1.4x', 0], ['Historial de pago', 'Atraso de ' + d + ' días hace 18 meses, liquidado. Al corriente desde entonces.', 1], ['Situación fiscal', 'Opinión 32-D positiva', 0]],
+      insight: { si: ['ok', 'Un atraso de ' + d + ' días ya liquidado hace más de un año no es motivo de rechazo'], cond: ['ok', 'Un atraso de ' + d + ' días liquidado se acepta con condiciones'], no: ['bad', 'Un atraso de ' + d + ' días, aunque esté liquidado, es motivo de rechazo'] } }; },
+  a => { const lm = a.liquidez_min === 'na' ? 1 : nv(a.liquidez_min, 1), liq = Math.max(0.5, lm - 0.15), cm = parseFloat(a.conc_max), conc = isFinite(cm) ? cm + 15 : 45;
+    return { idx: 5, kind: 'tolerancia', lease: false, titulo: 'Servicios Industriales Regios SA de CV (ficticio)', sub: 'Mantenimiento industrial · Monterrey, N.L.',
+      especial: 'Su liquidez es de ' + liq.toFixed(2) + 'x' + (num(a.liquidez_min) ? ', abajo de su mínimo de ' + lm + 'x,' : '') + ' y un solo cliente concentra ' + conc + '% de sus ventas' + (isFinite(cm) ? ', arriba de su máximo de ' + cm + '%' : '') + '. A cambio, garantía hipotecaria con cobertura de 1.3x.',
+      rows: [['Tipo de cliente', 'Persona moral', 0], ['Producto', 'Crédito simple', 0], ['Monto', mx(25e6), 0], ['Plazo', '48 meses', 0], ['Destino', 'Compra de equipo y capital de trabajo', 0], ['Años operando', '10 años', 0], ['Facturación anual', mx(200e6), 0], ['Score Buró empresa', String(scoreOk(a)), 0], ['Liquidez (razón circulante)', liq.toFixed(2) + 'x', 1], ['Cliente principal', conc + '% de las ventas (planta automotriz)', 1], ['Garantía', 'Hipotecaria, cobertura 1.3x', 0], ['Historial de pago', 'Sin atrasos', 0], ['Situación fiscal', 'Opinión 32-D positiva', 0]],
+      insight: { si: ['ok', 'Con garantía hipotecaria toleran liquidez y concentración fuera de sus límites'], cond: ['warn', 'Liquidez y concentración fuera de límite se aceptan solo con condiciones'], no: ['bad', 'Sus límites de liquidez y concentración son firmes, aun con garantía hipotecaria'] } }; },
+];
+const CASES = CASEB.map(f => f(BASE_A));
+const FLOW = ['resp_nombre','resp_puesto','resp_area','clientes','pm_tamano','score_pm','capital','flex_acta','flex_extranjeros','flex_concurso','pct_grupo','caso_0','prod_igual','por_producto','arr_marcas','residual_plazo','gps_monto','caso_2','caso_3','caso_1','liquidez_min','ventas_val','conc_max','capacidad','capacidad_regla','expo_max','aval_dep','caida_dep','caso_5','flex_buro','buro_dias','buro_reestr','reestr_dep','caso_4','flex_resico','flex_pep','pricing','tasa_sube','tasa_baja','t_viab','resp72','digital','conversion','valida','valida_nota'];
 const QBY = Object.fromEntries(Q.map(q => [q.id, q]));
 
 // ---------- state ----------
 const LS_KEY = 'vertice-value-vuelta2-v1';
 // Prefilled from public research; respondents confirm or correct.
 const DEFAULTS = JSON.parse(JSON.stringify(BASE_A));
-const state = { a: JSON.parse(JSON.stringify(DEFAULTS)), n: {}, pre: ['clientes', 'pricing', 'flex_buro', 'flex_resico', 'flex_pep'], block: 'inicio', updated: 0, enviado: false, view: 'form', ownerSel: null };
+const state = { a: JSON.parse(JSON.stringify(DEFAULTS)), n: {}, pre: ['clientes', 'pricing', 'flex_buro', 'flex_resico', 'flex_pep'], block: 'inicio', updated: 0, enviado: false, view: 'form', ownerSel: null, mode: 'chat', cur: null, hist: [], skip: [], tried: null };
 const openNotes = new Set();
 let prevVisible = null;
 try {
@@ -901,7 +956,7 @@ function buildCase(idx, a) {
   return sp;
 }
 
-function caseSpec(idx, a) { return CASES[idx]; }
+function caseSpec(idx, a) { const v = a['caso_' + idx]; return (v && v.spec) || CASEB[idx](a); }
 
 function insightFor(spec, v) {
   if (!v || !v.d) return null;
@@ -1071,6 +1126,7 @@ function activeBlocks(a) { return BLOCKS.filter(b => b.id === 'inicio' || b.id =
 
 function renderSteps() {
   const a = state.a;
+  $steps.hidden = state.mode === 'chat' && state.view !== 'owner';
   $steps.innerHTML = activeBlocks(a).map(b => {
     const qs = blockQs(b.id, a), d = qs.filter(q => isDone(q, a)).length;
     const st = b.id === 'resumen' ? (state.enviado ? 'done' : '') : (qs.length && d === qs.length ? 'done' : d ? 'partial' : '');
@@ -1078,12 +1134,47 @@ function renderSteps() {
   }).join('');
 }
 
+let lastCur = null, advTok = 0;
+function flowVisible(a) { return FLOW.map(id => QBY[id]).filter(q => q && visible(q, a)); }
+function nextQ(a) { const q = flowVisible(a).find(q => !isDone(q, a) && !state.skip.includes(q.id)); return q ? q.id : null; }
+function goNext() {
+  const a = state.a, cur = state.cur;
+  if (cur) { if (!isDone(QBY[cur], a) && !state.skip.includes(cur)) state.skip.push(cur); state.hist.push(cur); }
+  state.cur = nextQ(a); state.tried = null;
+  renderChat(); window.scrollTo({ top: 0, behavior: 'smooth' });
+}
+function shortLabel(q, a) { return q.type === 'case' ? 'Caso ' + (q.idx + 1) : labelOf(q, a); }
+function renderChat(focusSel) {
+  const a = state.a;
+  if (!state.cur || !QBY[state.cur] || !visible(QBY[state.cur], a)) state.cur = nextQ(a);
+  const cr = critRows(a), cDone = cr.filter(r => r.st === 'ok' || r.st === 'na').length, casos = [0, 1, 2, 3, 4, 5].filter(i => isDone(QBY['caso_' + i], a)).length;
+  const left = flowVisible(a).filter(q => !isDone(q, a)).length;
+  let h = '<div class="chat-top"><div class="chat-prog"><b>' + cDone + ' de 60</b> criterios · <b>' + casos + ' de 6</b> casos · ' + (left ? 'faltan ' + left + ' preguntas' : 'todo contestado') + '</div><div class="bar light"><i style="width:' + Math.round(cDone * 100 / 60) + '%"></i></div><button type="button" class="linkbtn" data-mode="bloques">Ver todas las preguntas por bloques</button></div>';
+  if (!state.hist.length && state.cur === 'resp_nombre') h += '<div class="intro"><div><b>Una pregunta a la vez</b><span>Cada respuesta decide la siguiente. Si contestan "depende", les preguntamos de qué.</span></div><div><b>Casos a su medida</b><span>Los casos de prueba se arman con lo que van contestando, justo en el límite de sus criterios.</span></div><div><b>10 a 15 minutos</b><span>Lo que Diego ya contestó no se repite. Si algo no lo saben, usen "Saltar por ahora".</span></div></div>';
+  if (state.hist.length) { const pq = QBY[state.hist[state.hist.length - 1]], pv = pq ? valueText(pq, a[pq.id], a) : ''; if (pq) h += '<p class="prev">' + (pv && isDone(pq, a) ? 'Anotado · ' + esc(shortLabel(pq, a)) + ': <b>' + esc(pv.length > 160 ? pv.slice(0, 157) + '…' : pv) + '</b>' : 'Saltaron "' + esc(shortLabel(pq, a)) + '". La retomamos al final.') + '</p>'; }
+  if (!state.cur) {
+    const pend = state.skip.filter(id => QBY[id] && visible(QBY[id], a) && !isDone(QBY[id], a));
+    h += '<div class="block-head"><span class="eyebrow">Terminamos</span><h1>' + (pend.length ? 'Casi listo' : 'Listo, muchas gracias') + '</h1><p>' + (pend.length ? 'Quedaron ' + pend.length + (pend.length === 1 ? ' pregunta' : ' preguntas') + ' sin contestar. Si pueden, contéstenlas ahora: cada una completa un criterio.' : 'Ya tenemos sus criterios. Revisen el resumen y envíenlo.') + '</p></div>';
+    if (pend.length) h += '<div class="pending">' + pend.map(id => '<button type="button" data-jump="' + id + '">' + esc(shortLabel(QBY[id], a)) + '</button>').join('') + '</div>';
+    h += summaryHTML(a, true);
+  } else {
+    const q = QBY[state.cur], isNew = lastCur !== state.cur, blk = BLOCKS.find(b => b.id === q.b);
+    lastCur = state.cur;
+    h += '<div class="chat-q"><span class="eyebrow">Pregunta ' + (state.hist.length + 1) + (blk ? ' · ' + esc(blk.short) : '') + '</span>' + qHTML(q, a, isNew) + '</div>';
+    if (q.crit && !isDone(q, a) && state.tried === q.id) h += '<p class="err bad">Esta respuesta completa uno de sus 60 criterios. Contéstenla, o usen "Saltar por ahora" y la retomamos al final.</p>';
+    h += '<div class="nav chat-nav">' + (state.hist.length ? '<button type="button" class="btn sec" data-back="1">Anterior</button>' : '<span></span>') + '<button type="button" class="linkbtn" data-skip="1">Saltar por ahora</button><button type="button" class="btn" data-next="1">Continuar</button></div>';
+  }
+  $main.innerHTML = h;
+  if (focusSel) { const el = $main.querySelector(focusSel); if (el) el.focus({ preventScroll: true }); }
+  renderSteps();
+}
 function renderBlock(focusSel) {
   if (state.view === 'owner') { renderOwner(); return; }
+  if (state.mode === 'chat') { renderChat(focusSel); return; }
   const a = state.a, AB = activeBlocks(a), b = AB.find(x => x.id === state.block) || AB[0];
   const qs = blockQs(b.id, a);
   const nowVis = new Set(Q.filter(q => visible(q, a)).map(q => q.id));
-  let h = '<div class="block-head"><span class="eyebrow">Bloque ' + (AB.indexOf(b) + 1) + ' de ' + AB.length + '</span><h1>' + esc(b.title) + '</h1><p>' + esc(b.lead) + '</p></div>';
+  let h = '<button type="button" class="linkbtn" data-mode="chat">Volver a la conversación (una pregunta a la vez)</button><div class="block-head"><span class="eyebrow">Bloque ' + (AB.indexOf(b) + 1) + ' de ' + AB.length + '</span><h1>' + esc(b.title) + '</h1><p>' + esc(b.lead) + '</p></div>';
   if (b.id === 'inicio') {
     h += '<div class="intro"><div><b>Para crédito o riesgo</b><span>Esta vuelta la debe contestar quien conoce la política de crédito, no el área comercial.</span></div><div><b>10 a 15 minutos</b><span>Las respuestas de Diego vienen prellenadas. Solo confirmen, corrijan y completen lo que falta.</span></div><div><b>Primero, 6 casos</b><span>Cada caso prueba un criterio. Todas las preguntas marcadas como obligatorias deben contestarse.</span></div></div>';
   }
@@ -1354,6 +1445,11 @@ document.addEventListener('click', e => {
   const t = e.target.closest('button');
   if (!t) return;
   const a = state.a;
+  if (t.dataset.mode) { state.mode = t.dataset.mode; state.view = 'form'; if (state.mode === 'bloques' && state.cur && QBY[state.cur]) state.block = QBY[state.cur].b; renderBlock(); window.scrollTo({ top: 0 }); return; }
+  if (t.dataset.jump && (state.mode === 'chat' || !t.dataset.go)) { const id = t.dataset.jump; state.view = 'form'; state.mode = 'chat'; state.skip = state.skip.filter(x => x !== id); if (state.cur && state.cur !== id) state.hist.push(state.cur); state.cur = id; state.tried = null; renderChat(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
+  if (t.dataset.next) { const q = QBY[state.cur]; if (q && q.crit && !isDone(q, a) && state.tried !== q.id) { state.tried = q.id; renderChat(); return; } goNext(); return; }
+  if (t.dataset.skip) { if (state.cur && !state.skip.includes(state.cur)) state.skip.push(state.cur); goNext(); return; }
+  if (t.dataset.back) { if (state.hist.length) { state.cur = state.hist.pop(); state.tried = null; renderChat(); window.scrollTo({ top: 0, behavior: 'smooth' }); } return; }
   if (t.dataset.go) { state.view = 'form'; state.block = t.dataset.go; prevVisible = new Set(Q.filter(q => visible(q, a)).map(q => q.id)); saveLocal(); renderBlock(); window.scrollTo({ top: 0, behavior: 'smooth' }); return; }
   if (t.id === 'ownerBtn') { state.view = 'owner'; renderOwner(); window.scrollTo({ top: 0 }); return; }
   if (t.id === 'backForm') { state.view = 'form'; renderBlock(); return; }
@@ -1376,6 +1472,7 @@ document.addEventListener('click', e => {
     const v = Object.assign({}, a[qid] || {});
     v.d = v.d === t.dataset.k ? null : t.dataset.k;
 
+    if (v.d && !v.spec) v.spec = CASEB[q.idx](a);
     v.c = v.d === 'cond' ? (v.c || []) : []; v.r = v.d === 'no' ? (v.r || []) : [];
     a[qid] = v; commit(true, sel(qid, '[data-k="' + t.dataset.k + '"]')); return;
   }
@@ -1419,6 +1516,18 @@ document.addEventListener('input', e => {
   a[qid] = t.value; commit(false);
 });
 document.addEventListener('input', e => { const qid = e.target.dataset && e.target.dataset.q; if (qid) refreshErr(qid); });
+document.addEventListener('click', e => {
+  const t = e.target.closest && e.target.closest('button');
+  if (!t || state.mode !== 'chat' || state.view !== 'form') return;
+  const qid = t.dataset.q; if (!qid || qid !== state.cur) return;
+  const q = QBY[qid], v = state.a[qid];
+  let auto = false;
+  if (q.type === 'single' && t.dataset.v != null && !t.dataset.sub) auto = true;
+  if ((q.type === 'num' || q.type === 'money') && (t.dataset.preset || t.dataset.na)) auto = true;
+  if (t.dataset.flex && q.type === 'flex' && v && (v.v === 'si' || v.v === 'no')) auto = true;
+  if (t.dataset.flex && q.type === 'fact' && v && v.v === 'si') auto = true;
+  if (auto && isDone(q, state.a)) { const tok = ++advTok; setTimeout(() => { if (tok === advTok && state.cur === qid) goNext(); }, 450); }
+});
 document.addEventListener('change', e => {
   const t = e.target, q = QBY[t.dataset.q];
   if (q && q.type === 'money' && num(state.a[q.id]) != null) t.value = Math.round(state.a[q.id]).toLocaleString('es-MX');
