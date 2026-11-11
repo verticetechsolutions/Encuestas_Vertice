@@ -1174,7 +1174,8 @@ function renderChat(focusSel) {
   const cr = critRows(a), cDone = cr.filter(r => r.st === 'ok' || r.st === 'na').length, casos = [0, 1, 2, 3, 4, 5].filter(i => isDone(QBY['caso_' + i], a)).length;
   const left = flowVisible(a).filter(q => q.crit && !isDone(q, a)).length;
   let h = '<div class="chat-top"><div class="chat-prog"><b>' + cDone + ' de 60</b> criterios · <b>' + casos + ' de 6</b> casos · ' + (left ? 'faltan ' + left + (left === 1 ? ' pregunta' : ' preguntas') : 'todo contestado') + '</div><div class="bar light"><i style="width:' + Math.round(cDone * 100 / 60) + '%"></i></div>' + (KNOWN() ? '<button type="button" class="linkbtn" data-mode="bloques">Ver todas las preguntas por bloques</button>' : '') + '</div>';
-    if (!state.hist.length && state.cur === 'empresa') h += '<div class="intro"><div><b>Una pregunta a la vez</b><span>Cada respuesta decide la siguiente. Si contestan "depende", les preguntamos de qué.</span></div><div><b>Casos a su medida</b><span>Los casos de prueba se arman con lo que van contestando, justo en el límite de sus criterios.</span></div><div><b>20 a 30 minutos</b><span>Si algo no lo saben, usen "Saltar por ahora" y lo retomamos al final. Se guarda solo.</span></div></div>';
+    if (state.retomado && !state.hist.length) h += '<p class="prev"><b>Bienvenidos, ' + esc(state.retomado) + '.</b> Ya tenemos parte de sus respuestas: solo les preguntamos lo que falta.</p>';
+  if (!state.hist.length && state.cur === 'empresa') h += '<div class="intro"><div><b>Una pregunta a la vez</b><span>Cada respuesta decide la siguiente. Si contestan "depende", les preguntamos de qué.</span></div><div><b>Casos a su medida</b><span>Los casos de prueba se arman con lo que van contestando, justo en el límite de sus criterios.</span></div><div><b>20 a 30 minutos</b><span>Si algo no lo saben, usen "Saltar por ahora" y lo retomamos al final. Se guarda solo.</span></div></div>';
   if (state.hist.length) { const pq = QBY[state.hist[state.hist.length - 1]], pv = pq ? valueText(pq, a[pq.id], a) : ''; if (pq) h += '<p class="prev">' + (pv && isDone(pq, a) ? 'Anotado · ' + esc(shortLabel(pq, a)) + ': <b>' + esc(pv.length > 160 ? pv.slice(0, 157) + '…' : pv) + '</b>' : 'Saltaron "' + esc(shortLabel(pq, a)) + '". La retomamos al final.') + '</p>'; }
   if (!state.cur) {
     const pend = state.skip.filter(id => QBY[id] && QBY[id].crit && visible(QBY[id], a) && !isDone(QBY[id], a));
@@ -1587,6 +1588,25 @@ function doCopy(text, boxId, msgId) {
 // ---------- boot ----------
 renderBlock();
 renderPanel();
+// Retomar con la liga privada (#pase=…): recupera lo ya contestado y salta esas preguntas.
+(async () => {
+  const m = (location.hash || '').match(/pase=([A-Za-z0-9_-]{20,80})/);
+  if (!m) return;
+  try { history.replaceState(null, '', location.pathname + location.search); } catch (e) {}
+  try { localStorage.setItem(LS_KEY + ':token', m[1]); } catch (e) {}
+  try {
+    const r = await fetch('/api/ser-aliado/retomar', { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify({ pase: m[1] }) });
+    if (!r.ok) return;
+    const j = await r.json();
+    const resp = (j && j.respuestas) || {}, notas = (j && j.notas) || {};
+    for (const k in resp) if (state.a[k] == null || (Array.isArray(state.a[k]) && !state.a[k].length)) state.a[k] = resp[k];
+    for (const k in notas) if (!state.n[k]) state.n[k] = notas[k];
+    if (j.estado === 'enviada') state.enviado = true;
+    state.retomado = j.empresa || 'su institución';
+    state.cur = null; state.hist = [];
+    saveLocal(); renderBlock(); renderPanel(); setSave('cloud', 'Guardado en Vértice');
+  } catch (e) { console.warn('ser-aliado: no se pudo retomar', e); }
+})();
 (async () => { try { if (window.claude && window.claude.use) ASSETS = await window.claude.use('assets'); } catch (e) {} if (ASSETS && state.cur === 'politica_doc') renderBlock(); })();
 initRemote().finally(() => { remoteReady = true; updateSendbar(); });
 setTimeout(() => { remoteReady = true; updateSendbar(); }, 12000);
