@@ -1,6 +1,6 @@
 # Value Arrendadora: ficha de investigación pública
 
-Referencia para la entrevista de criterios (no es doc de progreso). Fuente: resúmenes de reportes públicos; los PDFs completos de bmv.com.mx y hrratings.com no se pudieron abrir desde el entorno, así que conviene verificar cifras antes de citarlas.
+Referencia para la entrevista de criterios (no es doc de progreso). La sección "Verificado en documentos" sale de leer completos el prospecto VALARRE 25, los trimestrales BMV 4T-2025 y 1T-2026, PCR Verum abr-2025, Moody's Local abr-2025 y HR Ratings dic-2025 / oct-2026. El sitio value.com.mx bloquea servidores (Incapsula) y no se pudo leer.
 
 ## Quiénes son
 - **Value Arrendadora, S.A. de C.V., SOFOM, E.R., Value Grupo Financiero** (clave BMV: VALARRE). Era E.N.R. desde 2007; hoy E.R. por pertenecer al grupo. [Prospecto VALARRE 25, jul-2025](https://www.bmv.com.mx/docs-pub/prospect/VALARRE-prosp10-24072025-200411-1.pdf)
@@ -22,3 +22,14 @@ Referencia para la entrevista de criterios (no es doc de progreso). Fuente: res�
 
 ## No encontrado (preguntar en la entrevista)
 Ticket promedio, plazos, depósito, valor residual, equipo usado, PFAE/PyME, tipo de activo actual, banca de desarrollo.
+
+## Verificado en documentos (segunda investigación)
+- **Mezcla:** crédito comercial ~59% y arrendamiento financiero + puro ~40% (PCR, 4T-2024). Crédito simple es el producto que más crece (prospecto). Factoraje nominal ~73.5 M (1T-2026).
+- **Tamaño:** cartera de crédito 9,579 M (+35.3% a/a, 1T-2026); portafolio con arrendamiento puro ~11,100 M (HR, 2T-2026).
+- **Arrendamiento:** mayormente automotriz, ~40,000 unidades activas con Value Automotriz, plazo promedio ~30 meses; alianzas con distribuidores multimarca. Proyecto CDMX de 1,250 unidades (1T-2026). Web: plazos de 12 a 60 meses; flotillas, maquinaria pesada y equipo de transporte.
+- **Clientes:** corporativos, PyMEs, PFAE y gobierno (~5.8% de cartera, 1T-2026). Todo en pesos. >95% de clientes en NL, Tamaulipas, Jalisco y CDMX; NL = 82% (4T-2024). Muchos clientes grandes llegan por Value Casa de Bolsa.
+- **Crédito:** comité semanal con facultades por monto, caso por caso; en arrendamiento puro financian ~80% del bien; garantías hipotecarias y prendarias, aforo promedio 1.2x; TIR mínima exigida 25% (Moody's).
+- **Calidad:** IMOR 0.23% (1T-2026). Etapa 2 subió a 2.17% desde 0.5% (alerta temprana).
+- **Fondeo:** bancos 7,210 M y CEBURS 2,985 M; NAFIN, Bancomext, FIFOMI, Banobras y banca comercial.
+- **Estrategia (PCR):** crecer en Guadalajara y CDMX, créditos de menor monto para bajar concentración, más flotillas. HR proyecta solo 2.5% de crecimiento anual.
+- **Sensible, no usar en la encuesta:** HR bajó a HR A- (5-oct-2026) arrastrada por Value Casa de Bolsa; concentración "Limitada" (top clientes ~2.1x capital; cliente 1 = gobierno con participaciones federales, 0.8x capital); capital/activos ~19.7% al 1T-2026, debajo del umbral de 20% de Moody's.

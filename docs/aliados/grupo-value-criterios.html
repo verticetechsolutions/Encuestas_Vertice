@@ -314,7 +314,7 @@ const EXCL_EXTRA = [['apuestas','Juegos y apuestas'],['cripto','Criptoactivos'],
 const ZONAS = [['nacional','Todo el país'],['cdmx','CDMX y Edomex'],['bajio','Bajío'],['occidente','Occidente'],['norte','Noreste (NL, Coahuila, Tamaulipas)'],['frontera','Frontera norte'],['sureste','Sureste'],['centro','Centro'],['sur','Sur'],['pacifico','Pacífico']];
 const MONEDA = [['mxn','Solo pesos'],['usd','Solo dólares'],['ambas','Pesos y dólares']];
 const GARANTIAS = [['hipotecaria','Hipotecaria (inmueble)'],['prenda_maq','Prenda sobre maquinaria o equipo'],['prenda_inv','Prenda sobre inventario'],['cesion','Cesión de derechos de cobro'],['fideicomiso','Fideicomiso de garantía'],['aval','Aval con patrimonio'],['standby','Carta de crédito stand-by'],['liquida','Garantía líquida (depósito)'],['sin_garantia','Sin garantía (quirografario)']];
-const COBERTURA = [['1','1.0x'],['1.25','1.25x'],['1.5','1.5x'],['2','2.0x'],['3','3.0x o más']];
+const COBERTURA = [['1','1.0x'],['1.2','1.2x'],['1.25','1.25x'],['1.5','1.5x'],['2','2.0x'],['3','3.0x o más']];
 const AVAL = [['siempre','Siempre'],['desde_monto','A partir de cierto monto'],['depende','Depende del perfil'],['nunca','No lo pedimos']];
 const RATIOS = [['dscr','Cobertura de deuda (DSCR)'],['deuda_ebitda','Deuda / EBITDA'],['liquidez','Liquidez (razón circulante)'],['apalancamiento','Pasivo / capital'],['margen','Margen EBITDA o neto'],['flujo','Flujo en estados de cuenta'],['ventas','Ventas facturadas (CFDI)'],['rotacion','Días de cartera e inventario'],['capital','Capital contable'],['concentracion','Concentración de clientes']];
 const CAIDA = [['10','Hasta 10%'],['20','Hasta 20%'],['30','Hasta 30%'],['caso','Depende del caso'],['no_mide','No lo medimos']];
@@ -339,7 +339,7 @@ const PLAZO_FAC = [['30','30 días'],['60','60 días'],['90','90 días'],['120',
 const PAGADORES = [['corp','Corporativos y empresas grandes'],['pyme','PyMEs'],['gob_fed','Gobierno federal'],['gob_est','Gobierno estatal o municipal'],['extranjero','Pagadores en el extranjero']];
 const CONC = [['20','Hasta 20%'],['30','Hasta 30%'],['50','Hasta 50%'],['sin','Sin tope']];
 const EQUIPO = [['autos','Autos y camionetas (flotillas)'],['transporte','Tractocamiones y transporte de carga'],['autobuses','Autobuses y transporte de personal'],['construccion','Maquinaria de construcción'],['industrial','Maquinaria y equipo industrial'],['montacargas','Montacargas y equipo de almacén'],['medico','Equipo médico'],['ti','Cómputo y telecomunicaciones'],['agricola','Maquinaria agrícola'],['energia','Equipo de energía (solar, plantas)'],['otro','Otro']];
-const DEPOSITO = [['0','Sin depósito'],['1r','1 renta'],['2r','2 a 3 rentas'],['10','10% del valor'],['20','20% o más'],['caso','Depende del perfil']];
+const DEPOSITO = [['0','Sin depósito'],['1r','1 renta'],['2r','2 a 3 rentas'],['10','10% del valor'],['20','20% o más del valor'],['caso','Depende del perfil']];
 const OPCION = [['simbolico','Valor simbólico'],['pactado','Porcentaje pactado al inicio'],['mercado','Valor de mercado']];
 const SEGURO = [['arrendadora','Lo contrata la arrendadora y va en la renta'],['cliente','Lo contrata el cliente con endoso'],['ambos','Cualquiera de los dos']];
 const GPS = [['siempre','Siempre'],['desde_monto','A partir de cierto monto'],['no','No lo pedimos']];
@@ -398,7 +398,7 @@ function nice(n) { if (!n) return n; const p = Math.pow(10, Math.max(0, Math.flo
 // ---------- blocks & questions ----------
 const BLOCKS = [
   { id: 'inicio', short: 'Inicio', title: 'Antes de empezar', lead: 'Este cuestionario arma el perfil del cliente que Value Arrendadora quiere financiar, para que Vértice solo les presente operaciones que encajan.' },
-  { id: 'conocemos', short: 'Lo que sabemos', title: 'Lo que ya sabemos de ustedes', lead: 'Antes de preguntar, revisamos sus reportes públicos en la BMV y de las calificadoras. Confirmen o corrijan cada punto; son nueve clics.' },
+  { id: 'conocemos', short: 'Lo que sabemos', title: 'Lo que ya sabemos de ustedes', lead: 'Antes de preguntar, leímos su prospecto y reportes trimestrales en la BMV y los reportes de PCR Verum, HR Ratings y Moody\'s. Confirmen o corrijan cada punto; son doce clics.' },
   { id: 'mercado', short: 'Qué financian', title: 'Qué financian y a quién', lead: 'Ya prellenamos lo que sabemos. Corrijan lo que no aplique; lo que elijan aquí decide qué preguntas siguen.' },
   { id: 'arrendamiento', short: 'Arrendamiento', title: 'Cómo arriendan', lead: 'Activos, depósito, valor residual, seguro y flotillas. Lo que define si una operación de arrendamiento les sirve.' },
   { id: 'tamano', short: 'Tamaño', title: 'Tamaño de la operación', lead: 'Rangos de monto y requisitos mínimos de entrada.' },
@@ -413,15 +413,18 @@ const BLOCKS = [
 
 // Public research on Value Arrendadora (BMV prospecto VALARRE 25 jul-2025, HR Ratings, Moody's Local abr-2025, PCR Verum mar-2026).
 const FACTS = [
-  ['k_entidad', 'Son Value Arrendadora, SOFOM E.R., parte de Value Grupo Financiero, y operan desde 1991 (antes Fina Arrenda).', 'Prospecto VALARRE 25, BMV'],
-  ['k_productos', 'Su negocio principal es el arrendamiento financiero y puro. También otorgan crédito simple y crédito automotriz, y en menor medida factoraje.', 'Prospecto BMV 2025 y HR Ratings'],
-  ['k_flotillas', 'Administran flotillas con cobertura nacional, incluidos proyectos grandes de vehículos para gobierno.', 'Reporte trimestral BMV 2025'],
-  ['k_tamano', 'Su cartera supera los $8 mil millones de pesos y creció alrededor de 45% en dos años.', 'Prospecto BMV 2025 y PCR Verum'],
-  ['k_region', 'La mayor parte de su cartera está en Nuevo León y el noreste; operan desde Monterrey y la Ciudad de México.', 'HR Ratings y PCR Verum'],
-  ['k_clientes', 'Atienden sobre todo a empresas medianas y grandes y a entidades de gobierno, con operaciones de ticket alto.', 'PCR Verum y HR Ratings'],
-  ['k_calidad', 'Su morosidad está por debajo de 1%, muy abajo del promedio del sector.', "Moody's Local y HR Ratings 2025"],
-  ['k_cb', 'Ya no es requisito ser cliente de Value Casa de Bolsa para contratar con la arrendadora.', "Moody's Local, abril 2025"],
-  ['k_plan', 'Su plan es seguir creciendo con una originación más diversificada.', 'PCR Verum, marzo 2026'],
+  ['k_entidad', 'Son Value Arrendadora, SOFOM E.R., parte de Value Grupo Financiero, con sede en San Pedro Garza García y operando desde 1991 (antes Fina Arrenda).', 'Prospecto VALARRE 25, BMV'],
+  ['k_productos', 'Ofrecen arrendamiento financiero y puro, crédito simple, crédito automotriz y factoraje. A finales de 2024 el crédito comercial era cerca de 59% del portafolio y el arrendamiento 40%; el crédito simple es el producto que más ha crecido.', 'PCR Verum 2025 y prospecto BMV'],
+  ['k_auto', 'Su arrendamiento es principalmente automotriz: junto con Value Automotriz suman unas 40,000 unidades activas, con plazo promedio de 30 meses y alianzas con distribuidores multimarca.', "PCR Verum y Moody's Local 2025"],
+  ['k_flotillas', 'En 2026 arrancaron un proyecto de 1,250 unidades con la Ciudad de México y quieren crecer en administración de flotillas.', 'Reportes trimestrales BMV 4T-2025 y 1T-2026'],
+  ['k_tamano', 'Su portafolio, sumando arrendamiento puro, ronda los $11 mil millones de pesos, y la cartera creció 35% en el último año.', 'Reporte trimestral BMV 1T-2026'],
+  ['k_region', 'Nuevo León concentra la mayor parte de la cartera (82% a fines de 2024) y más del 95% de sus clientes están en Nuevo León, Tamaulipas, Jalisco y CDMX.', 'PCR Verum y prospecto BMV'],
+  ['k_clientes', 'Atienden corporativos, PyMEs, personas físicas con actividad empresarial y entidades de gobierno (cerca de 6% de la cartera), todo en pesos.', 'PCR Verum y reporte BMV 1T-2026'],
+  ['k_comite', 'Su comité de crédito sesiona al menos una vez por semana y analiza caso por caso, con facultades según el monto.', "PCR Verum y Moody's Local"],
+  ['k_garantias', 'En arrendamiento puro suelen financiar alrededor de 80% del valor del bien, y sus garantías son sobre todo hipotecarias y prendarias, con aforo promedio de 1.2x.', "PCR Verum y Moody's Local"],
+  ['k_calidad', 'Su morosidad es de 0.2% (marzo de 2026), muy por debajo del promedio del sector.', 'Reporte trimestral BMV 1T-2026'],
+  ['k_cb', 'Muchos de sus clientes grandes llegan por Value Casa de Bolsa, aunque ya no es requisito ser cliente de la Casa de Bolsa.', "Prospecto BMV y Moody's Local"],
+  ['k_plan', 'Su plan es crecer en Guadalajara y CDMX, dar créditos de menor monto para diversificar y crecer en flotillas.', 'PCR Verum 2025'],
 ];
 const FLEX_LBL = {
   flex_buro: 'Atrasos en Buró', flex_sinhist: 'Sin historial crediticio', flex_32d: '32-D negativa', flex_resico: 'Contribuyente RESICO',
@@ -518,7 +521,7 @@ const Q = [
   { id: 'no_mandar', b: 'vertice', type: 'text', multiline: 1, label: '¿Qué tipo de solicitud les hace perder tiempo?', placeholder: 'Ej. Empresas que solo tienen 6 meses de estados de cuenta, o que piden 100% del valor del equipo.', est: 30 },
   { id: 'perfecto', b: 'vertice', type: 'text', multiline: 1, label: 'Describan a su cliente perfecto en una frase', placeholder: 'Ej. Manufacturera del Bajío con 5+ años, factura $30 M+, pide $5 M para equipo con garantía prendaria.', est: 35 },
   { id: 'canal', b: 'vertice', type: 'multi', options: CANAL, label: '¿Por qué canales les llegan hoy las operaciones?', est: 10 },
-  { id: 'crecer_donde', b: 'vertice', type: 'multi', options: CRECER, label: '¿Hacia dónde quieren diversificar su cartera?', help: 'Sus reportes hablan de crecer con una originación más diversificada. Aquí es donde Vértice puede sumar.', est: 12 },
+  { id: 'crecer_donde', b: 'vertice', type: 'multi', options: CRECER, label: '¿Hacia dónde quieren diversificar su cartera?', help: 'Sus reportes hablan de crecer en Guadalajara y CDMX, con créditos de menor monto y más flotillas. Aquí es donde Vértice puede sumar.', est: 12 },
   { id: 'crecer', b: 'vertice', type: 'text', label: '¿Qué tipo de cliente les falta hoy y quisieran más?', placeholder: 'Ej. Transportistas medianos del norte', est: 20 },
   { id: 'volumen', b: 'vertice', type: 'single', options: VOLUMEN, label: '¿Cuántas solicitudes calificadas al mes les gustaría recibir de Vértice?', est: 6 },
   { id: 'contacto', b: 'vertice', type: 'contact', caja: ['co_punto_contacto', 'co_email_telefono'], crit: 1, label: '¿Quién recibe los expedientes que mandemos?', est: 35 },
@@ -531,9 +534,21 @@ const Q = [
 const QBY = Object.fromEntries(Q.map(q => [q.id, q]));
 
 // ---------- state ----------
-const LS_KEY = 'vertice-criterios-value-v2';
+const LS_KEY = 'vertice-criterios-value-v3';
 // Prefilled from public research; respondents confirm or correct.
-const DEFAULTS = { inst_tipo: 'sofom_er', inst_anios: 35, productos: ['arr_fin', 'arr_puro', 'flotilla', 'automotriz', 'credito_simple'], clientes: ['pm'], pm_tamano: ['mediana', 'grande'], sectores_si: ['manufactura', 'transporte', 'construccion', 'servicios', 'comercio_may', 'gobierno'], zonas: ['norte', 'cdmx'], arr_equipo: ['autos', 'transporte'] };
+const DEFAULTS = {
+  inst_tipo: 'sofom_er', inst_anios: 35,
+  productos: ['arr_fin', 'arr_puro', 'credito_simple', 'automotriz', 'flotilla'],
+  clientes: ['pm', 'pfae'], pm_tamano: ['pequena', 'mediana', 'grande'],
+  sectores_si: ['construccion', 'comercio_may', 'servicios', 'manufactura', 'agro', 'energia', 'transporte', 'gobierno'],
+  gob_pago: ['participaciones'],
+  zonas: ['norte', 'occidente', 'cdmx'], moneda: 'mxn',
+  arr_equipo: ['autos', 'transporte', 'construccion'], arr_deposito: '20',
+  garantias: ['hipotecaria', 'prenda_maq'], cobertura: '1.2',
+  comite_frec: 'semanal', docs: ['eeff2'],
+  pricing: { arr_fin: { pmin: '12', pmax: '60' }, arr_puro: { pmin: '12', pmax: '60' }, automotriz: { pmin: '12', pmax: '60' } },
+  canal: ['grupo', 'distribuidores'],
+};
 const state = { a: JSON.parse(JSON.stringify(DEFAULTS)), n: {}, pre: Object.keys(DEFAULTS), block: 'inicio', updated: 0, enviado: false, view: 'form', ownerSel: null };
 const openNotes = new Set();
 let prevVisible = null;
@@ -618,7 +633,8 @@ function casePlan(a) {
   const order = arr(a, 'prioridad').concat(arr(a, 'productos')).filter((p, i, l) => l.indexOf(p) === i && p !== 'otro');
   const lp = order.filter(isLeaseProd);
   const c = lp.length ? lp : (order.length ? order : ['credito_simple']);
-  const prods = [c[0], c[1] || c[0], c[0], c[1] || c[0]];
+  const credit = order.find(p => ['credito_simple', 'refaccionario', 'revolvente', 'automotriz'].includes(p));
+  const prods = [c[0], c[1] || c[0], c[0], credit || c[1] || c[0]];
   const eq = arr(a, 'arr_equipo').filter(e => e !== 'otro');
   const eqs = eq.length ? eq : ['autos', 'transporte', 'industrial'];
   const assets = [0, 1, 2, 3].map(i => prods[i] === 'flotilla' ? 'autos' : eqs[i % eqs.length]);
@@ -923,7 +939,7 @@ function renderBlock(focusSel) {
   const nowVis = new Set(Q.filter(q => visible(q, a)).map(q => q.id));
   let h = '<div class="block-head"><span class="eyebrow">Bloque ' + (AB.indexOf(b) + 1) + ' de ' + AB.length + '</span><h1>' + esc(b.title) + '</h1><p>' + esc(b.lead) + '</p></div>';
   if (b.id === 'inicio') {
-    h += '<div class="intro"><div><b>Se adapta a ustedes</b><span>Si algo no aplica a su operación, lo saltamos. Las preguntas nuevas aparecen marcadas con el motivo.</span></div><div><b>20 a 30 minutos</b><span>Casi todo se contesta con un clic y se guarda solo. Lo de texto es opcional pero ayuda mucho.</span></div><div><b>Ya hicimos la tarea</b><span>Prellenamos lo que sabemos de Value Arrendadora por sus reportes públicos. Solo confirmen o corrijan. Al final hay 4 casos de arrendamiento armados con sus respuestas.</span></div></div>';
+    h += '<div class="intro"><div><b>Se adapta a ustedes</b><span>Si algo no aplica a su operación, lo saltamos. Las preguntas nuevas aparecen marcadas con el motivo.</span></div><div><b>20 a 30 minutos</b><span>Casi todo se contesta con un clic y se guarda solo. Lo de texto es opcional pero ayuda mucho.</span></div><div><b>Ya hicimos la tarea</b><span>Prellenamos lo que sabemos de Value Arrendadora por sus reportes en la BMV y de las calificadoras. Solo confirmen o corrijan. Al final hay 4 casos (3 de arrendamiento y 1 de crédito) armados con sus respuestas.</span></div></div>';
   }
   if (b.id === 'resumen') { h += summaryHTML(a, true); }
   else {
